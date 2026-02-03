@@ -9,7 +9,7 @@ import { Button } from '@/components/form/Button';
 import { Select } from '@/components/form/Select';
 import payrollService from '@/services/payroll.service';
 import { Payroll } from '@/types';
-import toast from 'react-hot-toast';
+import toastService from '@/services/toast.service';
 import { PlusIcon, EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
@@ -46,7 +46,8 @@ export const Payrolls = () => {
         setLastPage(response.data.last_page);
       }
     } catch (error) {
-      toast.error('Failed to load payrolls');
+      // Error toast handled by interceptor
+      console.error('Failed to load payrolls:', error);
     } finally {
       setLoading(false);
     }
@@ -56,11 +57,12 @@ export const Payrolls = () => {
     try {
       const response = await payrollService.generate(1, month, year);
       if (response.success) {
-        toast.success('Payroll generated successfully');
+        toastService.success('Payroll generated successfully');
         loadPayrolls();
       }
     } catch (error) {
-      toast.error('Failed to generate payroll');
+      // Error toast handled by interceptor
+      console.error('Failed to generate payroll:', error);
     }
   };
 
@@ -75,9 +77,10 @@ export const Payrolls = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success('Payroll exported successfully');
+      toastService.success('Payroll exported successfully');
     } catch (error) {
-      toast.error('Failed to export payroll');
+      // Error toast handled by interceptor
+      console.error('Failed to export payroll:', error);
     }
   };
 

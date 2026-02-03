@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
-import toast from 'react-hot-toast';
+import toastService from '@/services/toast.service';
 
 interface AuthState {
   user: User | null;
@@ -31,10 +31,12 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false,
             });
-            toast.success('Login successful');
+            // Success toast - business logic, keep it here
+            toastService.success('Login successful');
           }
         } catch (error) {
           set({ isLoading: false });
+          // Error toast handled by interceptor
           throw error;
         }
       },
@@ -49,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isAuthenticated: false,
           });
-          toast.success('Logged out successfully');
+          toastService.success('Logged out successfully');
         }
       },
 

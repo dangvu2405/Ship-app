@@ -11,7 +11,7 @@ import { Select } from '@/components/form/Select';
 import { ConfirmModal } from '@/components/modal/ConfirmModal';
 import employeeService from '@/services/employee.service';
 import { Employee } from '@/types';
-import toast from 'react-hot-toast';
+import toastService from '@/services/toast.service';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 export const Employees = () => {
@@ -51,7 +51,8 @@ export const Employees = () => {
         setLastPage(response.data.last_page);
       }
     } catch (error) {
-      toast.error('Failed to load employees');
+      // Error toast handled by interceptor
+      console.error('Failed to load employees:', error);
     } finally {
       setLoading(false);
     }
@@ -61,11 +62,12 @@ export const Employees = () => {
     if (!deleteModal.employee) return;
     try {
       await employeeService.delete(deleteModal.employee.id);
-      toast.success('Employee deleted successfully');
+      toastService.success('Employee deleted successfully');
       setDeleteModal({ isOpen: false, employee: null });
       loadEmployees();
     } catch (error) {
-      toast.error('Failed to delete employee');
+      // Error toast handled by interceptor
+      console.error('Failed to delete employee:', error);
     }
   };
 

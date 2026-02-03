@@ -5,7 +5,7 @@ import { Input } from '@/components/form/Input';
 import { Button } from '@/components/form/Button';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/utils/constants';
-import toast from 'react-hot-toast';
+import { getValidationErrors, isValidationError } from '@/utils/errorHandler';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -24,20 +24,11 @@ export const Login = () => {
       await login(formData.email, formData.password);
       navigate(ROUTES.DASHBOARD);
     } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
-        if (axiosError.response?.data?.errors) {
-          const formattedErrors: Record<string, string> = {};
-          Object.entries(axiosError.response.data.errors).forEach(([key, value]) => {
-            formattedErrors[key] = Array.isArray(value) ? value[0] : value;
-          });
-          setErrors(formattedErrors);
-        } else {
-          toast.error(axiosError.response?.data?.message || 'Login failed');
-        }
-      } else {
-        toast.error('Login failed');
+      // Handle validation errors - interceptor skips toast for 422
+      if (isValidationError(error)) {
+        setErrors(getValidationErrors(error));
       }
+      // Other errors are handled by interceptor (toast already shown)
     }
   };
 
