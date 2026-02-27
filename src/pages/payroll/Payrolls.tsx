@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -9,7 +9,7 @@ import { Button } from '@/components/form/Button';
 import { Select } from '@/components/form/Select';
 import payrollService from '@/services/payroll.service';
 import { Payroll } from '@/types';
-import toastService from '@/services/toast.service';
+import toast from 'react-hot-toast';
 import { PlusIcon, EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
@@ -19,20 +19,15 @@ export const Payrolls = () => {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(() => new Date().getMonth() + 1);
+  const [year, setYear] = useState(() => new Date().getFullYear());
 
   const breadcrumb: BreadcrumbItem[] = [
     { label: 'Payroll', path: '/admin/payrolls' },
     { label: 'Payrolls' },
   ];
 
-  useEffect(() => {
-    loadPayrolls();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, month, year]);
-
-  const loadPayrolls = async () => {
+  const loadPayrolls = useCallback(async () => {
     try {
       setLoading(true);
       const response = await payrollService.getAll({
@@ -51,13 +46,17 @@ export const Payrolls = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, month, year]);
+
+  useEffect(() => {
+    loadPayrolls();
+  }, [loadPayrolls]);
 
   const handleGenerate = async () => {
     try {
       const response = await payrollService.generate(1, month, year);
       if (response.success) {
-        toastService.success('Payroll generated successfully');
+        toast.success('Payroll generated successfully');
         loadPayrolls();
       }
     } catch (error) {
@@ -77,7 +76,7 @@ export const Payrolls = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toastService.success('Payroll exported successfully');
+      toast.success('Payroll exported successfully');
     } catch (error) {
       // Error toast handled by interceptor
       console.error('Failed to export payroll:', error);

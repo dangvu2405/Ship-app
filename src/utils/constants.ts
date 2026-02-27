@@ -1,5 +1,17 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
+// Versioned localStorage keys - bump version on schema changes
+export const STORAGE_KEYS = {
+  AUTH_TOKEN: 'auth-token:v1',
+} as const;
+
+// Development mode: Auto-login without authentication
+export const AUTO_LOGIN_ENABLED = import.meta.env.VITE_AUTO_LOGIN === 'true' || import.meta.env.DEV;
+
+// Demo credentials
+export const DEMO_EMAIL = 'admin@abctransport.com';
+export const DEMO_PASSWORD = 'password';
+
 export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',

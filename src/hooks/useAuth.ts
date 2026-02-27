@@ -24,11 +24,12 @@ export const useAuth = () => {
     return user?.roles?.some((r) => r.name === role) ?? false;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const hasPermission = (permission: string): boolean => {
-    // This would need to check user permissions from backend
-    // TODO: Implement permission check using permission parameter
-    return hasRole('admin'); // Simplified for now
+    if (hasRole('admin')) return true;
+    const code = permission.includes('.') ? permission : permission;
+    return user?.roles?.some((r) =>
+      r.permissions?.some((p) => p.code === code || p.name === code)
+    ) ?? false;
   };
 
   return {

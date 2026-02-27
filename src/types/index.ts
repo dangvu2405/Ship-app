@@ -8,10 +8,17 @@ export interface User {
   employee?: Employee;
 }
 
+export interface Permission {
+  id: number;
+  name: string;
+  code?: string;
+}
+
 export interface Role {
   id: number;
   name: string;
   description?: string;
+  permissions?: Permission[];
 }
 
 export interface Employee {

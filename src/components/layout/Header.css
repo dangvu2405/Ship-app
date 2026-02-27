@@ -1,0 +1,30 @@
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.user-menu-trigger:hover {
+  background-color: var(--ant-color-fill-tertiary);
+}
+
+/* Dark mode adjustments */
+.dark .app-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 16px;
+  }
+  
+  .app-header .ant-space {
+    gap: 8px !important;
+  }
+  
+  .app-header .ant-input {
+    max-width: 200px;
+  }
+}

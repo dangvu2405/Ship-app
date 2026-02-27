@@ -1,0 +1,38 @@
+// Component-specific SCSS styles
+// Note: Most styling is now handled by the skeuomorphic design system in index.css
+
+// Legacy custom button styles (kept for backward compatibility)
+.btn-custom {
+  @apply px-4 py-2 rounded-md font-medium transition-colors;
+
+  &.primary {
+    @apply bg-primary text-white;
+  }
+
+  &.secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+  }
+}
+
+// Card styles
+.card {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
+}
+
+// Form styles
+.form-group {
+  @apply mb-4;
+
+  label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+  }
+}
+
+// Table styles
+.table-wrapper {
+  @apply overflow-x-auto;
+
+  table {
+    @apply min-w-full divide-y divide-gray-200 dark:divide-gray-700;
+  }
+}

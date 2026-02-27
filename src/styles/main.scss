@@ -1,0 +1,27 @@
+// Main SCSS file - Import Tailwind and custom styles
+// Note: Using @import for compatibility with Tailwind CSS directives
+// Tailwind requires @import, and @use must come before @import, so we use @import for consistency
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+// Custom SCSS styles
+@import './variables';
+@import './components';
+@import './utilities';
+
+// Ant Design overrides
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-sider {
+  background: #001529;
+}
+
+// Dark mode support
+.dark {
+  .ant-layout-sider {
+    background: #0f172a;
+  }
+}

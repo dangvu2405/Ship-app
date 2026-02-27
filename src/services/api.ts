@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
-import { API_BASE_URL } from '@/utils/constants';
-import toastService from './toast.service';
+import { API_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
+import toast from 'react-hot-toast';
 
 // Extend AxiosRequestConfig to support custom config
 declare module 'axios' {
@@ -22,7 +22,11 @@ const api: AxiosInstance = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Token will be sent via HttpOnly cookie from backend
+    // Get token from localStorage (set by authProvider after login)
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -51,29 +55,29 @@ api.interceptors.response.use(
       const { status, data } = error.response;
       const responseData = data as { message?: string; errors?: Record<string, string[]> };
 
-      // System-level errors: Use toast service for deduplication
+      // System-level errors: Always show toast
       if (status === 401) {
-        // Unauthorized - redirect to login
-        toastService.apiError('Session expired. Please login again.', 401);
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        toast.error('Session expired. Please login again.');
         window.location.href = '/login';
       } else if (status === 403) {
-        toastService.apiError(responseData.message || 'Access denied', 403);
+        toast.error(responseData.message || 'Permission denied');
       } else if (status >= 500) {
-        toastService.apiError('Server error. Please try again later.', status);
+        toast.error('Server error. Please try again later.');
       } else if (status === 404) {
         // Only show toast for 404 if it's not a resource not found (let component handle it)
         if (!responseData.message?.toLowerCase().includes('not found')) {
-          toastService.apiError(responseData.message || 'Resource not found', 404);
+          toast.error(responseData.message || 'Resource not found');
         }
       } else if (status !== 422 && status !== 400) {
         // Other client errors - show toast (skip 400 and 422)
-        toastService.apiError(responseData.message || 'An error occurred', status);
+        toast.error(responseData.message || 'An error occurred');
       }
       // 422 Validation errors: Skip toast - let component handle inline validation
       // 400 Bad Request: Usually handled by component with specific messages
     } else if (error.request) {
       // Network error
-      toastService.networkError();
+      toast.error('Network error. Please check your connection.');
     }
 
     return Promise.reject(error);

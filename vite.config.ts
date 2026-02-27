@@ -10,6 +10,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // Variables are imported in main.scss
+        // No additionalData needed to avoid duplicate imports
+        silenceDeprecations: ['import'], // Suppress @import deprecation warnings
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {

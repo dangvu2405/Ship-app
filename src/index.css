@@ -2,13 +2,269 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* ============================================================
+   SKEUOMORPHIC DESIGN SYSTEM - Bootstrap + Depth
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* ── Core Palette ── */
+    --background: 220 20% 97%;
+    --foreground: 220 30% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 12%;
+
+    /* ── Enterprise Blue ── */
+    --primary: 215 80% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    /* ── Secondary Slate ── */
+    --secondary: 218 18% 92%;
+    --secondary-foreground: 220 30% 20%;
+
+    /* ── Muted ── */
+    --muted: 220 16% 93%;
+    --muted-foreground: 220 10% 50%;
+
+    /* ── Accent Warm ── */
+    --accent: 38 90% 56%;
+    --accent-foreground: 38 90% 15%;
+
+    /* ── Destructive ── */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* ── Success ── */
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+
+    /* ── Warning ── */
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 90% 15%;
+
+    /* ── Info ── */
+    --info: 200 80% 50%;
+    --info-foreground: 0 0% 100%;
+
+    /* ── Borders & Inputs ── */
+    --border: 220 16% 85%;
+    --input: 220 16% 85%;
+    --ring: 215 80% 48%;
+
+    /* ── Radius ── */
+    --radius: 0.5rem;
+
+    /* ── Charts ── */
+    --chart-1: 215 80% 48%;
+    --chart-2: 152 60% 42%;
+    --chart-3: 38 90% 56%;
+    --chart-4: 0 72% 51%;
+    --chart-5: 280 60% 55%;
+
+    /* ── Skeuomorphic Tokens ── */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.06);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.06);
+    --shadow-inner: inset 0 2px 4px rgba(0,0,0,0.08);
+    --shadow-raised: 0 2px 0 rgba(0,0,0,0.06), 0 4px 8px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-pressed: inset 0 2px 4px rgba(0,0,0,0.12), 0 0 0 rgba(0,0,0,0);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03);
+    --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.05);
+    --shadow-sidebar: 2px 0 12px rgba(0,0,0,0.06), 1px 0 4px rgba(0,0,0,0.04);
+
+    /* ── Surface Gradients ── */
+    --gradient-surface: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,1) 100%);
+    --gradient-header: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    --gradient-sidebar: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    --gradient-btn-primary: linear-gradient(180deg, hsl(215 80% 55%) 0%, hsl(215 80% 45%) 100%);
+    --gradient-btn-secondary: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+
+    /* ── Typography ── */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark {
+    --background: 222 30% 8%;
+    --foreground: 220 15% 90%;
+    --card: 222 28% 12%;
+    --card-foreground: 220 15% 90%;
+    --popover: 222 28% 12%;
+    --popover-foreground: 220 15% 90%;
+    --primary: 215 80% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 20% 18%;
+    --secondary-foreground: 220 15% 85%;
+    --muted: 222 20% 16%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 38 85% 58%;
+    --accent-foreground: 38 90% 90%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 55% 48%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 88% 55%;
+    --warning-foreground: 38 90% 10%;
+    --info: 200 75% 55%;
+    --info-foreground: 0 0% 100%;
+    --border: 222 20% 20%;
+    --input: 222 20% 20%;
+    --ring: 215 80% 58%;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.3), 0 4px 6px -4px rgba(0,0,0,0.2);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2);
+    --shadow-inner: inset 0 2px 4px rgba(0,0,0,0.2);
+    --shadow-raised: 0 2px 0 rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.3);
+    --shadow-pressed: inset 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.04);
+    --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.06);
+    --shadow-sidebar: 2px 0 12px rgba(0,0,0,0.3);
+
+    --gradient-surface: linear-gradient(180deg, rgba(30,41,59,1) 0%, rgba(15,23,42,1) 100%);
+    --gradient-header: linear-gradient(180deg, hsl(222 28% 14%) 0%, hsl(222 28% 10%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(222 30% 10%) 0%, hsl(222 30% 6%) 100%);
+    --gradient-btn-primary: linear-gradient(180deg, hsl(215 80% 62%) 0%, hsl(215 80% 52%) 100%);
+    --gradient-btn-secondary: linear-gradient(180deg, hsl(222 20% 22%) 0%, hsl(222 20% 16%) 100%);
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  /* Typography Scale */
+  h1 { @apply text-3xl font-bold tracking-tight leading-tight; }
+  h2 { @apply text-2xl font-semibold tracking-tight leading-tight; }
+  h3 { @apply text-xl font-semibold leading-snug; }
+  h4 { @apply text-lg font-medium leading-snug; }
+  h5 { @apply text-base font-medium; }
+  h6 { @apply text-sm font-medium; }
 }
+
+/* ============================================================
+   SKEUOMORPHIC COMPONENT STYLES
+   ============================================================ */
+
+@layer components {
+  /* ── Raised Card (default card look) ── */
+  .sku-card {
+    background: var(--gradient-surface);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .sku-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* ── Raised Button ── */
+  .sku-btn {
+    position: relative;
+    border-radius: calc(var(--radius) - 1px);
+    box-shadow: var(--shadow-raised);
+    transition: all 0.15s ease;
+    border-bottom-width: 2px;
+  }
+  .sku-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 rgba(0,0,0,0.06), 0 6px 12px rgba(0,0,0,0.1);
+  }
+  .sku-btn:active {
+    transform: translateY(1px);
+    box-shadow: var(--shadow-pressed);
+    border-bottom-width: 1px;
+  }
+  .sku-btn-primary {
+    background: var(--gradient-btn-primary);
+    border-color: hsl(215 80% 38%);
+  }
+  .sku-btn-secondary {
+    background: var(--gradient-btn-secondary);
+    border-color: hsl(var(--border));
+  }
+
+  /* ── Inset Input ── */
+  .sku-input {
+    box-shadow: var(--shadow-inner);
+    border: 1.5px solid hsl(var(--border));
+    background: hsl(var(--background));
+    transition: all 0.2s ease;
+  }
+  .sku-input:focus {
+    border-color: hsl(var(--ring));
+    box-shadow: var(--shadow-inner), 0 0 0 3px hsla(var(--ring) / 0.15);
+  }
+
+  /* ── Table Header Raised ── */
+  .sku-table-header {
+    background: var(--gradient-btn-secondary);
+    border-bottom: 2px solid hsl(var(--border));
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  /* ── Sidebar ── */
+  .sku-sidebar {
+    background: var(--gradient-sidebar);
+    box-shadow: var(--shadow-sidebar);
+  }
+
+  /* ── Header ── */
+  .sku-header {
+    background: var(--gradient-header);
+    border-bottom: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ── Badge Raised ── */
+  .sku-badge {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.15);
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  /* ── Loading Skeleton with shimmer ── */
+  .sku-skeleton {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* ── Glass effect for overlays ── */
+  .sku-glass {
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    background: hsla(var(--background) / 0.8);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: hsl(var(--muted)); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }

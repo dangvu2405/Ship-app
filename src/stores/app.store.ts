@@ -1,12 +1,15 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { Locale } from '@/locales';
 
 interface AppState {
   theme: 'light' | 'dark';
   sidebarOpen: boolean;
+  locale: Locale;
   toggleTheme: () => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
+  setLocale: (locale: Locale) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -14,6 +17,7 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       theme: 'light',
       sidebarOpen: true,
+      locale: 'vi' as Locale,
 
       toggleTheme: () => {
         set((state) => {
@@ -30,10 +34,36 @@ export const useAppStore = create<AppState>()(
       setSidebarOpen: (open: boolean) => {
         set({ sidebarOpen: open });
       },
+
+      setLocale: (locale: Locale) => {
+        set({ locale });
+      },
     }),
     {
-      name: 'app-storage',
-      storage: createJSONStorage(() => localStorage),
+      name: 'app-storage:v1',
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => {
+          try {
+            return localStorage.getItem(name);
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name: string, value: string) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch {
+            // Quota exceeded or incognito mode
+          }
+        },
+        removeItem: (name: string) => {
+          try {
+            localStorage.removeItem(name);
+          } catch {
+            // Ignore
+          }
+        },
+      })),
       onRehydrateStorage: () => (state) => {
         if (state) {
           document.documentElement.classList.toggle('dark', state.theme === 'dark');

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
-import toastService from '@/services/toast.service';
+import toast from 'react-hot-toast';
 
 interface AuthState {
   user: User | null;
@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             // Success toast - business logic, keep it here
-            toastService.success('Login successful');
+            toast.success('Login successful');
           }
         } catch (error) {
           set({ isLoading: false });
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isAuthenticated: false,
           });
-          toastService.success('Logged out successfully');
+          toast.success('Logged out successfully');
         }
       },
 
@@ -89,8 +89,30 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'auth-storage',
-      storage: createJSONStorage(() => localStorage),
+      name: 'auth-storage:v1',
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => {
+          try {
+            return localStorage.getItem(name);
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name: string, value: string) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch {
+            // Quota exceeded or incognito mode
+          }
+        },
+        removeItem: (name: string) => {
+          try {
+            localStorage.removeItem(name);
+          } catch {
+            // Ignore
+          }
+        },
+      })),
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
     }
   )

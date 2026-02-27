@@ -1,0 +1,38 @@
+// Utility SCSS classes
+
+// Text utilities
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Spacing utilities
+.mt-section {
+  margin-top: $spacing-xl;
+}
+
+.mb-section {
+  margin-bottom: $spacing-xl;
+}
+
+// Flex utilities
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Animation utilities
+.fade-in {
+  animation: fadeIn $transition-base ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

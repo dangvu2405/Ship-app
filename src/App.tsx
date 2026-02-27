@@ -1,47 +1,109 @@
-import { useEffect } from 'react';
-import { RouterProvider } from 'react-router-dom';
+import { Refine, Authenticated } from '@refinedev/core';
+import { RefineThemes, ThemedLayoutV2, ThemedSiderV2, notificationProvider } from '@refinedev/antd';
+import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import { Toaster } from 'react-hot-toast';
-import { router } from './routes';
-import { useAuthStore } from './stores/auth.store';
+import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
+import { authProvider } from './providers/authProvider';
+import { dataProvider } from './providers/dataProvider';
+import { resources } from './providers/resources';
+import { Login } from './pages/auth/Login';
+import { Dashboard } from './pages/dashboard/Dashboard';
+import { Employees } from './pages/hr/Employees';
+import { Payrolls } from './pages/payroll/Payrolls';
+import { Companies } from './pages/organization/Companies';
+import { Vehicles } from './pages/fleet/Vehicles';
+import { Trips } from './pages/operations/Trips';
+import { Reports } from './pages/reports/Reports';
+import { Users } from './pages/system/Users';
+import { Profile } from './pages/system/Profile';
+import { Settings } from './pages/system/Settings';
+import { Header } from './components/layout';
 import { useAppStore } from './stores/app.store';
+import { useEffect } from 'react';
+import '@refinedev/antd/dist/reset.css';
+
+// Header wrapper component
+const HeaderWrapper = () => {
+  const navigate = useNavigate();
+  
+  return (
+    <Header
+      logoText="Ship ERP System"
+      showSearch
+      showNotifications
+      showThemeToggle
+      onLogoClick={() => navigate('/dashboard')}
+    />
+  );
+};
 
 function App() {
-  const { checkAuth } = useAuthStore();
   const { theme } = useAppStore();
 
   useEffect(() => {
-    checkAuth();
     document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [checkAuth, theme]);
+  }, [theme]);
 
   return (
-    <>
-      <RouterProvider router={router} />
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: 'var(--toast-bg, #fff)',
-            color: 'var(--toast-color, #333)',
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            duration: 4000,
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
+    <BrowserRouter>
+      <ConfigProvider
+        theme={{
+          ...RefineThemes.Blue,
+          algorithm: theme === 'dark' ? RefineThemes.Blue.algorithm : undefined,
         }}
-      />
-    </>
+      >
+        <AntdApp>
+          <Refine
+            dataProvider={dataProvider}
+            authProvider={authProvider}
+            routerProvider={routerProvider}
+            resources={resources}
+            notificationProvider={notificationProvider}
+            options={{
+              syncWithLocation: true,
+              warnWhenUnsavedChanges: true,
+              useNewQueryKeys: true,
+              projectId: 'ship-erp-system',
+            }}
+          >
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                element={
+                  <Authenticated key="authenticated-layout" fallback={<Navigate to="/login" replace />}>
+                    <ThemedLayoutV2
+                      Sider={(props) => <ThemedSiderV2 {...props} fixed />}
+                      Header={HeaderWrapper}
+                    >
+                      <Outlet />
+                    </ThemedLayoutV2>
+                  </Authenticated>
+                }
+              >
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/admin/companies" element={<Companies />} />
+                <Route path="/admin/employees" element={<Employees />} />
+                <Route path="/admin/vehicles" element={<Vehicles />} />
+                <Route path="/admin/trips" element={<Trips />} />
+                <Route path="/admin/payrolls" element={<Payrolls />} />
+                <Route path="/admin/reports" element={<Reports />} />
+                <Route path="/admin/users" element={<Users />} />
+                <Route path="/admin/profile" element={<Profile />} />
+                <Route path="/admin/settings" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+            <UnsavedChangesNotifier />
+            <DocumentTitleHandler />
+            <Toaster position="top-right" />
+            <ShadcnToaster />
+          </Refine>
+        </AntdApp>
+      </ConfigProvider>
+    </BrowserRouter>
   );
 }
 
