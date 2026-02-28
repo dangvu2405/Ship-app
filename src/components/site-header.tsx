@@ -1,48 +1,19 @@
-import { useNavigate } from 'react-router-dom';
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useGetIdentity, useLogout } from '@refinedev/core';
 import { useAppStore } from '@/stores/app.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
-import type { User as UserType } from '@/types';
-import UserIcon from 'lucide-react/dist/esm/icons/user';
-import LogOut from 'lucide-react/dist/esm/icons/log-out';
-import Settings from 'lucide-react/dist/esm/icons/settings';
 import Bell from 'lucide-react/dist/esm/icons/bell';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Moon from 'lucide-react/dist/esm/icons/moon';
 import Sun from 'lucide-react/dist/esm/icons/sun';
 
 export function SiteHeader() {
-  const navigate = useNavigate();
-  const { data: userData } = useGetIdentity();
-  const { mutate: logout } = useLogout();
   const { theme, toggleTheme } = useAppStore();
   const { t } = useTranslation();
-
-  const user = userData as UserType | null;
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const userInitials = user && (user?.username || user?.email)
-    ? (user.username || user.email || 'U').charAt(0).toUpperCase()
-    : 'U';
 
   return (
     <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">

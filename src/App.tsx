@@ -1,7 +1,7 @@
 import { Refine, Authenticated } from '@refinedev/core';
 import { notificationProvider } from '@refinedev/antd';
 import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
 import { authProvider } from './providers/authProvider';
