@@ -1,22 +1,118 @@
 // Component-specific SCSS styles
 // Note: Most styling is now handled by the skeuomorphic design system in index.css
 
-// Legacy custom button styles (kept for backward compatibility)
+// ============================================================
+// LAYOUT COMPONENTS
+// ============================================================
+
+// Main Layout Container
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+  background: hsl(var(--background));
+}
+
+// Sidebar Layout
+.layout-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: $sidebar-width;
+  z-index: $z-fixed;
+  transition: width $transition-slow $transition-ease,
+              transform $transition-slow $transition-ease;
+
+  &.collapsed {
+    width: $sidebar-width-collapsed;
+  }
+
+  @media (max-width: $breakpoint-lg) {
+    width: $sidebar-width-mobile;
+    transform: translateX(-100%);
+
+    &.open {
+      transform: translateX(0);
+    }
+  }
+}
+
+// Main Content Area
+.layout-main {
+  flex: 1;
+  margin-left: $sidebar-width;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left $transition-slow $transition-ease;
+
+  &.sidebar-collapsed {
+    margin-left: $sidebar-width-collapsed;
+  }
+
+  @media (max-width: $breakpoint-lg) {
+    margin-left: 0;
+  }
+}
+
+// Header
+.layout-header {
+  position: sticky;
+  top: 0;
+  height: $header-height;
+  z-index: $z-sticky;
+  display: flex;
+  align-items: center;
+  padding: 0 $content-padding;
+
+  @media (max-width: $breakpoint-md) {
+    height: $header-height-mobile;
+    padding: 0 $content-padding-mobile;
+  }
+}
+
+// Page Content
+.layout-content {
+  flex: 1;
+  padding: $content-padding;
+  max-width: $content-max-width;
+  width: 100%;
+  margin: 0 auto;
+
+  @media (max-width: $breakpoint-md) {
+    padding: $content-padding-mobile;
+  }
+}
+
+// Footer
+.layout-footer {
+  height: $footer-height;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid hsl(var(--border));
+}
+
+// ============================================================
+// LEGACY COMPONENTS (backward compatibility)
+// ============================================================
+
+// Legacy custom button styles
 .btn-custom {
   @apply px-4 py-2 rounded-md font-medium transition-colors;
 
   &.primary {
-    @apply bg-primary text-white;
+    @apply bg-primary text-primary-foreground;
   }
 
   &.secondary {
-    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
   }
 }
 
 // Card styles
 .card {
-  @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
+  @apply bg-card text-card-foreground rounded-lg shadow-md p-6;
 }
 
 // Form styles
@@ -24,7 +120,7 @@
   @apply mb-4;
 
   label {
-    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+    @apply block text-sm font-medium text-foreground mb-1;
   }
 }
 
@@ -33,6 +129,41 @@
   @apply overflow-x-auto;
 
   table {
-    @apply min-w-full divide-y divide-gray-200 dark:divide-gray-700;
+    @apply min-w-full divide-y divide-border;
+  }
+}
+
+// ============================================================
+// PAGE LAYOUTS
+// ============================================================
+
+// Page with header
+.page-container {
+  @apply space-y-6;
+}
+
+// Page header
+.page-header {
+  @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between;
+
+  &__title {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  &__description {
+    @apply text-muted-foreground;
+  }
+
+  &__actions {
+    @apply flex items-center gap-2;
+  }
+}
+
+// Content sections
+.content-section {
+  @apply bg-card rounded-lg border p-6;
+
+  &--flush {
+    @apply p-0;
   }
 }

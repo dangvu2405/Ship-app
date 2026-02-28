@@ -8,14 +8,8 @@ import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
 import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
-import { Login } from './pages/auth/Login';
-import { Dashboard } from './pages/dashboard/Dashboard';
-import { Employees } from './pages/hr/Employees';
-import { Payrolls } from './pages/payroll/Payrolls';
-import { Companies } from './pages/organization/Companies';
-import { Vehicles } from './pages/fleet/Vehicles';
-import { Trips } from './pages/operations/Trips';
-import { Reports } from './pages/reports/Reports';
+import { LoginForm } from './pages/auth/login-form';
+import Dashboard from './pages/dashboard/dashboard';
 import { Users } from './pages/system/Users';
 import { Profile } from './pages/system/Profile';
 import { Settings } from './pages/system/Settings';
@@ -69,7 +63,7 @@ function App() {
             }}
           >
             <Routes>
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<LoginForm />} />
               <Route
                 element={
                   <Authenticated key="authenticated-layout" fallback={<Navigate to="/login" replace />}>
@@ -84,12 +78,6 @@ function App() {
               >
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/admin/companies" element={<Companies />} />
-                <Route path="/admin/employees" element={<Employees />} />
-                <Route path="/admin/vehicles" element={<Vehicles />} />
-                <Route path="/admin/trips" element={<Trips />} />
-                <Route path="/admin/payrolls" element={<Payrolls />} />
-                <Route path="/admin/reports" element={<Reports />} />
                 <Route path="/admin/users" element={<Users />} />
                 <Route path="/admin/profile" element={<Profile />} />
                 <Route path="/admin/settings" element={<Settings />} />

@@ -5,31 +5,24 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold ring-offset-background transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 select-none",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default:
-          "sku-btn sku-btn-primary text-primary-foreground border-b-2 border-primary/70 hover:brightness-110 active:brightness-95",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
-          "sku-btn bg-gradient-to-b from-destructive to-red-700 text-destructive-foreground border-b-2 border-red-800 hover:brightness-110 active:brightness-95",
-        success:
-          "sku-btn bg-gradient-to-b from-success to-emerald-700 text-success-foreground border-b-2 border-emerald-800 hover:brightness-110 active:brightness-95",
-        warning:
-          "sku-btn bg-gradient-to-b from-warning to-amber-600 text-warning-foreground border-b-2 border-amber-700 hover:brightness-110 active:brightness-95",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "sku-btn sku-btn-secondary border border-input text-foreground hover:bg-accent/50 active:bg-accent",
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "sku-btn sku-btn-secondary border border-input text-secondary-foreground hover:bg-secondary/80 active:bg-secondary",
-        ghost:
-          "hover:bg-accent/60 hover:text-accent-foreground rounded-md transition-colors",
-        link:
-          "text-primary underline-offset-4 hover:underline",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-5 py-2",
-        sm: "h-9 rounded-md px-3.5 text-xs",
-        lg: "h-12 rounded-md px-8 text-base",
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
       },
     },

@@ -56,8 +56,17 @@
     /* ── Radius ── */
     --radius: 0.5rem;
 
+    /* ── Layout Dimensions ── */
+    --sidebar-width: 260px;
+    --sidebar-width-collapsed: 70px;
+    --header-height: 56px;
+    --footer-height: 48px;
+    --content-max-width: 1400px;
+    --content-padding: 1.5rem;
+    --content-padding-mobile: 1rem;
+
     /* ── Charts ── */
-    --chart-1: 215 80% 48%;
+    --chart-1: 221 83% 53%;
     --chart-2: 152 60% 42%;
     --chart-3: 38 90% 56%;
     --chart-4: 0 72% 51%;
@@ -89,6 +98,14 @@
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
@@ -118,6 +135,12 @@
     --input: 222 20% 20%;
     --ring: 215 80% 58%;
 
+    /* ── Layout Dimensions (dark mode - same values) ── */
+    --sidebar-width: 260px;
+    --sidebar-width-collapsed: 70px;
+    --header-height: 56px;
+    --footer-height: 48px;
+
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
     --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.2);
@@ -135,6 +158,14 @@
     --gradient-sidebar: linear-gradient(180deg, hsl(222 30% 10%) 0%, hsl(222 30% 6%) 100%);
     --gradient-btn-primary: linear-gradient(180deg, hsl(215 80% 62%) 0%, hsl(215 80% 52%) 100%);
     --gradient-btn-secondary: linear-gradient(180deg, hsl(222 20% 22%) 0%, hsl(222 20% 16%) 100%);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 

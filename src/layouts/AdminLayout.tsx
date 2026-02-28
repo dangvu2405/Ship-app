@@ -1,13 +1,7 @@
 import { ReactNode, useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  HomeIcon,
-  BuildingOfficeIcon,
-  UsersIcon,
-  TruckIcon,
-  CurrencyDollarIcon,
-  ChartBarIcon,
-  UserCircleIcon,
+  ClockIcon,
   Bars3Icon,
   XMarkIcon,
   MoonIcon,
@@ -28,14 +22,7 @@ interface AdminLayoutProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Companies', href: '/admin/companies', icon: BuildingOfficeIcon, permission: 'employee.view' },
-  { name: 'Employees', href: '/admin/employees', icon: UsersIcon, permission: 'employee.view' },
-  { name: 'Vehicles', href: '/admin/vehicles', icon: TruckIcon, permission: 'trip.view' },
-  { name: 'Trips', href: '/admin/trips', icon: TruckIcon, permission: 'trip.view' },
-  { name: 'Payrolls', href: '/admin/payrolls', icon: CurrencyDollarIcon, permission: 'payroll.view' },
-  { name: 'Reports', href: '/admin/reports', icon: ChartBarIcon, permission: 'payroll.view' },
-  { name: 'Users', href: '/admin/users', icon: UserCircleIcon, permission: 'employee.view' },
+  { name: 'Swipe Data', href: '/admin/swipe-data', icon: ClockIcon, permission: 'employee.view' },
 ];
 
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
@@ -72,13 +59,13 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out sku-sidebar",
-          sidebarOpen ? "w-64" : "w-[70px]",
+          sidebarOpen ? "w-[var(--sidebar-width)]" : "w-[var(--sidebar-width-collapsed)]",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Logo */}
         <div className={cn(
-          "flex items-center h-16 px-4 border-b border-sidebar-border",
+          "flex items-center h-[var(--header-height)] px-4 border-b border-sidebar-border",
           sidebarOpen ? "justify-between" : "justify-center"
         )}>
           <Link to="/dashboard" className="flex items-center gap-2.5 group">
@@ -167,11 +154,11 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       <div
         className={cn(
           "transition-all duration-300 ease-in-out min-h-screen flex flex-col",
-          sidebarOpen ? "lg:ml-64" : "lg:ml-[70px]"
+          sidebarOpen ? "lg:ml-[var(--sidebar-width)]" : "lg:ml-[var(--sidebar-width-collapsed)]"
         )}
       >
         {/* Header */}
-        <header className="sku-header sticky top-0 z-30 h-16 flex items-center justify-between px-4 lg:px-6">
+        <header className="sku-header sticky top-0 z-30 h-[var(--header-height)] flex items-center justify-between px-4 lg:px-6">
           {/* Left: Mobile menu + Breadcrumb area */}
           <div className="flex items-center gap-3">
             <button
@@ -241,12 +228,14 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6">
-          {children}
+        <main className="flex-1 p-[var(--content-padding-mobile)] lg:p-[var(--content-padding)]">
+          <div className="max-w-[var(--content-max-width)] mx-auto w-full">
+            {children}
+          </div>
         </main>
 
         {/* Footer */}
-        <footer className="px-6 py-3 border-t border-border/50 text-xs text-muted-foreground text-center">
+        <footer className="h-[var(--footer-height)] px-6 flex items-center justify-center border-t border-border/50 text-xs text-muted-foreground">
           Ship ERP System &copy; {new Date().getFullYear()}
         </footer>
       </div>

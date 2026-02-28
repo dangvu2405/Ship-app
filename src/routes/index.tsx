@@ -1,26 +1,21 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
-import { Login } from '@/pages/auth/Login';
-import { Dashboard } from '@/pages/dashboard/Dashboard';
-import { Employees } from '@/pages/hr/Employees';
-import { Payrolls } from '@/pages/payroll/Payrolls';
-import { Companies } from '@/pages/organization/Companies';
-import { Vehicles } from '@/pages/fleet/Vehicles';
-import { Trips } from '@/pages/operations/Trips';
-import { Reports } from '@/pages/reports/Reports';
+import { LoginForm } from '@/pages/auth/login-form';
+import { Settings } from '@/pages/system/Settings';
 import { Users } from '@/pages/system/Users';
+import Dashboard from '@/pages/dashboard/dashboard';
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/admin/dashboard" replace />,
   },
   {
     path: '/login',
-    element: <Login />,
+    element: <LoginForm />,
   },
   {
-    path: '/dashboard',
+    path: '/admin/dashboard',
     element: (
       <ProtectedRoute>
         <Dashboard />
@@ -28,63 +23,23 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/admin/employees',
-    element: (
-      <ProtectedRoute requiredPermission="employee.view">
-        <Employees />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/payrolls',
-    element: (
-      <ProtectedRoute requiredPermission="payroll.view">
-        <Payrolls />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/companies',
+    path: '/admin/settings',
     element: (
       <ProtectedRoute>
-        <Companies />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/vehicles',
-    element: (
-      <ProtectedRoute requiredPermission="trip.view">
-        <Vehicles />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/trips',
-    element: (
-      <ProtectedRoute requiredPermission="trip.view">
-        <Trips />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports',
-    element: (
-      <ProtectedRoute requiredPermission="payroll.view">
-        <Reports />
+        <Settings />
       </ProtectedRoute>
     ),
   },
   {
     path: '/admin/users',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredPermission="user.manage">
         <Users />
       </ProtectedRoute>
     ),
   },
   {
     path: '*',
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/admin/dashboard" replace />,
   },
 ]);
