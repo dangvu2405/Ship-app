@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Link } from "react-router-dom"
 import LayoutDashboardIcon from "lucide-react/dist/esm/icons/layout-dashboard"
 import UsersIcon from "lucide-react/dist/esm/icons/users"
 import SettingsIcon from "lucide-react/dist/esm/icons/settings"
@@ -107,10 +108,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/dashboard">
+              <Link to="/dashboard">
                 <AnchorIcon className="h-5 w-5" />
                 <span className="text-base font-semibold">Ship ERP</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
