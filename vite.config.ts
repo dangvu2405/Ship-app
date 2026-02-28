@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -27,5 +30,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    port: Number(process.env.PORT) || 3000,
+    host: true, // Listen on all addresses (0.0.0.0)
+    allowedHosts: ["ship-app-sghq.onrender.com"],
   },
 })
