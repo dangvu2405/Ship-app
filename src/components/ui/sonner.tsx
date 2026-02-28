@@ -1,12 +1,8 @@
-"use client"
-
-import {
-  CircleCheck,
-  Info,
-  LoaderCircle,
-  OctagonX,
-  TriangleAlert,
-} from "lucide-react"
+import CircleCheck from "lucide-react/dist/esm/icons/circle-check"
+import Info from "lucide-react/dist/esm/icons/info"
+import LoaderCircle from "lucide-react/dist/esm/icons/loader-circle"
+import OctagonX from "lucide-react/dist/esm/icons/octagon-x"
+import TriangleAlert from "lucide-react/dist/esm/icons/triangle-alert"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 

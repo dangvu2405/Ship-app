@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import {
   DndContext,
@@ -35,21 +33,18 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import {
-  CheckCircle2Icon,
-  CheckCircleIcon,
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-  ColumnsIcon,
-  GripVerticalIcon,
-  LoaderIcon,
-  MoreVerticalIcon,
-  PlusIcon,
-  TrendingUpIcon,
-} from "lucide-react"
+import CheckCircle2Icon from "lucide-react/dist/esm/icons/check-circle-2"
+import ChevronDownIcon from "lucide-react/dist/esm/icons/chevron-down"
+import ChevronLeftIcon from "lucide-react/dist/esm/icons/chevron-left"
+import ChevronRightIcon from "lucide-react/dist/esm/icons/chevron-right"
+import ChevronsLeftIcon from "lucide-react/dist/esm/icons/chevrons-left"
+import ChevronsRightIcon from "lucide-react/dist/esm/icons/chevrons-right"
+import ColumnsIcon from "lucide-react/dist/esm/icons/columns-3"
+import GripVerticalIcon from "lucide-react/dist/esm/icons/grip-vertical"
+import LoaderIcon from "lucide-react/dist/esm/icons/loader"
+import MoreVerticalIcon from "lucide-react/dist/esm/icons/more-vertical"
+import PlusIcon from "lucide-react/dist/esm/icons/plus"
+import TrendingUpIcon from "lucide-react/dist/esm/icons/trending-up"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { toast } from "sonner"
 import { z } from "zod"

@@ -1,6 +1,6 @@
-"use client"
-
-import { MailIcon, PlusCircleIcon, type LucideIcon } from "lucide-react"
+import { type LucideIcon } from "lucide-react"
+import MailIcon from "lucide-react/dist/esm/icons/mail"
+import PlusCircleIcon from "lucide-react/dist/esm/icons/plus-circle"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useTranslation } from "@/hooks/useTranslation"
 
 export function NavMain({
   items,
@@ -20,17 +21,19 @@ export function NavMain({
     icon?: LucideIcon
   }[]
 }) {
+  const { t } = useTranslation()
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center gap-2">
             <SidebarMenuButton
-              tooltip="Quick Create"
+              tooltip={t('common.quickCreate')}
               className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
             >
               <PlusCircleIcon />
-              <span>Quick Create</span>
+              <span>{t('common.quickCreate')}</span>
             </SidebarMenuButton>
             <Button
               size="icon"
@@ -38,7 +41,7 @@ export function NavMain({
               variant="outline"
             >
               <MailIcon />
-              <span className="sr-only">Inbox</span>
+              <span className="sr-only">{t('common.inbox')}</span>
             </Button>
           </SidebarMenuItem>
         </SidebarMenu>

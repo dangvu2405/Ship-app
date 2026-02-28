@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/stores/auth.store"
+import { useTranslation } from "@/hooks/useTranslation"
 
 export function LoginForm({
   className,
@@ -12,6 +13,7 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const navigate = useNavigate()
   const { setUser } = useAuthStore()
+  const { t } = useTranslation()
 
   const handleTestLogin = () => {
     // Set test user data to bypass authentication
@@ -48,35 +50,35 @@ export function LoginForm({
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg mb-4">
                     <span className="text-white font-bold text-xl">S</span>
                   </div>
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome back</h1>
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.welcomeBack')}</h1>
                   <p className="text-balance text-slate-500 dark:text-slate-400">
-                    Login to your Ship ERP account
+                    {t('auth.loginToAccount')}
                   </p>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email" className="text-slate-700 dark:text-slate-300">Email</Label>
+                  <Label htmlFor="email" className="text-slate-700 dark:text-slate-300">{t('auth.email')}</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@company.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     required
                     className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600"
                   />
                 </div>
                 <div className="grid gap-2">
                   <div className="flex items-center">
-                    <Label htmlFor="password" className="text-slate-700 dark:text-slate-300">Password</Label>
+                    <Label htmlFor="password" className="text-slate-700 dark:text-slate-300">{t('auth.password')}</Label>
                     <a
                       href="#"
                       className="ml-auto text-sm text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline"
                     >
-                      Forgot your password?
+                      {t('auth.forgotPassword')}
                     </a>
                   </div>
                   <Input id="password" type="password" required className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600" />
                 </div>
                 <Button type="submit" className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
-                  Login
+                  {t('auth.login')}
                 </Button>
                 <Button 
                   type="button" 
@@ -84,11 +86,11 @@ export function LoginForm({
                   onClick={handleTestLogin}
                   className="w-full h-11 text-base border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-950"
                 >
-                  🧪 Test Login (Skip Auth)
+                  {t('auth.testLogin')}
                 </Button>
                 <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-slate-200 dark:after:border-slate-700">
                   <span className="relative z-10 bg-white dark:bg-slate-800 px-2 text-slate-500 dark:text-slate-400">
-                    Or continue with
+                    {t('auth.orContinueWith')}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -99,7 +101,7 @@ export function LoginForm({
                         fill="currentColor"
                       />
                     </svg>
-                    <span className="sr-only">Login with Apple</span>
+                    <span className="sr-only">{t('auth.loginWithApple')}</span>
                   </Button>
                   <Button variant="outline" className="w-full h-11 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5">
@@ -108,7 +110,7 @@ export function LoginForm({
                         fill="currentColor"
                       />
                     </svg>
-                    <span className="sr-only">Login with Google</span>
+                    <span className="sr-only">{t('auth.loginWithGoogle')}</span>
                   </Button>
                   <Button variant="outline" className="w-full h-11 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5">
@@ -117,13 +119,13 @@ export function LoginForm({
                         fill="currentColor"
                       />
                     </svg>
-                    <span className="sr-only">Login with Meta</span>
+                    <span className="sr-only">{t('auth.loginWithMeta')}</span>
                   </Button>
                 </div>
                 <div className="text-center text-sm text-slate-600 dark:text-slate-400">
-                  Don&apos;t have an account?{" "}
+                  {t('auth.dontHaveAccount')}{" "}
                   <a href="#" className="text-blue-600 dark:text-blue-400 underline underline-offset-4">
-                    Sign up
+                    {t('auth.signUp')}
                   </a>
                 </div>
               </div>
@@ -135,15 +137,15 @@ export function LoginForm({
                 </div>
                 <h2 className="text-3xl font-bold mb-2">Ship ERP</h2>
                 <p className="text-center text-blue-100 max-w-xs">
-                  Manage your fleet, employees, and operations all in one place
+                  {t('auth.brandDescription')}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
         <div className="text-balance text-center text-xs text-slate-500 dark:text-slate-400 mt-6 [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-blue-600 dark:hover:[&_a]:text-blue-400">
-          By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-          and <a href="#">Privacy Policy</a>.
+          {t('auth.agreeTerms')} <a href="#">{t('auth.termsOfService')}</a>{" "}
+          and <a href="#">{t('auth.privacyPolicy')}</a>.
         </div>
       </div>
     </div>

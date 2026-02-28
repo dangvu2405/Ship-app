@@ -58,69 +58,39 @@ export const authProvider: AuthProvider = {
   },
 
   check: async () => {
-    // Development mode: Auto-login nếu chưa authenticated
-    if (AUTO_LOGIN_ENABLED) {
+    const UNAUTHENTICATED = { authenticated: false, redirectTo: '/login', logout: true } as const;
+    const AUTHENTICATED = { authenticated: true } as const;
+
+    // Try to get current user first
+    const tryGetCurrentUser = async (): Promise<boolean> => {
       try {
         const response = await authService.getCurrentUser();
-        
-        if (response.success && response.data) {
-          return {
-            authenticated: true,
-          };
-        }
-        
-        // Nếu chưa authenticated, tự động login với demo account
-        try {
-          const loginResponse = await authService.login({
-            email: DEMO_EMAIL,
-            password: DEMO_PASSWORD,
-          });
-          
-          if (loginResponse.success && loginResponse.data?.user) {
-            return {
-              authenticated: true,
-            };
-          }
-        } catch (loginError) {
-          // Ignore login error, sẽ redirect đến login page
-        }
-      } catch (error) {
-        // Try auto-login on error
-        try {
-          const loginResponse = await authService.login({
-            email: DEMO_EMAIL,
-            password: DEMO_PASSWORD,
-          });
-          
-          if (loginResponse.success && loginResponse.data?.user) {
-            return {
-              authenticated: true,
-            };
-          }
-        } catch (loginError) {
-          // Ignore
-        }
+        return !!(response.success && response.data);
+      } catch {
+        return false;
       }
-    } else {
-      // Production mode: Normal check
-      try {
-        const response = await authService.getCurrentUser();
-        
-        if (response.success && response.data) {
-          return {
-            authenticated: true,
-          };
-        }
-      } catch (error) {
-        // Ignore
-      }
-    }
-    
-    return {
-      authenticated: false,
-      redirectTo: '/login',
-      logout: true,
     };
+
+    // Try auto-login with demo credentials
+    const tryAutoLogin = async (): Promise<boolean> => {
+      try {
+        const response = await authService.login({
+          email: DEMO_EMAIL,
+          password: DEMO_PASSWORD,
+        });
+        return !!(response.success && response.data?.user);
+      } catch {
+        return false;
+      }
+    };
+
+    // Check if user is already authenticated
+    if (await tryGetCurrentUser()) return AUTHENTICATED;
+
+    // In dev mode, attempt auto-login with demo account
+    if (AUTO_LOGIN_ENABLED && (await tryAutoLogin())) return AUTHENTICATED;
+
+    return UNAUTHENTICATED;
   },
 
   onError: async (error) => {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { createSafeStorage } from '@/lib/safe-storage';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
 import toast from 'react-hot-toast';
@@ -31,12 +32,10 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false,
             });
-            // Success toast - business logic, keep it here
             toast.success('Login successful');
           }
         } catch (error) {
           set({ isLoading: false });
-          // Error toast handled by interceptor
           throw error;
         }
       },
@@ -72,7 +71,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
           }
-        } catch (error) {
+        } catch {
           set({
             user: null,
             isAuthenticated: false,
@@ -90,29 +89,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage:v1',
-      storage: createJSONStorage(() => ({
-        getItem: (name: string) => {
-          try {
-            return localStorage.getItem(name);
-          } catch {
-            return null;
-          }
-        },
-        setItem: (name: string, value: string) => {
-          try {
-            localStorage.setItem(name, value);
-          } catch {
-            // Quota exceeded or incognito mode
-          }
-        },
-        removeItem: (name: string) => {
-          try {
-            localStorage.removeItem(name);
-          } catch {
-            // Ignore
-          }
-        },
-      })),
+      storage: createSafeStorage(),
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
     }
   )

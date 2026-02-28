@@ -1,25 +1,17 @@
-"use client"
-
 import * as React from "react"
-import {
-  ArrowUpCircleIcon,
-  BarChartIcon,
-  CameraIcon,
-  ClipboardListIcon,
-  DatabaseIcon,
-  FileCodeIcon,
-  FileIcon,
-  FileTextIcon,
-  FolderIcon,
-  HelpCircleIcon,
-  LayoutDashboardIcon,
-  ListIcon,
-  SearchIcon,
-  SettingsIcon,
-  UsersIcon,
-} from "lucide-react"
+import LayoutDashboardIcon from "lucide-react/dist/esm/icons/layout-dashboard"
+import UsersIcon from "lucide-react/dist/esm/icons/users"
+import SettingsIcon from "lucide-react/dist/esm/icons/settings"
+import BuildingIcon from "lucide-react/dist/esm/icons/building"
+import UserIcon from "lucide-react/dist/esm/icons/user"
+import TruckIcon from "lucide-react/dist/esm/icons/truck"
+import RouteIcon from "lucide-react/dist/esm/icons/route"
+import DollarSignIcon from "lucide-react/dist/esm/icons/dollar-sign"
+import FileTextIcon from "lucide-react/dist/esm/icons/file-text"
+import HelpCircleIcon from "lucide-react/dist/esm/icons/help-circle"
+import SearchIcon from "lucide-react/dist/esm/icons/search"
+import AnchorIcon from "lucide-react/dist/esm/icons/anchor"
 
-import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -32,125 +24,80 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useAuthStore } from "@/stores/auth.store"
+import { useTranslation } from "@/hooks/useTranslation"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuthStore()
+  const { t } = useTranslation()
+
+  const navMain = [
     {
-      title: "Dashboard",
-      url: "#",
+      title: t('dashboard.title'),
+      url: "/dashboard",
       icon: LayoutDashboardIcon,
     },
     {
-      title: "Lifecycle",
-      url: "#",
-      icon: ListIcon,
+      title: t('companies.title'),
+      url: "/admin/companies",
+      icon: BuildingIcon,
     },
     {
-      title: "Analytics",
-      url: "#",
-      icon: BarChartIcon,
+      title: t('employees.title'),
+      url: "/admin/employees",
+      icon: UserIcon,
     },
     {
-      title: "Projects",
-      url: "#",
-      icon: FolderIcon,
+      title: t('vehicles.title'),
+      url: "/admin/vehicles",
+      icon: TruckIcon,
     },
     {
-      title: "Team",
-      url: "#",
+      title: t('trips.title'),
+      url: "/admin/trips",
+      icon: RouteIcon,
+    },
+    {
+      title: t('payrolls.title'),
+      url: "/admin/payrolls",
+      icon: DollarSignIcon,
+    },
+    {
+      title: t('reports.title'),
+      url: "/admin/reports",
+      icon: FileTextIcon,
+    },
+    {
+      title: t('users.title'),
+      url: "/admin/users",
       icon: UsersIcon,
     },
-  ],
-  navClouds: [
+  ]
+
+  const navSecondary = [
     {
-      title: "Capture",
-      icon: CameraIcon,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: FileTextIcon,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: FileCodeIcon,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
+      title: t('header.settings'),
+      url: "/admin/settings",
       icon: SettingsIcon,
     },
     {
-      title: "Get Help",
+      title: 'Get Help',
       url: "#",
       icon: HelpCircleIcon,
     },
     {
-      title: "Search",
+      title: t('common.search'),
       url: "#",
       icon: SearchIcon,
     },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: DatabaseIcon,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: ClipboardListIcon,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: FileIcon,
-    },
-  ],
-}
+  ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const userData = {
+    name: user?.username || "User",
+    email: user?.email || "user@example.com",
+    avatar: "",
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -160,21 +107,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
-                <ArrowUpCircleIcon className="h-5 w-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+              <a href="/dashboard">
+                <AnchorIcon className="h-5 w-5" />
+                <span className="text-base font-semibold">Ship ERP</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain items={navMain} />
+        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={userData} />
       </SidebarFooter>
     </Sidebar>
   )

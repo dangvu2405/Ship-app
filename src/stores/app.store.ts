@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { createSafeStorage } from '@/lib/safe-storage';
 import type { Locale } from '@/locales';
 
 interface AppState {
@@ -20,11 +21,9 @@ export const useAppStore = create<AppState>()(
       locale: 'vi' as Locale,
 
       toggleTheme: () => {
-        set((state) => {
-          const newTheme = state.theme === 'light' ? 'dark' : 'light';
-          document.documentElement.classList.toggle('dark', newTheme === 'dark');
-          return { theme: newTheme };
-        });
+        set((state) => ({
+          theme: state.theme === 'light' ? 'dark' : 'light',
+        }));
       },
 
       toggleSidebar: () => {
@@ -41,34 +40,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'app-storage:v1',
-      storage: createJSONStorage(() => ({
-        getItem: (name: string) => {
-          try {
-            return localStorage.getItem(name);
-          } catch {
-            return null;
-          }
-        },
-        setItem: (name: string, value: string) => {
-          try {
-            localStorage.setItem(name, value);
-          } catch {
-            // Quota exceeded or incognito mode
-          }
-        },
-        removeItem: (name: string) => {
-          try {
-            localStorage.removeItem(name);
-          } catch {
-            // Ignore
-          }
-        },
-      })),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          document.documentElement.classList.toggle('dark', state.theme === 'dark');
-        }
-      },
+      storage: createSafeStorage(),
     }
   )
 );
