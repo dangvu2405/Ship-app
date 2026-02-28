@@ -47,6 +47,7 @@ import PlusIcon from "lucide-react/dist/esm/icons/plus"
 import TrendingUpIcon from "lucide-react/dist/esm/icons/trending-up"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { toast } from "sonner"
+import { z } from "zod"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { schema } from "./data-table-schema"
