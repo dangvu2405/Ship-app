@@ -8,9 +8,9 @@ export const STORAGE_KEYS = {
 // Development mode: Auto-login without authentication
 export const AUTO_LOGIN_ENABLED = import.meta.env.VITE_AUTO_LOGIN === 'true' || import.meta.env.DEV;
 
-// Demo credentials
-export const DEMO_EMAIL = 'admin@abctransport.com';
-export const DEMO_PASSWORD = 'password';
+// Demo credentials (can be overridden via env variables)
+export const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL || 'admin@abctransport.com';
+export const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD || 'password';
 
 export const ROUTES = {
   LOGIN: '/login',
