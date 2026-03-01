@@ -1,69 +1,68 @@
+import { useState } from 'react';
 import { useList, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
-import { BaseTable } from '@/components/table/BaseTable';
+import { DataTable, type DataTableColumn } from '@/components/table';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Plus, Edit } from 'lucide-react';
 import type { Payroll } from '@/types';
-import type { BaseTableColumn } from '@/components/table/types';
+
+const MONTH_KEYS = [
+  'payrolls.month1', 'payrolls.month2', 'payrolls.month3', 'payrolls.month4',
+  'payrolls.month5', 'payrolls.month6', 'payrolls.month7', 'payrolls.month8',
+  'payrolls.month9', 'payrolls.month10', 'payrolls.month11', 'payrolls.month12',
+] as const;
 
 export function PayrollsList() {
   const { t } = useTranslation();
   const { show, create } = useNavigation();
+  const [current, setCurrent] = useState(1);
 
   const { data, isLoading } = useList<Payroll>({
     resource: 'payrolls',
     pagination: {
-      current: 1,
+      current,
       pageSize: 15,
     },
   });
 
-  const columns: BaseTableColumn<Payroll>[] = [
+  const columns: DataTableColumn<Payroll>[] = [
     {
-      title: t('payrolls.month'),
-      dataIndex: 'month',
       key: 'month',
-      render: (month: number) => {
-        const monthNames = [
-          t('payrolls.month1'), t('payrolls.month2'), t('payrolls.month3'), t('payrolls.month4'),
-          t('payrolls.month5'), t('payrolls.month6'), t('payrolls.month7'), t('payrolls.month8'),
-          t('payrolls.month9'), t('payrolls.month10'), t('payrolls.month11'), t('payrolls.month12'),
-        ];
-        return monthNames[month - 1] || month;
+      header: t('payrolls.month'),
+      dataIndex: 'month',
+      render: (item) => {
+        const monthNum = item.month;
+        return monthNum >= 1 && monthNum <= 12 ? t(MONTH_KEYS[monthNum - 1]) : monthNum;
       },
     },
+    { key: 'year', header: t('payrolls.year'), dataIndex: 'year' },
     {
-      title: t('payrolls.year'),
-      dataIndex: 'year',
-      key: 'year',
-    },
-    {
-      title: t('common.status'),
-      dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <span className={status === 'locked' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-          {status === 'locked' ? t('payrolls.statusLocked') : t('payrolls.statusDraft')}
+      header: t('common.status'),
+      dataIndex: 'status',
+      render: (item) => (
+        <span className={item.status === 'locked' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+          {item.status === 'locked' ? t('payrolls.statusLocked') : t('payrolls.statusDraft')}
         </span>
       ),
     },
     {
-      title: t('payrolls.lockedAt'),
-      dataIndex: 'locked_at',
       key: 'locked_at',
-      render: (time: string) => time ? new Date(time).toLocaleString() : '-',
+      header: t('payrolls.lockedAt'),
+      dataIndex: 'locked_at',
+      render: (item) => item.locked_at ? new Date(item.locked_at).toLocaleString() : '-',
     },
     {
-      title: t('common.actions'),
       key: 'actions',
-      render: (_: unknown, record: Payroll) => (
+      header: t('common.actions'),
+      render: (record) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => show('payrolls', record.id)}
+            onClick={(e) => { e.stopPropagation(); show('payrolls', record.id); }}
             className="h-8 w-8 p-0"
           >
             <Edit className="h-4 w-4" />
@@ -77,6 +76,10 @@ export function PayrollsList() {
     { label: t('dashboard.title'), path: '/dashboard' },
     { label: t('payrolls.title') },
   ];
+
+  const listData = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const pageSize = 15;
 
   return (
     <>
@@ -94,20 +97,19 @@ export function PayrollsList() {
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         {isLoading ? (
-          <TableSkeleton rows={5} columns={5} />
+          <TableSkeleton rows={5} columns={columns.length} />
         ) : (
-          <BaseTable<Payroll>
-            dataSource={data?.data || []}
-            loading={isLoading}
+          <DataTable<Payroll>
+            data={listData}
             columns={columns}
-            resource="payrolls"
+            onRowClick={(record) => show('payrolls', record.id)}
+            emptyMessage={t('common.noData')}
             pagination={{
-              current: data?.current || 1,
-              pageSize: data?.pageSize || 15,
-              total: data?.total || 0,
+              current,
+              total,
+              pageSize,
+              onPageChange: setCurrent,
             }}
-            onEdit={(record) => show('payrolls', record.id)}
-            useRefineDelete={false}
           />
         )}
       </div>

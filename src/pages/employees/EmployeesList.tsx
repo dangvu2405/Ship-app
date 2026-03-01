@@ -3,12 +3,11 @@ import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
-import { BaseTable } from '@/components/table/BaseTable';
+import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import type { Employee } from '@/types';
-import type { BaseTableColumn } from '@/components/table/types';
 import toast from 'react-hot-toast';
 
 export function EmployeesList() {
@@ -17,11 +16,12 @@ export function EmployeesList() {
   const { mutate: deleteItem } = useDelete();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [current, setCurrent] = useState(1);
 
   const { data, isLoading, refetch } = useList<Employee>({
     resource: 'employees',
     pagination: {
-      current: 1,
+      current,
       pageSize: 15,
     },
   });
@@ -53,61 +53,39 @@ export function EmployeesList() {
     );
   };
 
-  const columns: BaseTableColumn<Employee>[] = [
+  const columns: DataTableColumn<Employee>[] = [
+    { key: 'code', header: t('employees.code'), dataIndex: 'code' },
+    { key: 'name', header: t('employees.name'), dataIndex: 'name' },
+    { key: 'email', header: t('employees.email'), dataIndex: 'email' },
+    { key: 'phone', header: t('employees.phone'), dataIndex: 'phone' },
     {
-      title: t('employees.code'),
-      dataIndex: 'code',
-      key: 'code',
-      sorter: true,
-    },
-    {
-      title: t('employees.name'),
-      dataIndex: 'name',
-      key: 'name',
-      sorter: true,
-    },
-    {
-      title: t('employees.email'),
-      dataIndex: 'email',
-      key: 'email',
-    },
-    {
-      title: t('employees.phone'),
-      dataIndex: 'phone',
-      key: 'phone',
-    },
-    {
-      title: t('employees.type'),
-      dataIndex: 'type',
       key: 'type',
-      render: (type: string) => (
-        <span className="capitalize">{type === 'office' ? t('employees.typeOffice') : t('employees.typeDriver')}</span>
+      header: t('employees.type'),
+      dataIndex: 'type',
+      render: (item) => (
+        <span className="capitalize">{item.type === 'office' ? t('employees.typeOffice') : t('employees.typeDriver')}</span>
       ),
     },
     {
-      title: t('common.status'),
-      dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <span className={status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-          {status === 'active' ? t('common.active') : t('common.inactive')}
+      header: t('common.status'),
+      dataIndex: 'status',
+      render: (item) => (
+        <span className={item.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+          {item.status === 'active' ? t('common.active') : t('common.inactive')}
         </span>
       ),
     },
+    { key: 'office', header: t('employees.office'), dataIndex: ['office', 'name'] },
     {
-      title: t('employees.office'),
-      dataIndex: ['office', 'name'],
-      key: 'office',
-    },
-    {
-      title: t('common.actions'),
       key: 'actions',
-      render: (_: unknown, record: Employee) => (
+      header: t('common.actions'),
+      render: (record) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => show('employees', record.id)}
+            onClick={(e) => { e.stopPropagation(); show('employees', record.id); }}
             className="h-8 w-8 p-0"
           >
             <Edit className="h-4 w-4" />
@@ -115,7 +93,7 @@ export function EmployeesList() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleDelete(record)}
+            onClick={(e) => { e.stopPropagation(); handleDelete(record); }}
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
@@ -129,6 +107,10 @@ export function EmployeesList() {
     { label: t('dashboard.title'), path: '/dashboard' },
     { label: t('employees.title') },
   ];
+
+  const listData = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const pageSize = 15;
 
   return (
     <>
@@ -146,22 +128,19 @@ export function EmployeesList() {
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         {isLoading ? (
-          <TableSkeleton rows={5} columns={8} />
+          <TableSkeleton rows={5} columns={columns.length} />
         ) : (
-          <BaseTable<Employee>
-            dataSource={data?.data || []}
-            loading={isLoading}
+          <DataTable<Employee>
+            data={listData}
             columns={columns}
-            resource="employees"
+            onRowClick={(record) => show('employees', record.id)}
+            emptyMessage={t('common.noData')}
             pagination={{
-              current: data?.current || 1,
-              pageSize: data?.pageSize || 15,
-              total: data?.total || 0,
+              current,
+              total,
+              pageSize,
+              onPageChange: setCurrent,
             }}
-            onEdit={(record) => show('employees', record.id)}
-            deleteConfirmMessage={t('deleteConfirm.description')}
-            deleteSuccessMessage={t('notifications.deleteSuccess', { item: t('employees.title') })}
-            deleteErrorMessage={t('notifications.deleteError', { item: t('employees.title') })}
           />
         )}
       </div>

@@ -3,12 +3,11 @@ import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
-import { BaseTable } from '@/components/table/BaseTable';
+import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import type { Trip } from '@/types';
-import type { BaseTableColumn } from '@/components/table/types';
 import toast from 'react-hot-toast';
 
 export function TripsList() {
@@ -17,11 +16,12 @@ export function TripsList() {
   const { mutate: deleteItem } = useDelete();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [current, setCurrent] = useState(1);
 
   const { data, isLoading, refetch } = useList<Trip>({
     resource: 'trips',
     pagination: {
-      current: 1,
+      current,
       pageSize: 15,
     },
   });
@@ -53,60 +53,47 @@ export function TripsList() {
     );
   };
 
-  const columns: BaseTableColumn<Trip>[] = [
+  const columns: DataTableColumn<Trip>[] = [
+    { key: 'code', header: t('trips.code'), dataIndex: 'code' },
+    { key: 'start_point', header: t('trips.startPoint'), dataIndex: 'start_point' },
+    { key: 'end_point', header: t('trips.endPoint'), dataIndex: 'end_point' },
     {
-      title: t('trips.code'),
-      dataIndex: 'code',
-      key: 'code',
-      sorter: true,
-    },
-    {
-      title: t('trips.startPoint'),
-      dataIndex: 'start_point',
-      key: 'start_point',
-    },
-    {
-      title: t('trips.endPoint'),
-      dataIndex: 'end_point',
-      key: 'end_point',
-    },
-    {
-      title: t('trips.distance'),
-      dataIndex: 'distance_km',
       key: 'distance_km',
-      render: (distance: number) => `${distance} km`,
+      header: t('trips.distance'),
+      dataIndex: 'distance_km',
+      render: (item) => `${item.distance_km} km`,
     },
     {
-      title: t('trips.price'),
-      dataIndex: 'price',
       key: 'price',
-      render: (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price),
+      header: t('trips.price'),
+      dataIndex: 'price',
+      render: (item) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price),
     },
     {
-      title: t('common.status'),
-      dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <span className={status === 'completed' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-          {status}
+      header: t('common.status'),
+      dataIndex: 'status',
+      render: (item) => (
+        <span className={item.status === 'completed' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+          {item.status}
         </span>
       ),
     },
     {
-      title: t('trips.startTime'),
-      dataIndex: 'start_time',
       key: 'start_time',
-      render: (time: string) => time ? new Date(time).toLocaleString() : '-',
+      header: t('trips.startTime'),
+      dataIndex: 'start_time',
+      render: (item) => item.start_time ? new Date(item.start_time).toLocaleString() : '-',
     },
     {
-      title: t('common.actions'),
       key: 'actions',
-      render: (_: unknown, record: Trip) => (
+      header: t('common.actions'),
+      render: (record) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => show('trips', record.id)}
+            onClick={(e) => { e.stopPropagation(); show('trips', record.id); }}
             className="h-8 w-8 p-0"
           >
             <Edit className="h-4 w-4" />
@@ -114,7 +101,7 @@ export function TripsList() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleDelete(record)}
+            onClick={(e) => { e.stopPropagation(); handleDelete(record); }}
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
@@ -128,6 +115,10 @@ export function TripsList() {
     { label: t('dashboard.title'), path: '/dashboard' },
     { label: t('trips.title') },
   ];
+
+  const listData = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const pageSize = 15;
 
   return (
     <>
@@ -145,22 +136,19 @@ export function TripsList() {
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         {isLoading ? (
-          <TableSkeleton rows={5} columns={8} />
+          <TableSkeleton rows={5} columns={columns.length} />
         ) : (
-          <BaseTable<Trip>
-            dataSource={data?.data || []}
-            loading={isLoading}
+          <DataTable<Trip>
+            data={listData}
             columns={columns}
-            resource="trips"
+            onRowClick={(record) => show('trips', record.id)}
+            emptyMessage={t('common.noData')}
             pagination={{
-              current: data?.current || 1,
-              pageSize: data?.pageSize || 15,
-              total: data?.total || 0,
+              current,
+              total,
+              pageSize,
+              onPageChange: setCurrent,
             }}
-            onEdit={(record) => show('trips', record.id)}
-            deleteConfirmMessage={t('deleteConfirm.description')}
-            deleteSuccessMessage={t('notifications.deleteSuccess', { item: t('trips.title') })}
-            deleteErrorMessage={t('notifications.deleteError', { item: t('trips.title') })}
           />
         )}
       </div>

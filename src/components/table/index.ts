@@ -9,6 +9,7 @@ export type {
   BaseTableSearchField,
 } from './types';
 
-// Legacy exports
+// DataTable (generic list table)
 export { DataTable } from './DataTable';
+export type { DataTableColumn, DataTablePagination, DataTableProps } from './DataTable';
 export { Pagination } from './Pagination';
