@@ -86,6 +86,15 @@ export const vi = {
       engagementExceedTargets: 'Tương tác vượt mục tiêu',
       steadyPerformance: 'Hiệu suất ổn định',
       meetsGrowthProjections: 'Đáp ứng dự báo tăng trưởng',
+      totalCompanies: 'Tổng số công ty',
+      activeCompanies: 'Công ty hoạt động',
+      totalEmployees: 'Tổng số nhân viên',
+      activeEmployees: 'Nhân viên hoạt động',
+      totalVehicles: 'Tổng số xe',
+      activeVehicles: 'Xe hoạt động',
+      totalTrips: 'Tổng số chuyến đi',
+      completed: 'Hoàn thành',
+      completedTrips: 'Chuyến đi hoàn thành',
     },
   },
 
@@ -361,6 +370,15 @@ export const vi = {
 
   // Notifications
   notifications: {
+    title: 'Thông báo',
+    all: 'Tất cả',
+    activity: 'Hoạt động',
+    system: 'Hệ thống',
+    user: 'Người dùng',
+    unread: 'chưa đọc',
+    markAllRead: 'Đánh dấu tất cả đã đọc',
+    viewAll: 'Xem tất cả',
+    empty: 'Không có thông báo nào',
     createSuccess: 'Tạo {item} thành công',
     createError: 'Tạo {item} thất bại',
     updateSuccess: 'Cập nhật {item} thành công',

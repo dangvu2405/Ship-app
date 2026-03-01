@@ -2,6 +2,12 @@ import { AuthProvider } from '@refinedev/core';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
 import { AUTO_LOGIN_ENABLED, DEMO_EMAIL, DEMO_PASSWORD, STORAGE_KEYS } from '@/utils/constants';
+import { useAuthStore } from '@/stores/auth.store';
+
+// Get store state outside of component
+const getAuthStoreState = () => {
+  return useAuthStore.getState();
+};
 
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
@@ -13,6 +19,8 @@ export const authProvider: AuthProvider = {
         if (response.data.token) {
           localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
         }
+        // Update Zustand store
+        useAuthStore.getState().setUser(response.data.user);
         return {
           success: true,
           redirectTo: '/dashboard',
@@ -61,11 +69,22 @@ export const authProvider: AuthProvider = {
     const UNAUTHENTICATED = { authenticated: false, redirectTo: '/login', logout: true } as const;
     const AUTHENTICATED = { authenticated: true } as const;
 
-    // Try to get current user first
+    // First, check Zustand store (for test login)
+    const storeState = getAuthStoreState();
+    if (storeState.isAuthenticated && storeState.user) {
+      return AUTHENTICATED;
+    }
+
+    // Try to get current user from API
     const tryGetCurrentUser = async (): Promise<boolean> => {
       try {
         const response = await authService.getCurrentUser();
-        return !!(response.success && response.data);
+        if (response.success && response.data) {
+          // Update store with API response
+          useAuthStore.getState().setUser(response.data);
+          return true;
+        }
+        return false;
       } catch {
         return false;
       }
@@ -78,13 +97,21 @@ export const authProvider: AuthProvider = {
           email: DEMO_EMAIL,
           password: DEMO_PASSWORD,
         });
-        return !!(response.success && response.data?.user);
+        if (response.success && response.data?.user) {
+          // Update store with login response
+          useAuthStore.getState().setUser(response.data.user);
+          if (response.data.token) {
+            localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+          }
+          return true;
+        }
+        return false;
       } catch {
         return false;
       }
     };
 
-    // Check if user is already authenticated
+    // Check if user is already authenticated via API
     if (await tryGetCurrentUser()) return AUTHENTICATED;
 
     // In dev mode, attempt auto-login with demo account
@@ -106,10 +133,19 @@ export const authProvider: AuthProvider = {
   },
 
   getIdentity: async () => {
+    // First, check Zustand store (for test login)
+    const storeState = getAuthStoreState();
+    if (storeState.user) {
+      return storeState.user;
+    }
+
+    // Fallback to API
     try {
       const response = await authService.getCurrentUser();
       
       if (response.success && response.data) {
+        // Update store with API response
+        useAuthStore.getState().setUser(response.data);
         return response.data as User;
       }
       

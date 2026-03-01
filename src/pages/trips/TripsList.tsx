@@ -87,7 +87,7 @@ export function TripsList() {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <span className={status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+        <span className={status === 'completed' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
           {status}
         </span>
       ),

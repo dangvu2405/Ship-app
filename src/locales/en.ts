@@ -86,6 +86,15 @@ export const en = {
       engagementExceedTargets: 'Engagement exceed targets',
       steadyPerformance: 'Steady performance',
       meetsGrowthProjections: 'Meets growth projections',
+      totalCompanies: 'Total Companies',
+      activeCompanies: 'Active Companies',
+      totalEmployees: 'Total Employees',
+      activeEmployees: 'Active Employees',
+      totalVehicles: 'Total Vehicles',
+      activeVehicles: 'Active Vehicles',
+      totalTrips: 'Total Trips',
+      completed: 'Completed',
+      completedTrips: 'Completed Trips',
     },
   },
 
@@ -361,6 +370,15 @@ export const en = {
 
   // Notifications
   notifications: {
+    title: 'Notifications',
+    all: 'All',
+    activity: 'Activity',
+    system: 'System',
+    user: 'User',
+    unread: 'unread',
+    markAllRead: 'Mark all as read',
+    viewAll: 'View all',
+    empty: 'No notifications',
     createSuccess: '{item} created successfully',
     createError: 'Failed to create {item}',
     updateSuccess: '{item} updated successfully',

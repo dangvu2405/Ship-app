@@ -2,11 +2,10 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
-import Bell from 'lucide-react/dist/esm/icons/bell';
+import { NotificationPopup } from '@/components/common/NotificationPopup';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Moon from 'lucide-react/dist/esm/icons/moon';
 import Sun from 'lucide-react/dist/esm/icons/sun';
@@ -16,7 +15,7 @@ export function SiteHeader() {
   const { t } = useTranslation();
 
   return (
-    <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
+    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         {/* Left: sidebar trigger */}
         <SidebarTrigger className="-ml-1" />
@@ -57,20 +56,7 @@ export function SiteHeader() {
           </Button>
 
           {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 relative"
-            title={t('header.notifications')}
-          >
-            <Bell className="h-4 w-4" />
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
-            >
-              3
-            </Badge>
-          </Button>
+          <NotificationPopup />
 
           <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
         </div>

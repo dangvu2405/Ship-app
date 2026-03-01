@@ -2,6 +2,7 @@ import { Refine, Authenticated } from '@refinedev/core';
 import { notificationProvider } from '@refinedev/antd';
 import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider, theme as antdTheme } from 'antd';
 import { Toaster } from 'react-hot-toast';
 import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
 import { authProvider } from './providers/authProvider';
@@ -36,8 +37,11 @@ function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
+  const { defaultAlgorithm, darkAlgorithm } = antdTheme;
+
   return (
     <BrowserRouter>
+      <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
       <Refine
         dataProvider={dataProvider}
         authProvider={authProvider}
@@ -107,6 +111,7 @@ function App() {
         <Toaster position="top-right" />
         <ShadcnToaster />
       </Refine>
+      </ConfigProvider>
     </BrowserRouter>
   );
 }

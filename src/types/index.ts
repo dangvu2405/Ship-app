@@ -137,3 +137,24 @@ export interface PaginatedResponse<T> {
   per_page: number;
   total: number;
 }
+
+export interface ActivityLog {
+  id: number;
+  type: 'create' | 'update' | 'delete' | 'system' | 'user';
+  resource: string; // 'company', 'employee', 'vehicle', 'trip', 'payroll', 'user'
+  resource_id?: number;
+  action: string; // 'created', 'updated', 'deleted'
+  description: string;
+  user_id?: number;
+  user_name?: string;
+  created_at: string;
+  read: boolean;
+}
+
+export interface DashboardStats {
+  companies: { total: number; active: number };
+  employees: { total: number; active: number };
+  vehicles: { total: number; active: number };
+  trips: { total: number; pending: number; completed: number };
+  payrolls: { total: number; pending: number; completed: number };
+}

@@ -91,7 +91,7 @@ export function CompaniesList() {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <span className={status === 'active' ? 'text-green-600' : 'text-gray-500'}>
+        <span className={status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
           {status === 'active' ? t('common.active') : t('common.inactive')}
         </span>
       ),
