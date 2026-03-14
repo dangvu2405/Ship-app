@@ -3,6 +3,7 @@ import { User } from '@/types';
 import authService from '@/services/auth.service';
 import { AUTO_LOGIN_ENABLED, DEMO_EMAIL, DEMO_PASSWORD, STORAGE_KEYS } from '@/utils/constants';
 import { useAuthStore } from '@/stores/auth.store';
+import { ROUTES } from '@/routes';
 
 // Get store state outside of component
 const getAuthStoreState = () => {
@@ -23,7 +24,7 @@ export const authProvider: AuthProvider = {
         useAuthStore.getState().setUser(response.data.user);
         return {
           success: true,
-          redirectTo: '/dashboard',
+          redirectTo: ROUTES.dashboard,
         };
       }
       
@@ -61,12 +62,12 @@ export const authProvider: AuthProvider = {
     
     return {
       success: true,
-      redirectTo: '/login',
+      redirectTo: ROUTES.login,
     };
   },
 
   check: async () => {
-    const UNAUTHENTICATED = { authenticated: false, redirectTo: '/login', logout: true } as const;
+    const UNAUTHENTICATED = { authenticated: false, redirectTo: ROUTES.login, logout: true } as const;
     const AUTHENTICATED = { authenticated: true } as const;
 
     // First, check Zustand store (for test login)
@@ -124,7 +125,7 @@ export const authProvider: AuthProvider = {
     if (error?.status === 401) {
       return {
         logout: true,
-        redirectTo: '/login',
+        redirectTo: ROUTES.login,
         error,
       };
     }
@@ -167,7 +168,7 @@ export const authProvider: AuthProvider = {
       if (response.success) {
         return {
           success: true,
-          redirectTo: '/login',
+          redirectTo: ROUTES.login,
         };
       }
       

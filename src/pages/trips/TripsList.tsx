@@ -9,6 +9,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import type { Trip } from '@/types';
 import toast from 'react-hot-toast';
+import { ROUTES } from '@/routes';
 
 export function TripsList() {
   const { t } = useTranslation();
@@ -112,7 +113,7 @@ export function TripsList() {
   ];
 
   const breadcrumb = [
-    { label: t('dashboard.title'), path: '/dashboard' },
+    { label: t('dashboard.title'), path: ROUTES.dashboard },
     { label: t('trips.title') },
   ];
 

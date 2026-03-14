@@ -1,11 +1,12 @@
 import { PageHeader } from '@/components/common/PageHeader';
 import type { BreadcrumbItem } from '@/components/common/Breadcrumb';
 import { useTranslation } from '@/hooks/useTranslation';
+import { ROUTES } from '@/routes';
 
 export const Users = () => {
   const { t } = useTranslation();
   const breadcrumb: BreadcrumbItem[] = [
-    { label: t('users.system'), path: '/admin/users' },
+    { label: t('users.system'), path: ROUTES.admin.users.list },
     { label: t('users.title') },
   ];
 

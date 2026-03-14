@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/stores/auth.store"
 import { useTranslation } from "@/hooks/useTranslation"
+import { ROUTES } from "@/routes"
 
 export function LoginForm({
   className,
@@ -36,7 +37,7 @@ export function LoginForm({
         }
       ]
     })
-    navigate('/dashboard')
+    navigate(ROUTES.dashboard)
   }
 
   return (

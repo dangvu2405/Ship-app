@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { ROUTES } from '@/routes';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -20,15 +21,15 @@ export const ProtectedRoute = ({ children, requiredRole, requiredPermission }: P
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={ROUTES.login} replace />;
   }
 
   if (requiredRole && !hasRole(requiredRole)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={ROUTES.dashboard} replace />;
   }
 
   if (requiredPermission && !hasPermission(requiredPermission)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={ROUTES.dashboard} replace />;
   }
 
   return <>{children}</>;

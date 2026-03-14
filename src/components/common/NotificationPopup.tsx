@@ -13,6 +13,7 @@ import { NotificationItem } from './NotificationItem';
 import { TableSkeleton } from './TableSkeleton';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useTranslation } from '@/hooks/useTranslation';
+import { ROUTES } from '@/routes';
 import BellIcon from 'lucide-react/dist/esm/icons/bell';
 import CheckCheckIcon from 'lucide-react/dist/esm/icons/check-check';
 
@@ -55,7 +56,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
 
   const handleViewAll = () => {
     setOpen(false);
-    navigate('/admin/notifications');
+    navigate(ROUTES.admin.notifications);
   };
 
   // Filter notifications by type

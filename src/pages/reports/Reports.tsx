@@ -1,12 +1,13 @@
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
 import { FileText } from 'lucide-react';
+import { ROUTES } from '@/routes';
 
 export function Reports() {
   const { t } = useTranslation();
 
   const breadcrumb = [
-    { label: t('dashboard.title'), path: '/dashboard' },
+    { label: t('dashboard.title'), path: ROUTES.dashboard },
     { label: t('reports.title') },
   ];
 

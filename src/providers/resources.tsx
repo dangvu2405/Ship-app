@@ -1,10 +1,11 @@
 import { ResourceProps } from '@refinedev/core';
+import { ROUTES } from '@/routes';
 
 // Define all resources for Refine
 export const resources: ResourceProps[] = [
   {
     name: 'dashboard',
-    list: '/dashboard',
+    list: ROUTES.dashboard,
     meta: {
       label: 'Dashboard',
       icon: 'DashboardOutlined',
@@ -12,10 +13,10 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'companies',
-    list: '/admin/companies',
-    create: '/admin/companies/create',
-    edit: '/admin/companies/edit/:id',
-    show: '/admin/companies/show/:id',
+    list: ROUTES.admin.companies.list,
+    create: ROUTES.admin.companies.create,
+    edit: ROUTES.admin.companies.edit,
+    show: ROUTES.admin.companies.show,
     meta: {
       label: 'Companies',
       icon: 'BankOutlined',
@@ -24,10 +25,10 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'employees',
-    list: '/admin/employees',
-    create: '/admin/employees/create',
-    edit: '/admin/employees/edit/:id',
-    show: '/admin/employees/show/:id',
+    list: ROUTES.admin.employees.list,
+    create: ROUTES.admin.employees.create,
+    edit: ROUTES.admin.employees.edit,
+    show: ROUTES.admin.employees.show,
     meta: {
       label: 'Employees',
       icon: 'UserOutlined',
@@ -36,10 +37,10 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'vehicles',
-    list: '/admin/vehicles',
-    create: '/admin/vehicles/create',
-    edit: '/admin/vehicles/edit/:id',
-    show: '/admin/vehicles/show/:id',
+    list: ROUTES.admin.vehicles.list,
+    create: ROUTES.admin.vehicles.create,
+    edit: ROUTES.admin.vehicles.edit,
+    show: ROUTES.admin.vehicles.show,
     meta: {
       label: 'Vehicles',
       icon: 'CarOutlined',
@@ -48,10 +49,10 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'trips',
-    list: '/admin/trips',
-    create: '/admin/trips/create',
-    edit: '/admin/trips/edit/:id',
-    show: '/admin/trips/show/:id',
+    list: ROUTES.admin.trips.list,
+    create: ROUTES.admin.trips.create,
+    edit: ROUTES.admin.trips.edit,
+    show: ROUTES.admin.trips.show,
     meta: {
       label: 'Trips',
       icon: 'RouteOutlined',
@@ -60,10 +61,10 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'payrolls',
-    list: '/admin/payrolls',
-    create: '/admin/payrolls/create',
-    edit: '/admin/payrolls/edit/:id',
-    show: '/admin/payrolls/show/:id',
+    list: ROUTES.admin.payrolls.list,
+    create: ROUTES.admin.payrolls.create,
+    edit: ROUTES.admin.payrolls.edit,
+    show: ROUTES.admin.payrolls.show,
     meta: {
       label: 'Payrolls',
       icon: 'DollarOutlined',
@@ -72,7 +73,7 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'reports',
-    list: '/admin/reports',
+    list: ROUTES.admin.reports.list,
     meta: {
       label: 'Reports',
       icon: 'FileTextOutlined',
@@ -80,10 +81,10 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'users',
-    list: '/admin/users',
-    create: '/admin/users/create',
-    edit: '/admin/users/edit/:id',
-    show: '/admin/users/show/:id',
+    list: ROUTES.admin.users.list,
+    create: ROUTES.admin.users.create,
+    edit: ROUTES.admin.users.edit,
+    show: ROUTES.admin.users.show,
     meta: {
       label: 'Users',
       icon: 'TeamOutlined',

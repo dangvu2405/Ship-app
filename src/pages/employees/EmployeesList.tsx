@@ -9,6 +9,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import type { Employee } from '@/types';
 import toast from 'react-hot-toast';
+import { ROUTES } from '@/routes';
 
 export function EmployeesList() {
   const { t } = useTranslation();
@@ -104,7 +105,7 @@ export function EmployeesList() {
   ];
 
   const breadcrumb = [
-    { label: t('dashboard.title'), path: '/dashboard' },
+    { label: t('dashboard.title'), path: ROUTES.dashboard },
     { label: t('employees.title') },
   ];
 

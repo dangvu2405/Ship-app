@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Home, ArrowLeft } from 'lucide-react';
+import { ROUTES } from '@/routes';
 
 export function NotFound() {
   const { t } = useTranslation();
@@ -18,7 +19,7 @@ export function NotFound() {
           {t('404.description')}
         </p>
         <div className="mt-8 flex justify-center gap-4">
-          <Button onClick={() => navigate('/dashboard')} className="gap-2">
+          <Button onClick={() => navigate(ROUTES.dashboard)} className="gap-2">
             <Home className="h-4 w-4" />
             {t('404.goToDashboard')}
           </Button>

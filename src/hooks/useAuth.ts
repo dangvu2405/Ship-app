@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/routes';
 
 export const useAuth = () => {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
@@ -14,7 +15,7 @@ export const useAuth = () => {
 
   const requireAuth = () => {
     if (!isAuthenticated && !isLoading) {
-      navigate('/login');
+      navigate(ROUTES.login);
       return false;
     }
     return true;

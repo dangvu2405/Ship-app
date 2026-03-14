@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuthStore } from "@/stores/auth.store"
 import { useTranslation } from "@/hooks/useTranslation"
+import { ROUTES } from "@/routes"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuthStore()
@@ -35,42 +36,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navMain = [
     {
       title: t('dashboard.title'),
-      url: "/dashboard",
+      url: ROUTES.dashboard,
       icon: LayoutDashboardIcon,
     },
     {
       title: t('companies.title'),
-      url: "/admin/companies",
+      url: ROUTES.admin.companies.list,
       icon: BuildingIcon,
     },
     {
       title: t('employees.title'),
-      url: "/admin/employees",
+      url: ROUTES.admin.employees.list,
       icon: UserIcon,
     },
     {
       title: t('vehicles.title'),
-      url: "/admin/vehicles",
+      url: ROUTES.admin.vehicles.list,
       icon: TruckIcon,
     },
     {
       title: t('trips.title'),
-      url: "/admin/trips",
+      url: ROUTES.admin.trips.list,
       icon: RouteIcon,
     },
     {
       title: t('payrolls.title'),
-      url: "/admin/payrolls",
+      url: ROUTES.admin.payrolls.list,
       icon: DollarSignIcon,
     },
     {
       title: t('reports.title'),
-      url: "/admin/reports",
+      url: ROUTES.admin.reports.list,
       icon: FileTextIcon,
     },
     {
       title: t('users.title'),
-      url: "/admin/users",
+      url: ROUTES.admin.users.list,
       icon: UsersIcon,
     },
   ]
@@ -78,7 +79,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navSecondary = [
     {
       title: t('header.settings'),
-      url: "/admin/settings",
+      url: ROUTES.admin.settings,
       icon: SettingsIcon,
     },
     {
@@ -108,7 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link to="/dashboard">
+              <Link to={ROUTES.dashboard}>
                 <AnchorIcon className="h-5 w-5" />
                 <span className="text-base font-semibold">Ship ERP</span>
               </Link>

@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
 import { API_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
 import toast from 'react-hot-toast';
+import { ROUTES } from '@/routes';
 
 // Extend AxiosRequestConfig to support custom config
 declare module 'axios' {
@@ -59,7 +60,7 @@ api.interceptors.response.use(
       if (status === 401) {
         localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
         toast.error('Session expired. Please login again.');
-        window.location.href = '/login';
+        window.location.href = ROUTES.login;
       } else if (status === 403) {
         toast.error(responseData.message || 'Permission denied');
       } else if (status >= 500) {

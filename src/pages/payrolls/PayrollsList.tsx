@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Plus, Edit } from 'lucide-react';
 import type { Payroll } from '@/types';
+import { ROUTES } from '@/routes';
 
 const MONTH_KEYS = [
   'payrolls.month1', 'payrolls.month2', 'payrolls.month3', 'payrolls.month4',
@@ -73,7 +74,7 @@ export function PayrollsList() {
   ];
 
   const breadcrumb = [
-    { label: t('dashboard.title'), path: '/dashboard' },
+    { label: t('dashboard.title'), path: ROUTES.dashboard },
     { label: t('payrolls.title') },
   ];
 

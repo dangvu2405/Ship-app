@@ -29,6 +29,7 @@ import { NotFound } from './pages/404';
 import { AppLayout } from './layouts/AppLayout';
 import { useAppStore } from './stores/app.store';
 import { useEffect } from 'react';
+import { ROUTES } from '@/routes';
 
 function App() {
   const { theme } = useAppStore();
@@ -56,55 +57,61 @@ function App() {
         }}
       >
         <Routes>
-          <Route path="/login" element={<LoginForm />} />
+          <Route path={ROUTES.login} element={<LoginForm />} />
           <Route
             element={
-              <Authenticated key="authenticated-layout" fallback={<Navigate to="/login" replace />}>
+              <Authenticated key="authenticated-layout" fallback={<Navigate to={ROUTES.login} replace />}>
                 <AppLayout />
               </Authenticated>
             }
           >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route index element={<Navigate to={ROUTES.dashboard} replace />} />
+            <Route path={ROUTES.dashboard} element={<Dashboard />} />
             
             {/* Companies */}
-            <Route path="/admin/companies" element={<CompaniesList />} />
-            <Route path="/admin/companies/create" element={<CompanyFormDialog />} />
-            <Route path="/admin/companies/edit/:id" element={<CompanyFormDialog />} />
+            <Route path={ROUTES.admin.companies.list} element={<CompaniesList />} />
+            <Route path={ROUTES.admin.companies.create} element={<CompanyFormDialog />} />
+            <Route path={ROUTES.admin.companies.show} element={<CompanyFormDialog />} />
+            <Route path={ROUTES.admin.companies.edit} element={<CompanyFormDialog />} />
             
             {/* Employees */}
-            <Route path="/admin/employees" element={<EmployeesList />} />
-            <Route path="/admin/employees/create" element={<EmployeeFormDialog />} />
-            <Route path="/admin/employees/edit/:id" element={<EmployeeFormDialog />} />
+            <Route path={ROUTES.admin.employees.list} element={<EmployeesList />} />
+            <Route path={ROUTES.admin.employees.create} element={<EmployeeFormDialog />} />
+            <Route path={ROUTES.admin.employees.show} element={<EmployeeFormDialog />} />
+            <Route path={ROUTES.admin.employees.edit} element={<EmployeeFormDialog />} />
             
             {/* Vehicles */}
-            <Route path="/admin/vehicles" element={<VehiclesList />} />
-            <Route path="/admin/vehicles/create" element={<VehicleFormDialog />} />
-            <Route path="/admin/vehicles/edit/:id" element={<VehicleFormDialog />} />
+            <Route path={ROUTES.admin.vehicles.list} element={<VehiclesList />} />
+            <Route path={ROUTES.admin.vehicles.create} element={<VehicleFormDialog />} />
+            <Route path={ROUTES.admin.vehicles.show} element={<VehicleFormDialog />} />
+            <Route path={ROUTES.admin.vehicles.edit} element={<VehicleFormDialog />} />
             
             {/* Trips */}
-            <Route path="/admin/trips" element={<TripsList />} />
-            <Route path="/admin/trips/create" element={<TripFormDialog />} />
-            <Route path="/admin/trips/edit/:id" element={<TripFormDialog />} />
+            <Route path={ROUTES.admin.trips.list} element={<TripsList />} />
+            <Route path={ROUTES.admin.trips.create} element={<TripFormDialog />} />
+            <Route path={ROUTES.admin.trips.show} element={<TripFormDialog />} />
+            <Route path={ROUTES.admin.trips.edit} element={<TripFormDialog />} />
             
             {/* Payrolls */}
-            <Route path="/admin/payrolls" element={<PayrollsList />} />
-            <Route path="/admin/payrolls/create" element={<PayrollFormDialog />} />
-            <Route path="/admin/payrolls/edit/:id" element={<PayrollFormDialog />} />
+            <Route path={ROUTES.admin.payrolls.list} element={<PayrollsList />} />
+            <Route path={ROUTES.admin.payrolls.create} element={<PayrollFormDialog />} />
+            <Route path={ROUTES.admin.payrolls.show} element={<PayrollFormDialog />} />
+            <Route path={ROUTES.admin.payrolls.edit} element={<PayrollFormDialog />} />
             
             {/* Reports */}
-            <Route path="/admin/reports" element={<Reports />} />
+            <Route path={ROUTES.admin.reports.list} element={<Reports />} />
             
             {/* Users */}
-            <Route path="/admin/users" element={<UsersList />} />
-            <Route path="/admin/users/create" element={<UserFormDialog />} />
-            <Route path="/admin/users/edit/:id" element={<UserFormDialog />} />
+            <Route path={ROUTES.admin.users.list} element={<UsersList />} />
+            <Route path={ROUTES.admin.users.create} element={<UserFormDialog />} />
+            <Route path={ROUTES.admin.users.show} element={<UserFormDialog />} />
+            <Route path={ROUTES.admin.users.edit} element={<UserFormDialog />} />
             
             {/* System */}
-            <Route path="/admin/profile" element={<Profile />} />
-            <Route path="/admin/settings" element={<Settings />} />
+            <Route path={ROUTES.admin.profile} element={<Profile />} />
+            <Route path={ROUTES.admin.settings} element={<Settings />} />
           </Route>
-          <Route path="*" element={<NotFound />} />
+          <Route path={ROUTES.notFound} element={<NotFound />} />
         </Routes>
         <UnsavedChangesNotifier />
         <DocumentTitleHandler />

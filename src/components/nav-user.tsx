@@ -27,6 +27,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useTranslation } from "@/hooks/useTranslation"
+import { ROUTES } from "@/routes"
 
 export function NavUser({
   user,
@@ -47,20 +48,20 @@ export function NavUser({
     : user.email?.[0].toUpperCase() || 'U'
 
   const handleAccount = () => {
-    navigate('/admin/profile')
+    navigate(ROUTES.admin.profile)
   }
 
   const handleBilling = () => {
-    navigate('/admin/billing')
+    navigate(ROUTES.admin.billing)
   }
 
   const handleNotifications = () => {
-    navigate('/admin/notifications')
+    navigate(ROUTES.admin.notifications)
   }
 
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate(ROUTES.login)
   }
 
   return (

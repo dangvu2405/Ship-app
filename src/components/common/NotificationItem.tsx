@@ -8,6 +8,7 @@ import BellIcon from 'lucide-react/dist/esm/icons/bell';
 import UserIcon from 'lucide-react/dist/esm/icons/user';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getResourceShowRoute } from '@/routes';
 import type { ActivityLog } from '@/types';
 
 interface NotificationItemProps {
@@ -52,22 +53,7 @@ const getNotificationColor = (type: ActivityLog['type']) => {
 const getResourceRoute = (resource: string, resourceId?: number): string | null => {
   if (!resourceId) return null;
 
-  const routes: Record<string, string> = {
-    company: `/admin/companies/edit/${resourceId}`,
-    companies: `/admin/companies/edit/${resourceId}`,
-    employee: `/admin/employees/edit/${resourceId}`,
-    employees: `/admin/employees/edit/${resourceId}`,
-    vehicle: `/admin/vehicles/edit/${resourceId}`,
-    vehicles: `/admin/vehicles/edit/${resourceId}`,
-    trip: `/admin/trips/edit/${resourceId}`,
-    trips: `/admin/trips/edit/${resourceId}`,
-    payroll: `/admin/payrolls/edit/${resourceId}`,
-    payrolls: `/admin/payrolls/edit/${resourceId}`,
-    user: `/admin/users/edit/${resourceId}`,
-    users: `/admin/users/edit/${resourceId}`,
-  };
-
-  return routes[resource.toLowerCase()] || null;
+  return getResourceShowRoute(resource, resourceId);
 };
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {

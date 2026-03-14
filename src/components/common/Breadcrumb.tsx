@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ChevronRightIcon, HomeIcon } from '@heroicons/react/24/outline';
+import { ROUTES } from '@/routes';
 
 export interface BreadcrumbItem {
   label: string;
@@ -16,7 +17,7 @@ export const Breadcrumb = ({ items }: BreadcrumbProps) => {
       <ol className="inline-flex items-center space-x-1 md:space-x-3">
         <li>
           <Link
-            to="/dashboard"
+            to={ROUTES.dashboard}
             className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-primary-600 dark:text-gray-400 dark:hover:text-white"
           >
             <HomeIcon className="w-4 h-4 mr-2" />
