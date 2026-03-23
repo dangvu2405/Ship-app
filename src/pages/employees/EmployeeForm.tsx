@@ -9,7 +9,8 @@ interface EmployeeFormProps {
   initialValues?: Partial<Employee>;
 }
 
-export function EmployeeForm({ form: _form, initialValues: _initialValues }: EmployeeFormProps) {
+export function EmployeeForm(props: EmployeeFormProps) {
+  void props;
   const { t } = useTranslation();
 
   const typeOptions = [

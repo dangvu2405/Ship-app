@@ -16,6 +16,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Vehicle } from '@/types';
+import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 export function VehicleFormDialog() {
   const { t } = useTranslation();
@@ -49,8 +50,12 @@ export function VehicleFormDialog() {
             list('vehicles');
           },
           onError: (error) => {
+            if (!shouldShowLocalErrorToast(error)) {
+              return;
+            }
+
             toast.error(
-              error?.message || t('notifications.updateError', { item: t('vehicles.title') })
+              getErrorMessage(error) || t('notifications.updateError', { item: t('vehicles.title') })
             );
           },
         }
@@ -67,8 +72,12 @@ export function VehicleFormDialog() {
             list('vehicles');
           },
           onError: (error) => {
+            if (!shouldShowLocalErrorToast(error)) {
+              return;
+            }
+
             toast.error(
-              error?.message || t('notifications.createError', { item: t('vehicles.title') })
+              getErrorMessage(error) || t('notifications.createError', { item: t('vehicles.title') })
             );
           },
         }

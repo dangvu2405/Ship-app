@@ -16,6 +16,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Company } from '@/types';
+import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 export function CompanyFormDialog() {
   const { t } = useTranslation();
@@ -49,8 +50,12 @@ export function CompanyFormDialog() {
             list('companies');
           },
           onError: (error) => {
+            if (!shouldShowLocalErrorToast(error)) {
+              return;
+            }
+
             toast.error(
-              error?.message || t('notifications.updateError', { item: t('companies.title') })
+              getErrorMessage(error) || t('notifications.updateError', { item: t('companies.title') })
             );
           },
         }
@@ -67,8 +72,12 @@ export function CompanyFormDialog() {
             list('companies');
           },
           onError: (error) => {
+            if (!shouldShowLocalErrorToast(error)) {
+              return;
+            }
+
             toast.error(
-              error?.message || t('notifications.createError', { item: t('companies.title') })
+              getErrorMessage(error) || t('notifications.createError', { item: t('companies.title') })
             );
           },
         }

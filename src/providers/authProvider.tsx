@@ -54,10 +54,11 @@ export const authProvider: AuthProvider = {
     try {
       await authService.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Failed to logout via API', error);
     } finally {
       // Remove token from localStorage
       localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      useAuthStore.getState().setUser(null);
     }
     
     return {
@@ -69,10 +70,11 @@ export const authProvider: AuthProvider = {
   check: async () => {
     const UNAUTHENTICATED = { authenticated: false, redirectTo: ROUTES.login, logout: true } as const;
     const AUTHENTICATED = { authenticated: true } as const;
+    const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 
     // First, check Zustand store (for test login)
     const storeState = getAuthStoreState();
-    if (storeState.isAuthenticated && storeState.user) {
+    if (storeState.isAuthenticated && storeState.user && !hasToken) {
       return AUTHENTICATED;
     }
 
@@ -114,6 +116,10 @@ export const authProvider: AuthProvider = {
 
     // Check if user is already authenticated via API
     if (await tryGetCurrentUser()) return AUTHENTICATED;
+
+    if (hasToken) {
+      useAuthStore.getState().setUser(null);
+    }
 
     // In dev mode, attempt auto-login with demo account
     if (AUTO_LOGIN_ENABLED && (await tryAutoLogin())) return AUTHENTICATED;

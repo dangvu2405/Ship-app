@@ -2,14 +2,37 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'ax
 import { API_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
+import {
+  ErrorMode,
+  getErrorStatus,
+  shouldHandleGlobalErrorToast,
+  isNetworkError,
+  isTimeoutError,
+} from '@/utils/errorHandler';
 
 // Extend AxiosRequestConfig to support custom config
 declare module 'axios' {
   export interface AxiosRequestConfig {
     skipToast?: boolean; // Skip automatic toast notification
     skipErrorToast?: boolean; // Skip only error toast
+    errorMode?: ErrorMode; // Controls which layer owns error UI: global | local | silent
   }
 }
+
+const TOAST_DEDUPE_WINDOW_MS = 1500;
+const toastTimestamps = new Map<string, number>();
+
+const showDedupedErrorToast = (key: string, message: string) => {
+  const now = Date.now();
+  const lastShown = toastTimestamps.get(key);
+
+  if (lastShown && now - lastShown < TOAST_DEDUPE_WINDOW_MS) {
+    return;
+  }
+
+  toastTimestamps.set(key, now);
+  toast.error(message);
+};
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -41,44 +64,44 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    const config = error.config as InternalAxiosRequestConfig & { skipToast?: boolean; skipErrorToast?: boolean };
+    const config = error.config as InternalAxiosRequestConfig & {
+      skipToast?: boolean;
+      skipErrorToast?: boolean;
+      errorMode?: ErrorMode;
+    };
+    const errorMode = config?.errorMode ?? 'global';
     
     // Skip toast if explicitly requested or already shown
     const errorWithFlag = error as AxiosError & { __toastShown?: boolean };
-    if (config?.skipToast || config?.skipErrorToast || errorWithFlag.__toastShown) {
+    if (
+      config?.skipToast ||
+      config?.skipErrorToast ||
+      errorMode === 'silent' ||
+      errorWithFlag.__toastShown
+    ) {
+      return Promise.reject(error);
+    }
+
+    if (!shouldHandleGlobalErrorToast(error, errorMode)) {
       return Promise.reject(error);
     }
 
     // Mark that toast has been shown to prevent duplicate
     errorWithFlag.__toastShown = true;
+    const status = getErrorStatus(error);
 
-    if (error.response) {
-      const { status, data } = error.response;
-      const responseData = data as { message?: string; errors?: Record<string, string[]> };
-
-      // System-level errors: Always show toast
-      if (status === 401) {
-        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-        toast.error('Session expired. Please login again.');
-        window.location.href = ROUTES.login;
-      } else if (status === 403) {
-        toast.error(responseData.message || 'Permission denied');
-      } else if (status >= 500) {
-        toast.error('Server error. Please try again later.');
-      } else if (status === 404) {
-        // Only show toast for 404 if it's not a resource not found (let component handle it)
-        if (!responseData.message?.toLowerCase().includes('not found')) {
-          toast.error(responseData.message || 'Resource not found');
-        }
-      } else if (status !== 422 && status !== 400) {
-        // Other client errors - show toast (skip 400 and 422)
-        toast.error(responseData.message || 'An error occurred');
-      }
-      // 422 Validation errors: Skip toast - let component handle inline validation
-      // 400 Bad Request: Usually handled by component with specific messages
-    } else if (error.request) {
-      // Network error
-      toast.error('Network error. Please check your connection.');
+    if (status === 401) {
+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      showDedupedErrorToast('401-session-expired', 'Session expired. Please login again.');
+      window.location.href = ROUTES.login;
+    } else if (status === 403) {
+      showDedupedErrorToast('403-forbidden', 'Permission denied');
+    } else if (typeof status === 'number' && status >= 500) {
+      showDedupedErrorToast(`5xx-${status}`, 'Server error. Please try again later.');
+    } else if (isTimeoutError(error)) {
+      showDedupedErrorToast('timeout', 'Request timeout. Please try again.');
+    } else if (isNetworkError(error)) {
+      showDedupedErrorToast('network-error', 'Network error. Please check your connection.');
     }
 
     return Promise.reject(error);

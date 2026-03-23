@@ -4,6 +4,7 @@ import { createSafeStorage } from '@/lib/safe-storage';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
 import toast from 'react-hot-toast';
+import { STORAGE_KEYS } from '@/utils/constants';
 
 interface AuthState {
   user: User | null;
@@ -44,8 +45,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           await authService.logout();
         } catch (error) {
-          console.error('Logout error:', error);
+          console.error('Failed to logout', error);
         } finally {
+          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
           set({
             user: null,
             isAuthenticated: false,

@@ -173,4 +173,6 @@ export interface FormItemSelectProps extends BaseFormItemProps {
     closable: boolean;
     onClose: () => void;
   }) => React.ReactElement;
+  /** Change handler for select value */
+  onChange?: SelectProps['onChange'];
 }

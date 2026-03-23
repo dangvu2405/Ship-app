@@ -10,7 +10,8 @@ interface UserFormProps {
   isEdit?: boolean;
 }
 
-export function UserForm({ form: _form, initialValues: _initialValues, isEdit = false }: UserFormProps) {
+export function UserForm(props: UserFormProps) {
+  const { isEdit = false } = props;
   const { t } = useTranslation();
 
   const statusOptions = [

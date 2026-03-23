@@ -1,13 +1,12 @@
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
-import { useDashboard } from "@/hooks/useDashboard"
+import { useDashboardStats } from "@/hooks/useDashboardStats"
 import { TableSkeleton } from "@/components/common/TableSkeleton"
 
-import data from "./data.json"
 
 export default function Dashboard() {
-  const { stats, statsLoading } = useDashboard({
+  const { stats, statsLoading } = useDashboardStats({
     enablePolling: true,
     pollingInterval: 60000, // Poll every minute
   });
@@ -21,7 +20,7 @@ export default function Dashboard() {
           <TableSkeleton rows={10} columns={6} />
         </div>
       ) : (
-        <DataTable data={data} />
+        <DataTable data={[]}/>
       )}
     </>
   )

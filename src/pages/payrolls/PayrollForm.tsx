@@ -8,7 +8,8 @@ interface PayrollFormProps {
   initialValues?: Partial<Payroll>;
 }
 
-export function PayrollForm({ form: _form, initialValues: _initialValues }: PayrollFormProps) {
+export function PayrollForm(props: PayrollFormProps) {
+  void props;
   const { t } = useTranslation();
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({

@@ -10,7 +10,8 @@ interface CompanyFormProps {
   initialValues?: Partial<Company>;
 }
 
-export function CompanyForm({ form: _form, initialValues: _initialValues }: CompanyFormProps) {
+export function CompanyForm(props: CompanyFormProps) {
+  void props;
   const { t } = useTranslation();
 
   const statusOptions = [

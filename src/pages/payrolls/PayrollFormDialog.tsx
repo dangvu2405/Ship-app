@@ -16,6 +16,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Payroll } from '@/types';
+import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 export function PayrollFormDialog() {
   const { t } = useTranslation();
@@ -49,8 +50,12 @@ export function PayrollFormDialog() {
             list('payrolls');
           },
           onError: (error) => {
+            if (!shouldShowLocalErrorToast(error)) {
+              return;
+            }
+
             toast.error(
-              error?.message || t('notifications.updateError', { item: t('payrolls.title') })
+              getErrorMessage(error) || t('notifications.updateError', { item: t('payrolls.title') })
             );
           },
         }
@@ -67,8 +72,12 @@ export function PayrollFormDialog() {
             list('payrolls');
           },
           onError: (error) => {
+            if (!shouldShowLocalErrorToast(error)) {
+              return;
+            }
+
             toast.error(
-              error?.message || t('notifications.createError', { item: t('payrolls.title') })
+              getErrorMessage(error) || t('notifications.createError', { item: t('payrolls.title') })
             );
           },
         }

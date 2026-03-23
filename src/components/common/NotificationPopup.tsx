@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { NotificationItem } from './NotificationItem';
 import { TableSkeleton } from './TableSkeleton';
-import { useDashboard } from '@/hooks/useDashboard';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
 import BellIcon from 'lucide-react/dist/esm/icons/bell';
@@ -33,7 +33,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
     unreadCount,
     markAsRead,
     markAllAsRead,
-  } = useDashboard({
+  } = useNotifications({
     enablePolling: true,
     pollingInterval: open ? 30000 : 60000, // 30s when open, 60s when closed
   });
@@ -42,7 +42,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
     try {
       await markAsRead(id);
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+      console.error('Failed to mark notification as read', error);
     }
   };
 
@@ -50,7 +50,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
     try {
       await markAllAsRead();
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      console.error('Failed to mark all notifications as read', error);
     }
   };
 

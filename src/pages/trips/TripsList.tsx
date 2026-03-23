@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
+import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import type { Trip } from '@/types';
+import type { Company, Office, Trip } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
+import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 export function TripsList() {
   const { t } = useTranslation();
@@ -18,6 +20,34 @@ export function TripsList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [current, setCurrent] = useState(1);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | undefined>(undefined);
+  const [selectedOfficeId, setSelectedOfficeId] = useState<number | undefined>(undefined);
+  const [appliedCompanyId, setAppliedCompanyId] = useState<number | undefined>(undefined);
+  const [appliedOfficeId, setAppliedOfficeId] = useState<number | undefined>(undefined);
+
+  const { data: companiesData } = useList<Company>({
+    resource: 'companies',
+    pagination: {
+      current: 1,
+      pageSize: 100,
+    },
+  });
+
+  const { data: officesData } = useList<Office>({
+    resource: 'offices',
+    pagination: {
+      current: 1,
+      pageSize: 200,
+    },
+  });
+
+  const filteredOffices = (officesData?.data ?? []).filter((office) => {
+    if (!selectedCompanyId) {
+      return true;
+    }
+
+    return office.company_id === selectedCompanyId;
+  });
 
   const { data, isLoading, refetch } = useList<Trip>({
     resource: 'trips',
@@ -25,7 +55,34 @@ export function TripsList() {
       current,
       pageSize: 15,
     },
+    filters: [
+      ...(appliedCompanyId ? [{ field: 'company_id', operator: 'eq' as const, value: appliedCompanyId }] : []),
+      ...(appliedOfficeId ? [{ field: 'office_id', operator: 'eq' as const, value: appliedOfficeId }] : []),
+    ],
   });
+
+  const handleCompanyChange = (value: number | undefined) => {
+    setSelectedCompanyId(value);
+    setSelectedOfficeId(undefined);
+  };
+
+  const handleOfficeChange = (value: number | undefined) => {
+    setSelectedOfficeId(value);
+  };
+
+  const handleSearchFilters = () => {
+    setAppliedCompanyId(selectedCompanyId);
+    setAppliedOfficeId(selectedOfficeId);
+    setCurrent(1);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedCompanyId(undefined);
+    setSelectedOfficeId(undefined);
+    setAppliedCompanyId(undefined);
+    setAppliedOfficeId(undefined);
+    setCurrent(1);
+  };
 
   const handleDelete = (trip: Trip) => {
     setSelectedTrip(trip);
@@ -47,7 +104,11 @@ export function TripsList() {
           setSelectedTrip(null);
           refetch();
         },
-        onError: () => {
+        onError: (error) => {
+          if (!shouldShowLocalErrorToast(error)) {
+            return;
+          }
+
           toast.error(t('notifications.deleteError', { item: t('trips.title') }));
         },
       }
@@ -136,6 +197,42 @@ export function TripsList() {
       />
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Select
+            allowClear
+            showSearch
+            placeholder={t('companies.title')}
+            value={selectedCompanyId}
+            onChange={handleCompanyChange}
+            options={(companiesData?.data ?? []).map((company) => ({
+              label: company.name,
+              value: company.id,
+            }))}
+            optionFilterProp="label"
+          />
+
+          <Select
+            allowClear
+            showSearch
+            placeholder={t('employees.office')}
+            value={selectedOfficeId}
+            onChange={handleOfficeChange}
+            options={filteredOffices.map((office) => ({
+              label: office.name,
+              value: office.id,
+            }))}
+            optionFilterProp="label"
+          />
+
+          <Button type="button" onClick={handleSearchFilters}>
+            Search
+          </Button>
+
+          <Button type="button" variant="outline" onClick={handleClearFilters}>
+            Clear
+          </Button>
+        </div>
+
         {isLoading ? (
           <TableSkeleton rows={5} columns={columns.length} />
         ) : (

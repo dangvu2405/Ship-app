@@ -10,6 +10,7 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 import type { Company } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
+import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 export function CompaniesList() {
   const { t } = useTranslation();
@@ -47,7 +48,11 @@ export function CompaniesList() {
           setSelectedCompany(null);
           refetch();
         },
-        onError: () => {
+        onError: (error) => {
+          if (!shouldShowLocalErrorToast(error)) {
+            return;
+          }
+
           toast.error(t('notifications.deleteError', { item: t('companies.title') }));
         },
       }

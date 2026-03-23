@@ -41,13 +41,11 @@ export const useTranslation = () => {
       if (value && typeof value === 'object' && k in value) {
         value = value[k as keyof typeof value];
       } else {
-        console.warn(`Translation key "${key}" not found for locale "${locale}"`);
         return key;
       }
     }
 
     if (typeof value !== 'string') {
-      console.warn(`Translation value for "${key}" is not a string`);
       return key;
     }
 

@@ -10,7 +10,8 @@ interface VehicleFormProps {
   initialValues?: Partial<Vehicle>;
 }
 
-export function VehicleForm({ form: _form, initialValues: _initialValues }: VehicleFormProps) {
+export function VehicleForm(props: VehicleFormProps) {
+  void props;
   const { t } = useTranslation();
 
   const statusOptions = [

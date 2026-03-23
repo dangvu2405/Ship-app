@@ -1,5 +1,4 @@
 import { Refine, Authenticated } from '@refinedev/core';
-import { notificationProvider } from '@refinedev/antd';
 import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, theme as antdTheme } from 'antd';
@@ -30,6 +29,7 @@ import { AppLayout } from './layouts/AppLayout';
 import { useAppStore } from './stores/app.store';
 import { useEffect } from 'react';
 import { ROUTES } from '@/routes';
+import { appNotificationProvider } from './providers/notificationProvider';
 
 function App() {
   const { theme } = useAppStore();
@@ -48,7 +48,7 @@ function App() {
         authProvider={authProvider}
         routerProvider={routerProvider}
         resources={resources}
-        notificationProvider={notificationProvider}
+        notificationProvider={appNotificationProvider}
         options={{
           syncWithLocation: true,
           warnWhenUnsavedChanges: true,

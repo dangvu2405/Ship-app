@@ -49,10 +49,7 @@ export const CompaniesWithHeader = () => {
           window.location.reload();
         }}
         showExportButton
-        onExport={() => {
-          // Export data
-          console.log('Exporting...');
-        }}
+        onExport={() => undefined}
         showSearch
         searchFields={[
           { name: 'name', placeholder: 'Search by name' },

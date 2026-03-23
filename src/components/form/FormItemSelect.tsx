@@ -64,8 +64,8 @@ export const FormItemSelect = ({
   selectProps,
   options,
   placeholder,
-  allowClear = true,
-  showSearch = false,
+  allowClear,
+  showSearch,
   mode,
   size,
   loading,
@@ -76,6 +76,7 @@ export const FormItemSelect = ({
   showArrow,
   dropdownRender,
   tagRender,
+  onChange,
   required,
   tooltip,
   help,
@@ -86,10 +87,13 @@ export const FormItemSelect = ({
   style,
   ...formItemProps
 }: FormItemSelectProps) => {
+  const resolvedAllowClear = allowClear ?? selectProps?.allowClear ?? true;
+  const resolvedShowSearch = showSearch ?? selectProps?.showSearch ?? false;
+
   // Default filter function if showSearch is true and no custom filter provided
-  const defaultFilterOption = showSearch && !filterOption
+  const defaultFilterOption = resolvedShowSearch && !filterOption
     ? (input: string, option: SelectOption) =>
-        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+        String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
     : filterOption === false
     ? false
     : filterOption;
@@ -103,8 +107,8 @@ export const FormItemSelect = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mergedSelectProps: any = {
     ...selectPropsWithoutOptions,
-    allowClear: allowClear ?? selectProps?.allowClear,
-    showSearch: showSearch ?? selectProps?.showSearch,
+    allowClear: resolvedAllowClear,
+    showSearch: resolvedShowSearch,
     mode: mode || selectProps?.mode,
     size: size || selectProps?.size,
     loading: loading ?? selectProps?.loading,
@@ -113,11 +117,12 @@ export const FormItemSelect = ({
     showArrow: showArrow ?? selectProps?.showArrow,
     dropdownRender: dropdownRender || selectProps?.dropdownRender,
     tagRender: tagRender || selectProps?.tagRender,
+    onChange: onChange || selectProps?.onChange,
     disabled: disabled ?? selectProps?.disabled,
   };
   
   // Add maxTagPlaceholder separately if provided
-  if (maxTagPlaceholder) {
+  if (maxTagPlaceholder != null) {
     mergedSelectProps.maxTagPlaceholder = maxTagPlaceholder;
   } else if (selectProps?.maxTagPlaceholder) {
     mergedSelectProps.maxTagPlaceholder = selectProps.maxTagPlaceholder;

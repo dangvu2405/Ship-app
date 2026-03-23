@@ -10,7 +10,8 @@ interface TripFormProps {
   initialValues?: Partial<Trip>;
 }
 
-export function TripForm({ form: _form, initialValues: _initialValues }: TripFormProps) {
+export function TripForm(props: TripFormProps) {
+  void props;
   const { t } = useTranslation();
 
   const statusOptions = [
