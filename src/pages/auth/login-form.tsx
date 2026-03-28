@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react"
+import axios from "axios"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,31 +15,28 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const navigate = useNavigate()
-  const { setUser } = useAuthStore()
+  const { login } = useAuthStore()
   const { t } = useTranslation()
 
-  const handleTestLogin = () => {
-    // Set test user data to bypass authentication
-    // Must match User type structure from types/index.ts
-    setUser({
-      id: 1,
-      username: 'Test User',
-      email: 'test@example.com',
-      status: 'active',
-      roles: [
-        {
-          id: 1,
-          name: 'admin',
-          description: 'Administrator',
-          permissions: [
-            { id: 1, name: 'View Employees', code: 'employee.view' },
-            { id: 2, name: 'Manage Users', code: 'user.manage' },
-            { id: 3, name: 'View Settings', code: 'settings.view' }
-          ]
+  const [testAccounts, setTestAccounts] = useState<{role: string, role_display: string, email: string}[]>([])
+
+  useEffect(() => {
+    axios.get('/api/auth/test-accounts')
+      .then(res => {
+        if (res.data?.success) {
+          setTestAccounts(res.data.data)
         }
-      ]
-    })
-    navigate(ROUTES.dashboard)
+      })
+      .catch(err => console.error("Could not load test accounts", err))
+  }, [])
+
+  const handleTestLogin = async (email: string) => {
+    try {
+      await login(email, 'password')
+      navigate(ROUTES.dashboard)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   return (
@@ -81,14 +80,25 @@ export function LoginForm({
                 <Button type="submit" className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
                   {t('auth.login')}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={handleTestLogin}
-                  className="w-full h-11 text-base border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-950"
-                >
-                  {t('auth.testLogin')}
-                </Button>
+                
+                {testAccounts.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {testAccounts.map(acc => (
+                      <Button 
+                        key={acc.role}
+                        type="button" 
+                        variant="outline"
+                        onClick={() => handleTestLogin(acc.email)}
+                        disabled={acc.email.startsWith('no-user')}
+                        className="w-full py-2 text-sm border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-950 flex flex-col items-center justify-center whitespace-normal h-auto min-h-12"
+                      >
+                        <span className="font-semibold block leading-tight">
+                          {acc.role_display.split(' - ')[0] || acc.role}
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-slate-200 dark:after:border-slate-700">
                   <span className="relative z-10 bg-white dark:bg-slate-800 px-2 text-slate-500 dark:text-slate-400">
                     {t('auth.orContinueWith')}

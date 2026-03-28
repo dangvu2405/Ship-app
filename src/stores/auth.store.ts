@@ -28,6 +28,9 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           const response = await authService.login({ email, password });
           if (response.success && response.data?.user) {
+            if (response.data.token) {
+              localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+            }
             set({
               user: response.data.user,
               isAuthenticated: true,
