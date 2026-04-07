@@ -20,11 +20,13 @@ export function UserForm(props: UserFormProps) {
     resource: 'employees',
     pagination: { current: 1, pageSize: 100 },
     filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const { data: rolesData, isLoading: rolesLoading } = useList<Role>({
     resource: 'roles',
     pagination: { current: 1, pageSize: 100 },
+    sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const employeeOptions = useMemo(
@@ -80,6 +82,7 @@ export function UserForm(props: UserFormProps) {
         options={employeeOptions}
         loading={employeesLoading}
         showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         allowClear
       />
 
@@ -90,6 +93,7 @@ export function UserForm(props: UserFormProps) {
         loading={rolesLoading}
         mode="multiple"
         showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         allowClear
       />
 

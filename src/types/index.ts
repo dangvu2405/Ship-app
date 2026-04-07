@@ -143,7 +143,7 @@ export interface VehicleAssignment {
   from_date: string;
   to_date?: string;
   vehicle?: Vehicle;
-  driver?: Employee;
+  driver?: Driver | Employee;
 }
 
 export interface VehicleExpense {
@@ -155,7 +155,7 @@ export interface VehicleExpense {
   expense_date: string;
   note?: string;
   vehicle?: Vehicle;
-  driver?: Employee;
+  driver?: Driver | Employee;
 }
 
 export interface Allowance {

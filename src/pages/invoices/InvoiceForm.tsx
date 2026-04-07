@@ -17,10 +17,12 @@ export function InvoiceForm(props: InvoiceFormProps) {
   const { data: customersData, isLoading: loadingCustomers } = useList<Customer>({
     resource: 'customers',
     pagination: { current: 1, pageSize: 500 },
+    sorters: [{ field: 'name', order: 'asc' }],
   });
   const { data: tripsData, isLoading: loadingTrips } = useList<Trip>({
     resource: 'trips',
     pagination: { current: 1, pageSize: 200 },
+    sorters: [{ field: 'id', order: 'desc' }],
   });
 
   const customerOptions = (customersData?.data ?? []).map((c) => ({ label: c.name, value: c.id }));
@@ -43,9 +45,18 @@ export function InvoiceForm(props: InvoiceFormProps) {
         options={customerOptions}
         loading={loadingCustomers}
         showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         rules={[{ required: true, message: t('validation.required', { field: t('invoices.customer') }) }]}
       />
-      <FormItemSelect name="trip_id" label={t('invoices.trip')} options={tripOptions} loading={loadingTrips} showSearch allowClear />
+      <FormItemSelect
+        name="trip_id"
+        label={t('invoices.trip')}
+        options={tripOptions}
+        loading={loadingTrips}
+        showSearch
+        selectProps={{ optionFilterProp: 'label' }}
+        allowClear
+      />
       <FormItemNumber name="total_amount" label={t('invoices.totalAmount')} required min={0} rules={[{ required: true, message: t('validation.required', { field: t('invoices.totalAmount') }) }]} />
       <FormItemNumber name="tax_amount" label={t('invoices.taxAmount')} min={0} />
       <FormItemText name="issued_at" label={t('invoices.issuedAt')} type="date" />

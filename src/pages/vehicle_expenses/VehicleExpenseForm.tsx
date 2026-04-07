@@ -5,7 +5,7 @@ import { FormItemText } from '@/components/form/FormItemText';
 import { FormItemTextArea } from '@/components/form/FormItemTextArea';
 import { FormItemNumber } from '@/components/form/FormItemNumber';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Employee, Vehicle, VehicleExpense } from '@/types';
+import type { Driver, Vehicle, VehicleExpense } from '@/types';
 
 interface VehicleExpenseFormProps {
   form: ReturnType<typeof Form.useForm>[0];
@@ -18,20 +18,23 @@ export function VehicleExpenseForm(props: VehicleExpenseFormProps) {
   const { data: vehiclesData, isLoading: loadingVehicles } = useList<Vehicle>({
     resource: 'vehicles',
     pagination: { current: 1, pageSize: 500 },
+    sorters: [{ field: 'plate_number', order: 'asc' }],
   });
-  const { data: driversData, isLoading: loadingDrivers } = useList<Employee>({
-    resource: 'employees',
+  const { data: driversData, isLoading: loadingDrivers } = useList<Driver>({
+    resource: 'drivers',
     pagination: { current: 1, pageSize: 500 },
-    filters: [{ field: 'type', operator: 'eq', value: 'driver' }],
+    sorters: [{ field: 'id', order: 'desc' }],
   });
 
   const vehicleOptions = (vehiclesData?.data ?? []).map((v) => ({
     label: `${v.plate_number} (${v.type})`,
     value: v.id,
   }));
-  const driverOptions = (driversData?.data ?? []).map((e) => ({
-    label: `${e.code} — ${e.name}`,
-    value: e.id,
+  const driverOptions = (driversData?.data ?? []).map((d) => ({
+    label: d.employee
+      ? `${d.employee.code} — ${d.employee.name}`
+      : `${d.license_no}`,
+    value: d.id,
   }));
 
   const typeOptions = [
@@ -52,9 +55,18 @@ export function VehicleExpenseForm(props: VehicleExpenseFormProps) {
         options={vehicleOptions}
         loading={loadingVehicles}
         showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.vehicle') }) }]}
       />
-      <FormItemSelect name="driver_id" label={t('vehicleExpenses.driver')} options={driverOptions} loading={loadingDrivers} showSearch allowClear />
+      <FormItemSelect
+        name="driver_id"
+        label={t('vehicleExpenses.driver')}
+        options={driverOptions}
+        loading={loadingDrivers}
+        showSearch
+        selectProps={{ optionFilterProp: 'label' }}
+        allowClear
+      />
       <FormItemSelect
         name="type"
         label={t('vehicleExpenses.type')}

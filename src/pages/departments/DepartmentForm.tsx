@@ -16,6 +16,7 @@ export function DepartmentForm(props: DepartmentFormProps) {
   const { data: officesData, isLoading: officesLoading } = useList<Office>({
     resource: 'offices',
     pagination: { current: 1, pageSize: 200 },
+    sorters: [{ field: 'name', order: 'asc' }],
   });
   const officeOptions = (officesData?.data ?? []).map((o) => ({
     label: `${o.code} — ${o.name}`,
@@ -25,6 +26,7 @@ export function DepartmentForm(props: DepartmentFormProps) {
   const { data: deptData, isLoading: deptLoading } = useList<Department>({
     resource: 'departments',
     pagination: { current: 1, pageSize: 500 },
+    sorters: [{ field: 'name', order: 'asc' }],
   });
   const parentOptions = (deptData?.data ?? []).map((d) => ({
     label: `${d.code} — ${d.name}`,
@@ -39,6 +41,8 @@ export function DepartmentForm(props: DepartmentFormProps) {
         required
         options={officeOptions}
         loading={officesLoading}
+        showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         rules={[{ required: true, message: t('validation.required', { field: t('employees.office') }) }]}
       />
       <FormItemSelect
@@ -46,6 +50,8 @@ export function DepartmentForm(props: DepartmentFormProps) {
         label={t('departments.parentDepartment')}
         options={parentOptions}
         loading={deptLoading}
+        showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         allowClear
       />
       <FormItemText

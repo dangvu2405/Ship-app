@@ -16,7 +16,8 @@ export function DriverForm(props: DriverFormProps) {
   const { data: empData, isLoading } = useList<Employee>({
     resource: 'employees',
     pagination: { current: 1, pageSize: 500 },
-    filters: [{ field: 'type', operator: 'eq', value: 'driver' }],
+    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    sorters: [{ field: 'name', order: 'asc' }],
   });
   const employeeOptions = (empData?.data ?? []).map((e) => ({
     label: `${e.code} — ${e.name}`,
@@ -38,6 +39,7 @@ export function DriverForm(props: DriverFormProps) {
         options={employeeOptions}
         loading={isLoading}
         showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         rules={[{ required: true, message: t('validation.required', { field: t('drivers.employee') }) }]}
       />
       <FormItemText name="license_no" label={t('drivers.licenseNo')} required rules={[{ required: true, message: t('validation.required', { field: t('drivers.licenseNo') }) }]} />

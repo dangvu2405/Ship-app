@@ -17,6 +17,8 @@ export function AttendanceForm(props: AttendanceFormProps) {
   const { data: empData, isLoading } = useList<Employee>({
     resource: 'employees',
     pagination: { current: 1, pageSize: 500 },
+    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    sorters: [{ field: 'name', order: 'asc' }],
   });
   const employeeOptions = (empData?.data ?? []).map((e) => ({
     label: `${e.code} — ${e.name}`,
@@ -40,6 +42,7 @@ export function AttendanceForm(props: AttendanceFormProps) {
         options={employeeOptions}
         loading={isLoading}
         showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         rules={[{ required: true, message: t('validation.required', { field: t('attendances.employee') }) }]}
       />
       <FormItemText name="date" label={t('attendances.date')} type="date" required rules={[{ required: true, message: t('validation.required', { field: t('attendances.date') }) }]} />

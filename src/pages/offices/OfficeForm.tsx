@@ -17,6 +17,8 @@ export function OfficeForm(props: OfficeFormProps) {
   const { data: companiesData, isLoading } = useList<Company>({
     resource: 'companies',
     pagination: { current: 1, pageSize: 200 },
+    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    sorters: [{ field: 'name', order: 'asc' }],
   });
   const companyOptions = (companiesData?.data ?? []).map((c) => ({
     label: `${c.code} — ${c.name}`,
@@ -31,6 +33,8 @@ export function OfficeForm(props: OfficeFormProps) {
         required
         options={companyOptions}
         loading={isLoading}
+        showSearch
+        selectProps={{ optionFilterProp: 'label' }}
         rules={[{ required: true, message: t('validation.required', { field: t('payrolls.company') }) }]}
       />
       <FormItemText

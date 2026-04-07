@@ -50,7 +50,18 @@ export function VehicleAssignmentsList() {
 
   const columns: DataTableColumn<VehicleAssignment>[] = [
     { key: 'vehicle', header: t('vehicleAssignments.vehicle'), render: (r) => r.vehicle?.plate_number ?? `#${r.vehicle_id}` },
-    { key: 'driver', header: t('vehicleAssignments.driver'), render: (r) => r.driver?.name ?? `#${r.driver_id}` },
+    {
+      key: 'driver',
+      header: t('vehicleAssignments.driver'),
+      render: (r) => {
+        const driver = r.driver;
+        if (!driver) return `#${r.driver_id}`;
+        if ('employee_id' in driver) {
+          return driver.employee?.name ?? `#${r.driver_id}`;
+        }
+        return driver.name ?? `#${r.driver_id}`;
+      },
+    },
     { key: 'from_date', header: t('vehicleAssignments.fromDate'), dataIndex: 'from_date' },
     { key: 'to_date', header: t('vehicleAssignments.toDate'), dataIndex: 'to_date' },
     {
