@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
+import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -91,7 +92,12 @@ export function DriversList() {
     },
     { key: 'license_no', header: t('drivers.licenseNo'), dataIndex: 'license_no' },
     { key: 'license_class', header: t('drivers.licenseClass'), dataIndex: 'license_class' },
-    { key: 'expired_date', header: t('drivers.expiredDate'), dataIndex: 'expired_date' },
+    {
+      key: 'expired_date',
+      header: t('drivers.expiredDate'),
+      dataIndex: 'expired_date',
+      render: (r) => <DateTimeBadge value={r.expired_date} mode="date" />,
+    },
     {
       key: 'available_status',
       header: t('drivers.availableStatus'),

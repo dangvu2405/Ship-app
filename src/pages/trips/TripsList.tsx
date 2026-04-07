@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
+import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -169,7 +170,7 @@ export function TripsList() {
       key: 'start_time',
       header: t('trips.startTime'),
       dataIndex: 'start_time',
-      render: (item) => item.start_time ? new Date(item.start_time).toLocaleString() : '-',
+      render: (item) => <DateTimeBadge value={item.start_time} mode="datetime" />,
     },
     {
       key: 'actions',

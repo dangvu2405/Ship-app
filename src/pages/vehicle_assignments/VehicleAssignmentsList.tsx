@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
+import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -62,8 +63,18 @@ export function VehicleAssignmentsList() {
         return driver.name ?? `#${r.driver_id}`;
       },
     },
-    { key: 'from_date', header: t('vehicleAssignments.fromDate'), dataIndex: 'from_date' },
-    { key: 'to_date', header: t('vehicleAssignments.toDate'), dataIndex: 'to_date' },
+    {
+      key: 'from_date',
+      header: t('vehicleAssignments.fromDate'),
+      dataIndex: 'from_date',
+      render: (r) => <DateTimeBadge value={r.from_date} mode="date" />,
+    },
+    {
+      key: 'to_date',
+      header: t('vehicleAssignments.toDate'),
+      dataIndex: 'to_date',
+      render: (r) => <DateTimeBadge value={r.to_date} mode="date" />,
+    },
     {
       key: 'actions',
       header: t('common.actions'),
@@ -119,7 +130,12 @@ export function VehicleAssignmentsList() {
           />
         )}
       </div>
-      <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected ? `${selected.from_date}` : undefined} />
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        itemName={selected?.from_date ? new Intl.DateTimeFormat('vi-VN').format(new Date(selected.from_date)) : undefined}
+      />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useInvalidate, useList, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
+import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -114,7 +115,7 @@ export function PayrollsList() {
       key: 'locked_at',
       header: t('payrolls.lockedAt'),
       dataIndex: 'locked_at',
-      render: (item) => (item.locked_at ? new Date(item.locked_at).toLocaleString() : '—'),
+      render: (item) => <DateTimeBadge value={item.locked_at} mode="datetime" />,
     },
     {
       key: 'actions',

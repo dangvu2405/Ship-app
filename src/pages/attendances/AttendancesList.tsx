@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
+import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -50,7 +51,12 @@ export function AttendancesList() {
 
   const columns: DataTableColumn<Attendance>[] = [
     { key: 'employee', header: t('attendances.employee'), render: (r) => r.employee?.name ?? `#${r.employee_id}` },
-    { key: 'date', header: t('attendances.date'), dataIndex: 'date' },
+    {
+      key: 'date',
+      header: t('attendances.date'),
+      dataIndex: 'date',
+      render: (r) => <DateTimeBadge value={r.date} mode="date" />,
+    },
     { key: 'check_in', header: t('attendances.checkIn'), dataIndex: 'check_in' },
     { key: 'check_out', header: t('attendances.checkOut'), dataIndex: 'check_out' },
     { key: 'status', header: t('common.status'), dataIndex: 'status' },

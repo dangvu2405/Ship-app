@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
+import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -52,7 +53,12 @@ export function VehicleExpensesList() {
     { key: 'vehicle', header: t('vehicleExpenses.vehicle'), render: (r) => r.vehicle?.plate_number ?? `#${r.vehicle_id}` },
     { key: 'type', header: t('vehicleExpenses.type'), dataIndex: 'type' },
     { key: 'amount', header: t('vehicleExpenses.amount'), dataIndex: 'amount' },
-    { key: 'expense_date', header: t('vehicleExpenses.expenseDate'), dataIndex: 'expense_date' },
+    {
+      key: 'expense_date',
+      header: t('vehicleExpenses.expenseDate'),
+      dataIndex: 'expense_date',
+      render: (r) => <DateTimeBadge value={r.expense_date} mode="date" />,
+    },
     {
       key: 'actions',
       header: t('common.actions'),
