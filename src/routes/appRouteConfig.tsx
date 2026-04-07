@@ -105,8 +105,17 @@ export const singleRoutes: SingleRouteConfig[] = [
 ];
 
 export const renderCrudElement = (config: CrudRouteConfig, type: 'list' | 'create' | 'show' | 'edit') => {
-  const Element = type === 'list' ? config.List : config.Form;
-  return withRoleGuard(<Element />, config.requiredRole);
+  const element =
+    type === 'list' ? (
+      <config.List />
+    ) : (
+      <>
+        <config.List />
+        <config.Form />
+      </>
+    );
+
+  return withRoleGuard(element, config.requiredRole);
 };
 
 export const renderSingleElement = (config: SingleRouteConfig) => {
