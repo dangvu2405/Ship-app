@@ -1,5 +1,6 @@
 import api from '@/services/api';
 import type { Permission } from '@/types';
+import { ENDPOINTS } from '@/services/endpoints';
 
 function unwrapList(body: unknown): Permission[] {
   const b = body as { data?: { data?: Permission[] } };
@@ -9,6 +10,6 @@ function unwrapList(body: unknown): Permission[] {
 
 /** Paginated index; fetches one page (max per_page 100 on API). */
 export async function fetchPermissionsPage(page = 1, perPage = 100): Promise<Permission[]> {
-  const { data } = await api.get('/permissions', { params: { page, per_page: perPage } });
+  const { data } = await api.get(ENDPOINTS.roles.permissions, { params: { page, per_page: perPage } });
   return unwrapList(data);
 }

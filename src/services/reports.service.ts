@@ -1,6 +1,7 @@
 import api from './api';
 import { ApiResponse } from '@/types';
 import type { Payroll } from '@/types';
+import { ENDPOINTS } from './endpoints';
 
 export interface PayrollSummaryData {
   payroll: Payroll;
@@ -12,7 +13,7 @@ class ReportsService {
   async getDashboard(month?: number, year?: number): Promise<ApiResponse<Record<string, unknown>>> {
     const m = month ?? new Date().getMonth() + 1;
     const y = year ?? new Date().getFullYear();
-    const response = await api.get('/reports/dashboard', { params: { month: m, year: y } });
+    const response = await api.get(ENDPOINTS.reports.dashboard, { params: { month: m, year: y } });
     return response.data;
   }
 
@@ -23,7 +24,7 @@ class ReportsService {
   ): Promise<ApiResponse<PayrollSummaryData | null>> {
     const m = month ?? new Date().getMonth() + 1;
     const y = year ?? new Date().getFullYear();
-    const response = await api.get('/reports/payroll-summary', {
+    const response = await api.get(ENDPOINTS.reports.payrollSummary, {
       params: { company_id: companyId, month: m, year: y },
     });
     return response.data;

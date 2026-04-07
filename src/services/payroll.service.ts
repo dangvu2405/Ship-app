@@ -1,5 +1,6 @@
 import api from './api';
 import { ApiResponse, Payroll, PayrollDetail, PaginatedResponse } from '@/types';
+import { ENDPOINTS } from './endpoints';
 
 class PayrollService {
   async getAll(params?: {
@@ -9,33 +10,33 @@ class PayrollService {
     year?: number;
     status?: string;
   }): Promise<ApiResponse<PaginatedResponse<Payroll>>> {
-    const response = await api.get('/payrolls', { params });
+    const response = await api.get(ENDPOINTS.payrolls.base, { params });
     return response.data;
   }
 
   async getById(id: number): Promise<ApiResponse<Payroll>> {
-    const response = await api.get(`/payrolls/${id}`);
+    const response = await api.get(ENDPOINTS.payrolls.byId(id));
     return response.data;
   }
 
   async generate(companyId: number, month: number, year: number): Promise<ApiResponse<Payroll>> {
-    const response = await api.post('/payrolls', { company_id: companyId, month, year });
+    const response = await api.post(ENDPOINTS.payrolls.base, { company_id: companyId, month, year });
     return response.data;
   }
 
   async approve(id: number): Promise<ApiResponse<Payroll>> {
-    const response = await api.post(`/payrolls/${id}/approve`);
+    const response = await api.post(ENDPOINTS.payrolls.approve(id));
     return response.data;
   }
 
   async lock(id: number): Promise<ApiResponse<Payroll>> {
-    const response = await api.post(`/payrolls/${id}/lock`);
+    const response = await api.post(ENDPOINTS.payrolls.lock(id));
     return response.data;
   }
 
   /** Backend returns JSON payload (not file stream); trigger browser download of .json */
   async downloadExport(id: number): Promise<void> {
-    const response = await api.get(`/payrolls/${id}/export`);
+    const response = await api.get(ENDPOINTS.payrolls.export(id));
     const payload = response.data;
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -47,7 +48,7 @@ class PayrollService {
   }
 
   async getMySalary(month?: number, year?: number): Promise<ApiResponse<PayrollDetail[]>> {
-    const response = await api.get('/payrolls/my-salary', { params: { month, year } });
+    const response = await api.get(ENDPOINTS.payrolls.mySalary, { params: { month, year } });
     return response.data;
   }
 }
