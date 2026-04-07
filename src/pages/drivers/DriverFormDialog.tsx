@@ -4,6 +4,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { DriverForm } from './DriverForm';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -87,15 +88,30 @@ export function DriverFormDialog() {
 
   return (
     <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('drivers.editDriver') : t('drivers.createDriver')}</DialogTitle>
           <DialogDescription>{isViewMode ? t('drivers.editDescription') : isEdit ? t('drivers.editDescription') : t('drivers.createDescription')}</DialogDescription>
         </DialogHeader>
-        <Form form={form} onFinish={handleSubmit} layout="vertical" disabled={isViewMode}>
-          <DriverForm form={form} initialValues={data?.data} />
-        </Form>
-        <DialogFooter>
+
+        <div className="px-6 pb-6 space-y-4">
+          <Alert>
+            <AlertTitle>Form guide</AlertTitle>
+            <AlertDescription>Please verify license number and expiration date before saving.</AlertDescription>
+          </Alert>
+
+          <Form
+            form={form}
+            onFinish={handleSubmit}
+            layout="vertical"
+            validateTrigger={["onBlur", "onSubmit"]}
+            disabled={isViewMode}
+          >
+            <DriverForm form={form} initialValues={data?.data} />
+          </Form>
+        </div>
+
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
           <Button variant="outline" type="button" onClick={handleClose} className="gap-2">
             <ArrowLeftIcon className="h-4 w-4" />
             {t('common.back')}

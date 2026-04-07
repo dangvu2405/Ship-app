@@ -68,7 +68,7 @@ export function DataTable<T extends { id: number }>({
                 <th
                   key={column.key}
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                  className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                 >
                   {column.header}
                 </th>
@@ -87,12 +87,12 @@ export function DataTable<T extends { id: number }>({
                 <tr
                   key={item.id}
                   onClick={() => onRowClick?.(item)}
-                  className={onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''}
+                  className={onRowClick ? 'cursor-pointer even:bg-gray-50/60 dark:even:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/60 transition-colors' : 'even:bg-gray-50/60 dark:even:bg-gray-800/40'}
                 >
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
+                      className="px-6 py-3.5 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
                       onClick={column.key === 'actions' ? (e) => e.stopPropagation() : undefined}
                     >
                       {column.render

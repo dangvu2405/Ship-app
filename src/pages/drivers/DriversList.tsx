@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
@@ -55,6 +58,12 @@ export function DriversList() {
     setCurrent(1);
   };
 
+  const handleStatusTabChange = (value: string) => {
+    setSelectedStatus(value === 'all' ? undefined : value);
+    setAppliedStatus(value === 'all' ? undefined : value);
+    setCurrent(1);
+  };
+
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
@@ -83,7 +92,20 @@ export function DriversList() {
     { key: 'license_no', header: t('drivers.licenseNo'), dataIndex: 'license_no' },
     { key: 'license_class', header: t('drivers.licenseClass'), dataIndex: 'license_class' },
     { key: 'expired_date', header: t('drivers.expiredDate'), dataIndex: 'expired_date' },
-    { key: 'available_status', header: t('drivers.availableStatus'), dataIndex: 'available_status' },
+    {
+      key: 'available_status',
+      header: t('drivers.availableStatus'),
+      dataIndex: 'available_status',
+      render: (r) => {
+        const variant = r.available_status === 'available' ? 'default' : r.available_status === 'on_trip' ? 'secondary' : 'outline';
+        const label = r.available_status === 'available'
+          ? t('drivers.statusAvailable')
+          : r.available_status === 'on_trip'
+            ? t('drivers.statusOnTrip')
+            : t('drivers.statusOff');
+        return <Badge variant={variant}>{label}</Badge>;
+      },
+    },
     {
       key: 'actions',
       header: t('common.actions'),
@@ -120,46 +142,57 @@ export function DriversList() {
           </Button>
         }
       />
-      <div className="bg-card shadow rounded-lg border p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Input
-            placeholder={t('common.search')}
-            value={searchKeyword}
-            onChange={(event) => setSearchKeyword(event.target.value)}
-          />
-          <Select
-            allowClear
-            placeholder={t('drivers.availableStatus')}
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-            options={[
-              { label: t('drivers.statusAvailable'), value: 'available' },
-              { label: t('drivers.statusOnTrip'), value: 'on_trip' },
-              { label: t('drivers.statusOff'), value: 'off' },
-            ]}
-          />
-          <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
-          <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
-        </div>
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6 space-y-4">
+          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
+            <TabsList variant="line" className="w-full justify-start">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="available">{t('drivers.statusAvailable')}</TabsTrigger>
+              <TabsTrigger value="on_trip">{t('drivers.statusOnTrip')}</TabsTrigger>
+              <TabsTrigger value="off">{t('drivers.statusOff')}</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
-          <ErrorState
-            title={t('common.loadError')}
-            description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
-          />
-        ) : (
-          <DataTable<Driver>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('drivers', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-          />
-        )}
-      </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <Input
+              placeholder={t('common.search')}
+              value={searchKeyword}
+              onChange={(event) => setSearchKeyword(event.target.value)}
+            />
+            <Select
+              allowClear
+              placeholder={t('drivers.availableStatus')}
+              value={selectedStatus}
+              onChange={setSelectedStatus}
+              options={[
+                { label: t('drivers.statusAvailable'), value: 'available' },
+                { label: t('drivers.statusOnTrip'), value: 'on_trip' },
+                { label: t('drivers.statusOff'), value: 'off' },
+              ]}
+            />
+            <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
+            <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
+          </div>
+
+          {isLoading ? (
+            <TableSkeleton rows={5} columns={columns.length} />
+          ) : isError ? (
+            <ErrorState
+              title={t('common.loadError')}
+              description={t('common.tryAgainDescription')}
+              onRetry={() => refetch()}
+            />
+          ) : (
+            <DataTable<Driver>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('drivers', r.id)}
+              emptyMessage={t('common.noData')}
+              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+            />
+          )}
+        </CardContent>
+      </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.license_no} />
     </>
   );
