@@ -17,8 +17,8 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide",
+  "iconLibrary": "tabler",
   "rtl": true,
-  "menuColor": "default",
+  "menuColor": "inverted",
   "menuAccent": "subtle"
 }
