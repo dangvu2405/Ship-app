@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useDelete, useList, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
@@ -83,7 +85,7 @@ export function DepartmentsList() {
     {
       key: 'office',
       header: t('employees.office'),
-      render: (row) => row.office?.name ?? '—',
+      render: (row) => row.office?.name ? <Badge variant="outline">{row.office.name}</Badge> : '—',
     },
     {
       key: 'actions',
@@ -148,8 +150,9 @@ export function DepartmentsList() {
           </Button>
         }
       />
-      <div className="bg-card shadow rounded-lg border p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6 space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <Input
             placeholder={t('common.search')}
             value={searchKeyword}
@@ -176,26 +179,27 @@ export function DepartmentsList() {
           <Button type="button" variant="outline" onClick={handleClearFilters}>
             {t('common.reset')}
           </Button>
-        </div>
+          </div>
 
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
-          <ErrorState
-            title={t('common.loadError')}
-            description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
-          />
-        ) : (
-          <DataTable<Department>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('departments', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
-          />
-        )}
-      </div>
+          {isLoading ? (
+            <TableSkeleton rows={5} columns={columns.length} />
+          ) : isError ? (
+            <ErrorState
+              title={t('common.loadError')}
+              description={t('common.tryAgainDescription')}
+              onRetry={() => refetch()}
+            />
+          ) : (
+            <DataTable<Department>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('departments', r.id)}
+              emptyMessage={t('common.noData')}
+              pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
+            />
+          )}
+        </CardContent>
+      </Card>
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
