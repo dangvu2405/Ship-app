@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
 import type { Company, Office, Trip } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -15,7 +16,7 @@ import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 export function TripsList() {
   const { t } = useTranslation();
-  const { show, create } = useNavigation();
+  const { show, create, edit } = useNavigation();
   const { mutate: deleteItem } = useDelete();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
@@ -49,7 +50,7 @@ export function TripsList() {
     return office.company_id === selectedCompanyId;
   });
 
-  const { data, isLoading, refetch } = useList<Trip>({
+  const { data, isLoading, isError, refetch } = useList<Trip>({
     resource: 'trips',
     pagination: {
       current,
@@ -158,6 +159,14 @@ export function TripsList() {
             onClick={(e) => { e.stopPropagation(); show('trips', record.id); }}
             className="h-8 w-8 p-0"
           >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); edit('trips', record.id); }}
+            className="h-8 w-8 p-0"
+          >
             <Edit className="h-4 w-4" />
           </Button>
           <Button
@@ -235,6 +244,12 @@ export function TripsList() {
 
         {isLoading ? (
           <TableSkeleton rows={5} columns={columns.length} />
+        ) : isError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => refetch()}
+          />
         ) : (
           <DataTable<Trip>
             data={listData}
