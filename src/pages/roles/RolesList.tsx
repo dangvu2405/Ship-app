@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/common/PageHeader';
+import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -111,10 +111,10 @@ export function RolesList() {
       />
       <div className="bg-card shadow rounded-lg border p-6">
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Input
+          <SearchField
             placeholder={t('common.search')}
             value={searchKeyword}
-            onChange={(event) => setSearchKeyword(event.target.value)}
+            onChange={setSearchKeyword}
           />
           <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
           <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
