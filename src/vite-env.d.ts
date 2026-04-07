@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   /** URL đầy đủ tới gốc API (kết thúc bằng /api). Chỉ khi cần ghi đè mọi quy tắc. */
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_AUTO_LOGIN?: string;
+  readonly VITE_TEST_ACCOUNTS?: string;
   readonly VITE_DEMO_EMAIL?: string;
   readonly VITE_DEMO_PASSWORD?: string;
   readonly VITE_APP_NAME?: string;

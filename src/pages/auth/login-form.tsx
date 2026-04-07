@@ -13,6 +13,11 @@ import { useTranslation } from "@/hooks/useTranslation"
 import { ROUTES } from "@/routes"
 import { TEST_ACCOUNTS_ENABLED } from "@/utils/constants"
 
+const TEST_UI_ACCOUNT = {
+  email: 'admin@abctransport.com',
+  password: 'password',
+} as const
+
 export function LoginForm({
   className,
   ...props
@@ -72,6 +77,21 @@ export function LoginForm({
     }
   }
 
+  const handleTestUILogin = async () => {
+    setEmail(TEST_UI_ACCOUNT.email)
+    setPassword(TEST_UI_ACCOUNT.password)
+
+    try {
+      setIsSubmitting(true)
+      await login(TEST_UI_ACCOUNT.email, TEST_UI_ACCOUNT.password)
+      navigate(ROUTES.dashboard)
+    } catch {
+      toast.error(t('auth.loginFailed'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className={cn("min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 p-4", className)} {...props}>
       <div className="w-full max-w-4xl">
@@ -121,6 +141,16 @@ export function LoginForm({
                 </div>
                 <Button type="submit" disabled={isSubmitting} className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
                   {t('auth.login')}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSubmitting}
+                  onClick={handleTestUILogin}
+                  className="w-full h-11 text-base border-amber-500 text-amber-700 hover:bg-amber-50 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-950"
+                >
+                  Đăng nhập test UI
                 </Button>
                 
                 {testAccounts.length > 0 && (
