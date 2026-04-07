@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
+import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
@@ -179,10 +179,10 @@ export function CompaniesList() {
           </Tabs>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <Input
+            <SearchField
               placeholder={t('common.search')}
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={setSearchKeyword}
             />
 
             <Select
