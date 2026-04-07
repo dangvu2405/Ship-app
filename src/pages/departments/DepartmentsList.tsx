@@ -35,6 +35,7 @@ export function DepartmentsList() {
   const { data: officesData } = useList<Office>({
     resource: 'offices',
     pagination: { current: 1, pageSize: 200 },
+    sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const { data, isLoading, isError, refetch } = useList<Department>({

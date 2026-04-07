@@ -37,6 +37,8 @@ export function TripsList() {
       current: 1,
       pageSize: 100,
     },
+    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const { data: officesData } = useList<Office>({
@@ -45,6 +47,7 @@ export function TripsList() {
       current: 1,
       pageSize: 200,
     },
+    sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const filteredOffices = (officesData?.data ?? []).filter((office) => {

@@ -35,6 +35,8 @@ export function OfficesList() {
   const { data: companiesData } = useList<Company>({
     resource: 'companies',
     pagination: { current: 1, pageSize: 100 },
+    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const { data, isLoading, isError, refetch } = useList<Office>({
