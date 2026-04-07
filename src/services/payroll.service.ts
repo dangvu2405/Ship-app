@@ -33,11 +33,17 @@ class PayrollService {
     return response.data;
   }
 
-  async export(id: number): Promise<Blob> {
-    const response = await api.get(`/payrolls/${id}/export`, {
-      responseType: 'blob',
-    });
-    return response.data;
+  /** Backend returns JSON payload (not file stream); trigger browser download of .json */
+  async downloadExport(id: number): Promise<void> {
+    const response = await api.get(`/payrolls/${id}/export`);
+    const payload = response.data;
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payroll-${id}-export.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async getMySalary(month?: number, year?: number): Promise<ApiResponse<PayrollDetail[]>> {

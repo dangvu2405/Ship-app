@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config'
+import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -7,7 +8,15 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, __dirname, '')
+  // Đồng bộ VITE_API_ORIGIN với APP_URL backend (chỉ origin, không /api). VITE_PROXY_TARGET = alias cũ.
+  const proxyTarget =
+    env.VITE_API_ORIGIN?.trim() ||
+    env.VITE_PROXY_TARGET?.trim() ||
+    'http://localhost:8080'
+
+  return {
   plugins: [react()],
   resolve: {
     alias: {
@@ -30,7 +39,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: proxyTarget,
         changeOrigin: true,
       },
     },
@@ -45,4 +54,5 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
   },
+  }
 })

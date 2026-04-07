@@ -52,6 +52,7 @@ export interface Office {
   address?: string;
   company_id: number;
   manager_id?: number;
+  company?: Company;
 }
 
 export interface Department {
@@ -60,6 +61,7 @@ export interface Department {
   name: string;
   office_id: number;
   parent_id?: number;
+  office?: Office;
 }
 
 export interface Position {
@@ -67,7 +69,8 @@ export interface Position {
   code: string;
   name: string;
   base_salary: number;
-  level: number;
+  level?: number;
+  description?: string;
 }
 
 export interface Vehicle {
@@ -95,6 +98,90 @@ export interface Trip {
   status: string;
   start_time?: string;
   end_time?: string;
+  customer?: Customer;
+}
+
+export interface Customer {
+  id: number;
+  name: string;
+  type: 'company' | 'individual';
+  tax_code?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  contact_person?: string;
+}
+
+export interface Driver {
+  id: number;
+  employee_id: number;
+  license_no: string;
+  license_class: string;
+  expired_date?: string;
+  available_status?: string;
+  employee?: Employee;
+}
+
+export interface Invoice {
+  id: number;
+  code: string;
+  customer_id: number;
+  trip_id?: number;
+  total_amount: number;
+  tax_amount?: number;
+  issued_at?: string;
+  due_date?: string;
+  status: string;
+  trip?: Trip;
+  customer?: Customer;
+}
+
+export interface VehicleAssignment {
+  id: number;
+  vehicle_id: number;
+  driver_id: number;
+  from_date: string;
+  to_date?: string;
+  vehicle?: Vehicle;
+  driver?: Employee;
+}
+
+export interface VehicleExpense {
+  id: number;
+  vehicle_id: number;
+  driver_id?: number;
+  type: string;
+  amount: number;
+  expense_date: string;
+  note?: string;
+  vehicle?: Vehicle;
+  driver?: Employee;
+}
+
+export interface Allowance {
+  id: number;
+  code: string;
+  name: string;
+  default_amount?: number;
+  taxable?: boolean;
+}
+
+export interface Deduction {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface Attendance {
+  id: number;
+  employee_id: number;
+  date: string;
+  check_in?: string;
+  check_out?: string;
+  work_hours?: number;
+  overtime_hours?: number;
+  status?: string;
+  employee?: Employee;
 }
 
 export interface Payroll {

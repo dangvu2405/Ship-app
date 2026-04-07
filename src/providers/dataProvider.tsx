@@ -21,7 +21,8 @@ export const dataProvider: DataProvider = {
     if (filters && filters.length > 0) {
       filters.forEach((filter: CrudFilter) => {
         if ('field' in filter && 'value' in filter && filter.value !== undefined && filter.value !== '') {
-          const key = filter.field === 'q' ? 'keyword' : (filter.field as string);
+          const field = filter.field as string;
+          const key = field === 'q' || field === 'search' ? 'keyword' : field;
           queryParams[key] = filter.value;
         }
       });

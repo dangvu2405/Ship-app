@@ -1,13 +1,20 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { LoginForm } from '../login-form';
-import axios from 'axios';
 import { useAuthStore } from '@/stores/auth.store';
 import { BrowserRouter } from 'react-router-dom';
 
-// Mocks
-vi.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockApiGet = vi.fn();
+
+vi.mock('@/services/api', () => ({
+  default: {
+    get: (...args: unknown[]) => mockApiGet(...args),
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() },
+    },
+  },
+}));
 
 // Mock auth store
 vi.mock('@/stores/auth.store', () => ({
@@ -21,10 +28,10 @@ vi.mock('@/hooks/useTranslation', () => ({
 
 describe('LoginForm Component', () => {
   const mockLogin = vi.fn();
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Setup typical return value for useAuthStore
     (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       login: mockLogin,
@@ -38,8 +45,7 @@ describe('LoginForm Component', () => {
   );
 
   it('renders email and password inputs correctly', async () => {
-    // Mock API to return empty array immediately
-    mockedAxios.get.mockResolvedValueOnce({ data: { success: true, data: [] } });
+    mockApiGet.mockResolvedValueOnce({ data: { success: true, data: [] } });
 
     renderComponent();
 
@@ -54,16 +60,14 @@ describe('LoginForm Component', () => {
       { role: 'driver', role_display: 'Driver', email: 'driver@test.com' }
     ];
 
-    mockedAxios.get.mockResolvedValueOnce({ 
-      data: { success: true, data: mockAccounts } 
+    mockApiGet.mockResolvedValueOnce({
+      data: { success: true, data: mockAccounts }
     });
 
     renderComponent();
 
-    // Verify API is called
-    expect(mockedAxios.get).toHaveBeenCalledWith('/api/auth/test-accounts');
+    expect(mockApiGet).toHaveBeenCalledWith('/auth/test-accounts');
 
-    // Wait for the dynamic buttons to appear
     const adminButton = await screen.findByText('Admin');
     const driverButton = await screen.findByText('Driver');
 
@@ -77,17 +81,15 @@ describe('LoginForm Component', () => {
       { role: 'hr', role_display: 'HR', email: 'no-user-hr@test.com' }
     ];
 
-    mockedAxios.get.mockResolvedValueOnce({ 
-      data: { success: true, data: mockAccounts } 
+    mockApiGet.mockResolvedValueOnce({
+      data: { success: true, data: mockAccounts }
     });
 
     renderComponent();
 
-    // Find and click the admin button
     const adminButton = await screen.findByText('Admin');
     fireEvent.click(adminButton);
 
-    // Ensure the actual login SDK method is called with exactly these parameters
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('admin@test.com', 'password');
     });
@@ -98,8 +100,8 @@ describe('LoginForm Component', () => {
       { role: 'hr', role_display: 'HR', email: 'no-user-hr@test.com' }
     ];
 
-    mockedAxios.get.mockResolvedValueOnce({ 
-      data: { success: true, data: mockAccounts } 
+    mockApiGet.mockResolvedValueOnce({
+      data: { success: true, data: mockAccounts }
     });
 
     renderComponent();

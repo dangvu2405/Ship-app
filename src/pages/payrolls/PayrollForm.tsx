@@ -1,7 +1,8 @@
 import { Form } from 'antd';
+import { useList } from '@refinedev/core';
 import { FormItemSelect } from '@/components/form/FormItemSelect';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Payroll } from '@/types';
+import type { Company, Payroll } from '@/types';
 
 interface PayrollFormProps {
   form: ReturnType<typeof Form.useForm>[0];
@@ -11,6 +12,15 @@ interface PayrollFormProps {
 export function PayrollForm(props: PayrollFormProps) {
   void props;
   const { t } = useTranslation();
+
+  const { data: companiesData, isLoading: companiesLoading } = useList<Company>({
+    resource: 'companies',
+    pagination: { current: 1, pageSize: 200 },
+  });
+  const companyOptions = (companiesData?.data ?? []).map((c) => ({
+    label: `${c.code} — ${c.name}`,
+    value: c.id,
+  }));
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     label: [
@@ -28,6 +38,17 @@ export function PayrollForm(props: PayrollFormProps) {
 
   return (
     <>
+      <FormItemSelect
+        name="company_id"
+        label={t('payrolls.company')}
+        required
+        options={companyOptions}
+        loading={companiesLoading}
+        rules={[
+          { required: true, message: t('validation.required', { field: t('payrolls.company') }) },
+        ]}
+      />
+
       <FormItemSelect
         name="month"
         label={t('payrolls.month')}

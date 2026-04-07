@@ -52,11 +52,13 @@ npm install
 
 2. **Configure environment:**
 
-Copy `.env.example` to `.env` and set your API base URL:
+Copy `.env.example` to `.env`. Đồng bộ với backend (`APP_URL` trong Laravel, không có `/api`):
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_ORIGIN=http://localhost:8080
 ```
+
+Dev mặc định gọi API qua `/api` (Vite proxy → `VITE_API_ORIGIN`). Chỉ cần `VITE_API_BASE_URL` nếu muốn URL đầy đủ tùy chỉnh.
 
 3. **Run development server:**
 
@@ -116,7 +118,8 @@ npm run build
 
 The app connects to Laravel backend API:
 
-- Base URL: `VITE_API_BASE_URL`
+- Dev: base `/api` + proxy tới `VITE_API_ORIGIN` (khớp `APP_URL` Laravel).
+- Prod / override: `VITE_API_BASE_URL` hoặc `VITE_API_ORIGIN` + `/api` (xem `src/utils/constants.ts`).
 - Authentication: HttpOnly cookies
 - Error handling: Axios interceptors
 - Auto refresh: Token refresh on 401
@@ -197,7 +200,9 @@ npm run lint
 
 ## Environment Variables
 
-- `VITE_API_BASE_URL` - Backend API base URL
+- `VITE_API_ORIGIN` — Origin backend (giống `APP_URL`, không `/api`); dùng cho Vite proxy và build.
+- `VITE_API_BASE_URL` — URL đầy đủ tới `/api` (ghi đè mọi quy tắc, tuỳ chọn).
+- `VITE_PROXY_TARGET` — Alias cũ của `VITE_API_ORIGIN`.
 
 ## Browser Support
 

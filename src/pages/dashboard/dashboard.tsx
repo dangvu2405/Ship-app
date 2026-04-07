@@ -1,8 +1,7 @@
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 import { useDashboardStats } from "@/hooks/useDashboardStats"
-import { TableSkeleton } from "@/components/common/TableSkeleton"
+import { DashboardRecentTrips } from "@/components/dashboard/DashboardRecentTrips"
 
 
 export default function Dashboard() {
@@ -15,13 +14,7 @@ export default function Dashboard() {
     <>
       <SectionCards stats={stats} loading={statsLoading} />
       <ChartAreaInteractive />
-      {statsLoading ? (
-        <div className="p-6">
-          <TableSkeleton rows={10} columns={6} />
-        </div>
-      ) : (
-        <DataTable data={[]}/>
-      )}
+      <DashboardRecentTrips />
     </>
   )
 }
