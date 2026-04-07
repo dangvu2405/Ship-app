@@ -53,7 +53,6 @@ export function PayrollFormDialog() {
   const [form] = Form.useForm();
   const hasRecordId = Boolean(id);
   const isViewMode = location.pathname.includes('/show/');
-  const isEdit = hasRecordId && !isViewMode;
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const { data, isLoading: isLoadingData, refetch } = useOne<Payroll>({
