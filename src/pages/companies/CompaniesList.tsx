@@ -178,11 +178,11 @@ export function CompaniesList() {
           />
 
           <Button type="button" onClick={handleSearchFilters}>
-            Search
+            {t('common.search')}
           </Button>
 
           <Button type="button" variant="outline" onClick={handleClearFilters}>
-            Clear
+            {t('common.reset')}
           </Button>
         </div>
 

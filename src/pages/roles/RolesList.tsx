@@ -116,8 +116,8 @@ export function RolesList() {
             value={searchKeyword}
             onChange={(event) => setSearchKeyword(event.target.value)}
           />
-          <Button type="button" onClick={handleSearchFilters}>Search</Button>
-          <Button type="button" variant="outline" onClick={handleClearFilters}>Clear</Button>
+          <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
+          <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
         </div>
 
         {isLoading ? (
