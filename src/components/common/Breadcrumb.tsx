@@ -14,11 +14,11 @@ interface BreadcrumbProps {
 export const Breadcrumb = ({ items }: BreadcrumbProps) => {
   return (
     <nav className="flex" aria-label="Breadcrumb">
-      <ol className="inline-flex items-center space-x-1 md:space-x-3">
+      <ol className="inline-flex items-center gap-1 md:gap-2">
         <li>
           <Link
             to={ROUTES.dashboard}
-            className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-primary-600 dark:text-gray-400 dark:hover:text-white"
+            className="inline-flex items-center rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
           >
             <HomeIcon className="w-4 h-4 mr-2" />
             Home
@@ -27,16 +27,16 @@ export const Breadcrumb = ({ items }: BreadcrumbProps) => {
         {items.map((item, index) => (
           <li key={index}>
             <div className="flex items-center">
-              <ChevronRightIcon className="w-4 h-4 text-gray-400 mx-1" />
+              <ChevronRightIcon className="mx-1 h-4 w-4 text-muted-foreground/60" />
               {item.path ? (
                 <Link
                   to={item.path}
-                  className="text-sm font-medium text-gray-700 hover:text-primary-600 dark:text-gray-400 dark:hover:text-white"
+                  className="rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
                 >
                   {item.label}
                 </Link>
               ) : (
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{item.label}</span>
+                <span className="rounded-md bg-primary/10 px-2 py-1 text-sm font-medium text-primary">{item.label}</span>
               )}
             </div>
           </li>

@@ -60,25 +60,25 @@ export function DataTable<T extends { id: number }>({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+      <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card shadow-sm">
+        <table className="min-w-full divide-y divide-border">
+          <thead className="sku-table-header sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   scope="col"
-                  className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                  className="px-6 py-3.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider"
                 >
                   {column.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-border bg-card">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={columns.length} className="px-6 py-12 text-center text-sm text-muted-foreground">
                   {emptyMessage}
                 </td>
               </tr>
@@ -87,12 +87,14 @@ export function DataTable<T extends { id: number }>({
                 <tr
                   key={item.id}
                   onClick={() => onRowClick?.(item)}
-                  className={onRowClick ? 'cursor-pointer even:bg-gray-50/60 dark:even:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/60 transition-colors' : 'even:bg-gray-50/60 dark:even:bg-gray-800/40'}
+                  className={onRowClick
+                    ? 'group cursor-pointer even:bg-muted/30 hover:bg-primary/5 transition-colors'
+                    : 'even:bg-muted/30'}
                 >
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className="px-6 py-3.5 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-foreground"
                       onClick={column.key === 'actions' ? (e) => e.stopPropagation() : undefined}
                     >
                       {column.render
