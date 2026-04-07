@@ -4,7 +4,7 @@ import { createSafeStorage } from '@/lib/safe-storage';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
 import toast from 'react-hot-toast';
-import { STORAGE_KEYS } from '@/utils/constants';
+import { clearAuthToken, hasAuthToken, setAuthToken } from '@/lib/auth-session';
 
 interface AuthState {
   user: User | null;
@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>()(
           const response = await authService.login({ email, password });
           if (response.success && response.data?.user) {
             if (response.data.token) {
-              localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+              setAuthToken(response.data.token);
             }
             set({
               user: response.data.user,
@@ -47,10 +47,10 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         try {
           await authService.logout();
-        } catch (error) {
-          console.error('Failed to logout', error);
+        } catch {
+          // no-op: local logout still executes in finally
         } finally {
-          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+          clearAuthToken();
           set({
             user: null,
             isAuthenticated: false,
@@ -60,6 +60,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
+        if (!hasAuthToken()) {
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return;
+        }
+
         try {
           set({ isLoading: true });
           const response = await authService.getCurrentUser();
@@ -77,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
             });
           }
         } catch {
+          clearAuthToken();
           set({
             user: null,
             isAuthenticated: false,

@@ -1,9 +1,9 @@
 import { AuthProvider } from '@refinedev/core';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
-import { AUTO_LOGIN_ENABLED, DEMO_EMAIL, DEMO_PASSWORD, STORAGE_KEYS } from '@/utils/constants';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
+import { clearAuthToken, hasAuthToken, setAuthToken } from '@/lib/auth-session';
 
 // Get store state outside of component
 const getAuthStoreState = () => {
@@ -18,7 +18,7 @@ export const authProvider: AuthProvider = {
       if (response.success && response.data?.user) {
         // Store token in localStorage
         if (response.data.token) {
-          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+          setAuthToken(response.data.token);
         }
         // Update Zustand store
         useAuthStore.getState().setUser(response.data.user);
@@ -53,11 +53,11 @@ export const authProvider: AuthProvider = {
   logout: async () => {
     try {
       await authService.logout();
-    } catch (error) {
-      console.error('Failed to logout via API', error);
+    } catch {
+      // no-op: local logout still executes in finally
     } finally {
       // Remove token from localStorage
-      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      clearAuthToken();
       useAuthStore.getState().setUser(null);
     }
     
@@ -70,11 +70,17 @@ export const authProvider: AuthProvider = {
   check: async () => {
     const UNAUTHENTICATED = { authenticated: false, redirectTo: ROUTES.login, logout: true } as const;
     const AUTHENTICATED = { authenticated: true } as const;
-    const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    const hasToken = hasAuthToken();
 
-    // First, check Zustand store (for test login)
+    // No token and no local identity means not authenticated.
+    if (!hasToken) {
+      useAuthStore.getState().setUser(null);
+      return UNAUTHENTICATED;
+    }
+
+    // If token exists and store already has user, accept immediately.
     const storeState = getAuthStoreState();
-    if (storeState.isAuthenticated && storeState.user && !hasToken) {
+    if (storeState.isAuthenticated && storeState.user) {
       return AUTHENTICATED;
     }
 
@@ -93,42 +99,19 @@ export const authProvider: AuthProvider = {
       }
     };
 
-    // Try auto-login with demo credentials
-    const tryAutoLogin = async (): Promise<boolean> => {
-      try {
-        const response = await authService.login({
-          email: DEMO_EMAIL,
-          password: DEMO_PASSWORD,
-        });
-        if (response.success && response.data?.user) {
-          // Update store with login response
-          useAuthStore.getState().setUser(response.data.user);
-          if (response.data.token) {
-            localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
-          }
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
-      }
-    };
-
     // Check if user is already authenticated via API
     if (await tryGetCurrentUser()) return AUTHENTICATED;
 
-    if (hasToken) {
-      useAuthStore.getState().setUser(null);
-    }
-
-    // In dev mode, attempt auto-login with demo account
-    if (AUTO_LOGIN_ENABLED && (await tryAutoLogin())) return AUTHENTICATED;
+    useAuthStore.getState().setUser(null);
+    clearAuthToken();
 
     return UNAUTHENTICATED;
   },
 
   onError: async (error) => {
     if (error?.status === 401) {
+      clearAuthToken();
+      useAuthStore.getState().setUser(null);
       return {
         logout: true,
         redirectTo: ROUTES.login,

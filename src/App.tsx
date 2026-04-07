@@ -8,19 +8,44 @@ import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
 import { LoginForm } from './pages/auth/login-form';
+import { RegisterForm } from './pages/auth/register-form';
 import Dashboard from './pages/dashboard/dashboard';
 import { UsersList } from './pages/users/UsersList';
 import { UserFormDialog } from './pages/users/UserFormDialog';
+import { RolesList } from './pages/roles/RolesList';
+import { RoleFormDialog } from './pages/roles/RoleFormDialog';
 import { Profile } from './pages/system/Profile';
 import { Settings } from './pages/system/Settings';
 import { CompaniesList } from './pages/companies/CompaniesList';
 import { CompanyFormDialog } from './pages/companies/CompanyFormDialog';
+import { OfficesList } from './pages/offices/OfficesList';
+import { OfficeFormDialog } from './pages/offices/OfficeFormDialog';
+import { DepartmentsList } from './pages/departments/DepartmentsList';
+import { DepartmentFormDialog } from './pages/departments/DepartmentFormDialog';
+import { PositionsList } from './pages/positions/PositionsList';
+import { PositionFormDialog } from './pages/positions/PositionFormDialog';
 import { EmployeesList } from './pages/employees/EmployeesList';
 import { EmployeeFormDialog } from './pages/employees/EmployeeFormDialog';
 import { VehiclesList } from './pages/vehicles/VehiclesList';
 import { VehicleFormDialog } from './pages/vehicles/VehicleFormDialog';
 import { TripsList } from './pages/trips/TripsList';
 import { TripFormDialog } from './pages/trips/TripFormDialog';
+import { CustomersList } from './pages/customers/CustomersList';
+import { CustomerFormDialog } from './pages/customers/CustomerFormDialog';
+import { DriversList } from './pages/drivers/DriversList';
+import { DriverFormDialog } from './pages/drivers/DriverFormDialog';
+import { InvoicesList } from './pages/invoices/InvoicesList';
+import { InvoiceFormDialog } from './pages/invoices/InvoiceFormDialog';
+import { VehicleAssignmentsList } from './pages/vehicle_assignments/VehicleAssignmentsList';
+import { VehicleAssignmentFormDialog } from './pages/vehicle_assignments/VehicleAssignmentFormDialog';
+import { VehicleExpensesList } from './pages/vehicle_expenses/VehicleExpensesList';
+import { VehicleExpenseFormDialog } from './pages/vehicle_expenses/VehicleExpenseFormDialog';
+import { AllowancesList } from './pages/allowances/AllowancesList';
+import { AllowanceFormDialog } from './pages/allowances/AllowanceFormDialog';
+import { DeductionsList } from './pages/deductions/DeductionsList';
+import { DeductionFormDialog } from './pages/deductions/DeductionFormDialog';
+import { AttendancesList } from './pages/attendances/AttendancesList';
+import { AttendanceFormDialog } from './pages/attendances/AttendanceFormDialog';
 import { PayrollsList } from './pages/payrolls/PayrollsList';
 import { PayrollFormDialog } from './pages/payrolls/PayrollFormDialog';
 import { Reports } from './pages/reports/Reports';
@@ -30,6 +55,7 @@ import { useAppStore } from './stores/app.store';
 import { useEffect } from 'react';
 import { ROUTES } from '@/routes';
 import { appNotificationProvider } from './providers/notificationProvider';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 function App() {
   const { theme } = useAppStore();
@@ -58,6 +84,7 @@ function App() {
       >
         <Routes>
           <Route path={ROUTES.login} element={<LoginForm />} />
+          <Route path={ROUTES.register} element={<RegisterForm />} />
           <Route
             element={
               <Authenticated key="authenticated-layout" fallback={<Navigate to={ROUTES.login} replace />}>
@@ -73,6 +100,24 @@ function App() {
             <Route path={ROUTES.admin.companies.create} element={<CompanyFormDialog />} />
             <Route path={ROUTES.admin.companies.show} element={<CompanyFormDialog />} />
             <Route path={ROUTES.admin.companies.edit} element={<CompanyFormDialog />} />
+
+            {/* Offices */}
+            <Route path={ROUTES.admin.offices.list} element={<OfficesList />} />
+            <Route path={ROUTES.admin.offices.create} element={<OfficeFormDialog />} />
+            <Route path={ROUTES.admin.offices.show} element={<OfficeFormDialog />} />
+            <Route path={ROUTES.admin.offices.edit} element={<OfficeFormDialog />} />
+
+            {/* Departments */}
+            <Route path={ROUTES.admin.departments.list} element={<DepartmentsList />} />
+            <Route path={ROUTES.admin.departments.create} element={<DepartmentFormDialog />} />
+            <Route path={ROUTES.admin.departments.show} element={<DepartmentFormDialog />} />
+            <Route path={ROUTES.admin.departments.edit} element={<DepartmentFormDialog />} />
+
+            {/* Positions */}
+            <Route path={ROUTES.admin.positions.list} element={<PositionsList />} />
+            <Route path={ROUTES.admin.positions.create} element={<PositionFormDialog />} />
+            <Route path={ROUTES.admin.positions.show} element={<PositionFormDialog />} />
+            <Route path={ROUTES.admin.positions.edit} element={<PositionFormDialog />} />
             
             {/* Employees */}
             <Route path={ROUTES.admin.employees.list} element={<EmployeesList />} />
@@ -91,6 +136,46 @@ function App() {
             <Route path={ROUTES.admin.trips.create} element={<TripFormDialog />} />
             <Route path={ROUTES.admin.trips.show} element={<TripFormDialog />} />
             <Route path={ROUTES.admin.trips.edit} element={<TripFormDialog />} />
+
+            <Route path={ROUTES.admin.customers.list} element={<CustomersList />} />
+            <Route path={ROUTES.admin.customers.create} element={<CustomerFormDialog />} />
+            <Route path={ROUTES.admin.customers.show} element={<CustomerFormDialog />} />
+            <Route path={ROUTES.admin.customers.edit} element={<CustomerFormDialog />} />
+
+            <Route path={ROUTES.admin.drivers.list} element={<DriversList />} />
+            <Route path={ROUTES.admin.drivers.create} element={<DriverFormDialog />} />
+            <Route path={ROUTES.admin.drivers.show} element={<DriverFormDialog />} />
+            <Route path={ROUTES.admin.drivers.edit} element={<DriverFormDialog />} />
+
+            <Route path={ROUTES.admin.invoices.list} element={<InvoicesList />} />
+            <Route path={ROUTES.admin.invoices.create} element={<InvoiceFormDialog />} />
+            <Route path={ROUTES.admin.invoices.show} element={<InvoiceFormDialog />} />
+            <Route path={ROUTES.admin.invoices.edit} element={<InvoiceFormDialog />} />
+
+            <Route path={ROUTES.admin.vehicle_assignments.list} element={<VehicleAssignmentsList />} />
+            <Route path={ROUTES.admin.vehicle_assignments.create} element={<VehicleAssignmentFormDialog />} />
+            <Route path={ROUTES.admin.vehicle_assignments.show} element={<VehicleAssignmentFormDialog />} />
+            <Route path={ROUTES.admin.vehicle_assignments.edit} element={<VehicleAssignmentFormDialog />} />
+
+            <Route path={ROUTES.admin.vehicle_expenses.list} element={<VehicleExpensesList />} />
+            <Route path={ROUTES.admin.vehicle_expenses.create} element={<VehicleExpenseFormDialog />} />
+            <Route path={ROUTES.admin.vehicle_expenses.show} element={<VehicleExpenseFormDialog />} />
+            <Route path={ROUTES.admin.vehicle_expenses.edit} element={<VehicleExpenseFormDialog />} />
+
+            <Route path={ROUTES.admin.allowances.list} element={<AllowancesList />} />
+            <Route path={ROUTES.admin.allowances.create} element={<AllowanceFormDialog />} />
+            <Route path={ROUTES.admin.allowances.show} element={<AllowanceFormDialog />} />
+            <Route path={ROUTES.admin.allowances.edit} element={<AllowanceFormDialog />} />
+
+            <Route path={ROUTES.admin.deductions.list} element={<DeductionsList />} />
+            <Route path={ROUTES.admin.deductions.create} element={<DeductionFormDialog />} />
+            <Route path={ROUTES.admin.deductions.show} element={<DeductionFormDialog />} />
+            <Route path={ROUTES.admin.deductions.edit} element={<DeductionFormDialog />} />
+
+            <Route path={ROUTES.admin.attendances.list} element={<AttendancesList />} />
+            <Route path={ROUTES.admin.attendances.create} element={<AttendanceFormDialog />} />
+            <Route path={ROUTES.admin.attendances.show} element={<AttendanceFormDialog />} />
+            <Route path={ROUTES.admin.attendances.edit} element={<AttendanceFormDialog />} />
             
             {/* Payrolls */}
             <Route path={ROUTES.admin.payrolls.list} element={<PayrollsList />} />
@@ -102,10 +187,71 @@ function App() {
             <Route path={ROUTES.admin.reports.list} element={<Reports />} />
             
             {/* Users */}
-            <Route path={ROUTES.admin.users.list} element={<UsersList />} />
-            <Route path={ROUTES.admin.users.create} element={<UserFormDialog />} />
-            <Route path={ROUTES.admin.users.show} element={<UserFormDialog />} />
-            <Route path={ROUTES.admin.users.edit} element={<UserFormDialog />} />
+            <Route
+              path={ROUTES.admin.users.list}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <UsersList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.admin.users.create}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <UserFormDialog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.admin.users.show}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <UserFormDialog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.admin.users.edit}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <UserFormDialog />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path={ROUTES.admin.roles.list}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <RolesList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.admin.roles.create}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <RoleFormDialog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.admin.roles.show}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <RoleFormDialog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.admin.roles.edit}
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <RoleFormDialog />
+                </ProtectedRoute>
+              }
+            />
             
             {/* System */}
             <Route path={ROUTES.admin.profile} element={<Profile />} />

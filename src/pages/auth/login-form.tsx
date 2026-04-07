@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react"
-import axios from "axios"
 import { cn } from "@/lib/utils"
+import api from "@/services/api"
+import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { useAuthStore } from "@/stores/auth.store"
 import { useTranslation } from "@/hooks/useTranslation"
 import { ROUTES } from "@/routes"
+import { TEST_ACCOUNTS_ENABLED } from "@/utils/constants"
 
 export function LoginForm({
   className,
@@ -18,24 +21,54 @@ export function LoginForm({
   const { login } = useAuthStore()
   const { t } = useTranslation()
 
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [testAccounts, setTestAccounts] = useState<{role: string, role_display: string, email: string}[]>([])
 
   useEffect(() => {
-    axios.get('/api/auth/test-accounts')
+    if (!TEST_ACCOUNTS_ENABLED) {
+      return
+    }
+
+    api.get('/auth/test-accounts', {
+      skipErrorToast: true,
+      errorMode: 'silent',
+    })
       .then(res => {
         if (res.data?.success) {
           setTestAccounts(res.data.data)
         }
       })
-      .catch(err => console.error("Could not load test accounts", err))
+      .catch(() => {
+        // optional endpoint in some environments
+      })
   }, [])
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (isSubmitting) return
+
+    try {
+      setIsSubmitting(true)
+      await login(email.trim(), password)
+      navigate(ROUTES.dashboard)
+    } catch {
+      toast.error(t('auth.loginFailed'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const handleTestLogin = async (email: string) => {
     try {
+      setIsSubmitting(true)
       await login(email, 'password')
       navigate(ROUTES.dashboard)
-    } catch (error) {
-      console.error(error)
+    } catch {
+      toast.error(t('auth.loginFailed'))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -44,7 +77,7 @@ export function LoginForm({
       <div className="w-full max-w-4xl">
         <Card className="overflow-hidden shadow-xl border-slate-200 dark:border-slate-700">
           <CardContent className="grid p-0 md:grid-cols-2">
-            <form className="p-8 md:p-10 bg-white dark:bg-slate-800">
+            <form className="p-8 md:p-10 bg-white dark:bg-slate-800" onSubmit={handleSubmit}>
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col items-center text-center">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg mb-4">
@@ -61,6 +94,8 @@ export function LoginForm({
                     id="email"
                     type="email"
                     placeholder={t('auth.emailPlaceholder')}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                     className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600"
                   />
@@ -75,9 +110,16 @@ export function LoginForm({
                       {t('auth.forgotPassword')}
                     </a>
                   </div>
-                  <Input id="password" type="password" required className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600" />
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                  />
                 </div>
-                <Button type="submit" className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" disabled={isSubmitting} className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
                   {t('auth.login')}
                 </Button>
                 
@@ -89,7 +131,7 @@ export function LoginForm({
                         type="button" 
                         variant="outline"
                         onClick={() => handleTestLogin(acc.email)}
-                        disabled={acc.email.startsWith('no-user')}
+                        disabled={isSubmitting || acc.email.startsWith('no-user')}
                         className="w-full py-2 text-sm border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-950 flex flex-col items-center justify-center whitespace-normal h-auto min-h-12"
                       >
                         <span className="font-semibold block leading-tight">
@@ -135,9 +177,9 @@ export function LoginForm({
                 </div>
                 <div className="text-center text-sm text-slate-600 dark:text-slate-400">
                   {t('auth.dontHaveAccount')}{" "}
-                  <a href="#" className="text-blue-600 dark:text-blue-400 underline underline-offset-4">
+                  <Link to={ROUTES.register} className="text-blue-600 dark:text-blue-400 underline underline-offset-4">
                     {t('auth.signUp')}
-                  </a>
+                  </Link>
                 </div>
               </div>
             </form>

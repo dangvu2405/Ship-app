@@ -2,6 +2,7 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'ax
 import { API_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
+import { clearAuthToken } from '@/lib/auth-session';
 import {
   ErrorMode,
   getErrorStatus,
@@ -91,9 +92,11 @@ api.interceptors.response.use(
     const status = getErrorStatus(error);
 
     if (status === 401) {
-      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      clearAuthToken();
       showDedupedErrorToast('401-session-expired', 'Session expired. Please login again.');
-      window.location.href = ROUTES.login;
+      if (window.location.pathname !== ROUTES.login) {
+        window.location.href = ROUTES.login;
+      }
     } else if (status === 403) {
       showDedupedErrorToast('403-forbidden', 'Permission denied');
     } else if (typeof status === 'number' && status >= 500) {

@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { Form } from 'antd';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useUpdate, useOne, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,20 +22,23 @@ import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler
 export function CompanyFormDialog() {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
+  const location = useLocation();
   const { list } = useNavigation();
   const [form] = Form.useForm();
-  const isEdit = !!id;
+  const hasRecordId = !!id;
+  const isViewMode = location.pathname.includes('/show/');
+  const isEdit = hasRecordId && !isViewMode;
 
   const { data, isLoading: isLoadingData } = useOne<Company>({
     resource: 'companies',
     id: id || '',
-    queryOptions: { enabled: isEdit },
+    queryOptions: { enabled: hasRecordId },
   });
 
   const { mutate: createItem, isLoading: isCreating } = useCreate<Company>();
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<Company>();
 
-  const isLoading = isCreating || isUpdating || (isEdit && isLoadingData);
+  const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
   const handleSubmit = (values: Partial<Company>) => {
     if (isEdit && id) {
@@ -89,17 +93,18 @@ export function CompanyFormDialog() {
     list('companies');
   };
 
-  // Set form values when data is loaded
-  if (isEdit && data?.data && !form.getFieldsValue().code) {
-    form.setFieldsValue(data.data);
-  }
+  useEffect(() => {
+    if (hasRecordId && data?.data) {
+      form.setFieldsValue(data.data);
+    }
+  }, [hasRecordId, data?.data, form]);
 
-  if (isEdit && isLoadingData) {
+  if (hasRecordId && isLoadingData) {
     return (
       <Dialog open={true} onOpenChange={handleClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('companies.editCompany')}</DialogTitle>
+            <DialogTitle>{isViewMode ? t('common.view') : t('companies.editCompany')}</DialogTitle>
           </DialogHeader>
           <TableSkeleton rows={8} columns={1} />
         </DialogContent>
@@ -112,14 +117,14 @@ export function CompanyFormDialog() {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? t('companies.editCompany') : t('companies.createCompany')}
+            {isViewMode ? t('common.view') : isEdit ? t('companies.editCompany') : t('companies.createCompany')}
           </DialogTitle>
           <DialogDescription>
-            {isEdit ? t('companies.editDescription') : t('companies.createDescription')}
+            {isViewMode ? t('companies.editDescription') : isEdit ? t('companies.editDescription') : t('companies.createDescription')}
           </DialogDescription>
         </DialogHeader>
 
-        <Form form={form} onFinish={handleSubmit} layout="vertical">
+        <Form form={form} onFinish={handleSubmit} layout="vertical" disabled={isViewMode}>
           <CompanyForm form={form} initialValues={data?.data} />
         </Form>
 
@@ -128,17 +133,19 @@ export function CompanyFormDialog() {
             <ArrowLeft className="h-4 w-4" />
             {t('common.back')}
           </Button>
-          <Button
-            type="submit"
-            onClick={() => form.submit()}
-            disabled={isLoading}
-          >
-            {isLoading
-              ? t('common.loading')
-              : isEdit
-              ? t('common.update')
-              : t('common.create')}
-          </Button>
+          {!isViewMode ? (
+            <Button
+              type="submit"
+              onClick={() => form.submit()}
+              disabled={isLoading}
+            >
+              {isLoading
+                ? t('common.loading')
+                : isEdit
+                ? t('common.update')
+                : t('common.create')}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
