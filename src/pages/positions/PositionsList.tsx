@@ -162,8 +162,8 @@ export function PositionsList() {
           <TableSkeleton rows={5} columns={columns.length} />
         ) : isError ? (
           <ErrorState
-            title="Unable to load positions"
-            description="Please try again."
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
             onRetry={() => refetch()}
           />
         ) : (

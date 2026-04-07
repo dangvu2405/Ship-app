@@ -214,8 +214,8 @@ export function EmployeesList() {
           <TableSkeleton rows={5} columns={columns.length} />
         ) : isError ? (
           <ErrorState
-            title="Unable to load employees"
-            description="Please try again."
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
             onRetry={() => refetch()}
           />
         ) : (

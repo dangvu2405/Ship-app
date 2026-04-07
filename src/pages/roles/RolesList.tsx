@@ -124,8 +124,8 @@ export function RolesList() {
           <TableSkeleton rows={5} columns={columns.length} />
         ) : isError ? (
           <ErrorState
-            title="Unable to load roles"
-            description="Please try again."
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
             onRetry={() => refetch()}
           />
         ) : (
