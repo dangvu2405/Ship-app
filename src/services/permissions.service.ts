@@ -13,3 +13,9 @@ export async function fetchPermissionsPage(page = 1, perPage = 100): Promise<Per
   const { data } = await api.get(ENDPOINTS.roles.permissions, { params: { page, per_page: perPage } });
   return unwrapList(data);
 }
+
+export async function fetchPermissionById(permissionId: number | string): Promise<Permission | null> {
+  const { data } = await api.get(ENDPOINTS.roles.permissionById(permissionId));
+  const payload = data as { data?: Permission };
+  return payload?.data ?? null;
+}

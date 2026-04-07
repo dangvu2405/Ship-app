@@ -1,5 +1,6 @@
 import api from './api';
 import { ApiResponse, Vehicle, PaginatedResponse } from '@/types';
+import { ENDPOINTS } from './endpoints';
 
 class VehicleService {
   async getAll(params?: {
@@ -9,27 +10,27 @@ class VehicleService {
     status?: string;
     office_id?: number;
   }): Promise<ApiResponse<PaginatedResponse<Vehicle>>> {
-    const response = await api.get('/vehicles', { params });
+    const response = await api.get(ENDPOINTS.vehicles.base, { params });
     return response.data;
   }
 
   async getById(id: number): Promise<ApiResponse<Vehicle>> {
-    const response = await api.get(`/vehicles/${id}`);
+    const response = await api.get(ENDPOINTS.vehicles.byId(id));
     return response.data;
   }
 
   async create(data: Partial<Vehicle>): Promise<ApiResponse<Vehicle>> {
-    const response = await api.post('/vehicles', data);
+    const response = await api.post(ENDPOINTS.vehicles.base, data);
     return response.data;
   }
 
   async update(id: number, data: Partial<Vehicle>): Promise<ApiResponse<Vehicle>> {
-    const response = await api.put(`/vehicles/${id}`, data);
+    const response = await api.put(ENDPOINTS.vehicles.byId(id), data);
     return response.data;
   }
 
   async delete(id: number): Promise<ApiResponse<void>> {
-    const response = await api.delete(`/vehicles/${id}`);
+    const response = await api.delete(ENDPOINTS.vehicles.byId(id));
     return response.data;
   }
 }

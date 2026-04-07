@@ -1,6 +1,7 @@
 import api from './api';
 import { ApiResponse } from '@/types';
 import type { DashboardStats } from '@/types';
+import { ENDPOINTS } from './endpoints';
 
 function mapLegacyDashboardPayload(raw: Record<string, unknown>): DashboardStats {
   const companiesCount = Number(raw.companies_count ?? 0);
@@ -33,7 +34,7 @@ class DashboardService {
   async getStats(month?: number, year?: number): Promise<ApiResponse<DashboardStats>> {
     const m = month ?? new Date().getMonth() + 1;
     const y = year ?? new Date().getFullYear();
-    const response = await api.get('/reports/dashboard', {
+    const response = await api.get(ENDPOINTS.reports.dashboard, {
       params: { month: m, year: y },
     });
     const body = response.data as ApiResponse<Record<string, unknown>>;
