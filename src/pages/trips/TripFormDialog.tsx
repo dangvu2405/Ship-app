@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { TripForm } from './TripForm';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -114,8 +115,8 @@ export function TripFormDialog() {
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>
             {isViewMode ? t('common.view') : isEdit ? t('trips.editTrip') : t('trips.createTrip')}
           </DialogTitle>
@@ -124,11 +125,24 @@ export function TripFormDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <Form form={form} onFinish={handleSubmit} layout="vertical" disabled={isViewMode}>
-          <TripForm form={form} initialValues={data?.data} />
-        </Form>
+        <div className="px-6 pb-6 space-y-4">
+          <Alert>
+            <AlertTitle>Form guide</AlertTitle>
+            <AlertDescription>Capture route, schedule, and assignment details accurately before submitting.</AlertDescription>
+          </Alert>
 
-        <DialogFooter>
+          <Form
+            form={form}
+            onFinish={handleSubmit}
+            layout="vertical"
+            validateTrigger={["onBlur", "onSubmit"]}
+            disabled={isViewMode}
+          >
+            <TripForm form={form} initialValues={data?.data} />
+          </Form>
+        </div>
+
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
           <Button variant="outline" onClick={handleClose} type="button" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             {t('common.back')}

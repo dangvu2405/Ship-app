@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
@@ -23,8 +26,10 @@ export function TripsList() {
   const [current, setCurrent] = useState(1);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | undefined>(undefined);
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | undefined>(undefined);
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [appliedCompanyId, setAppliedCompanyId] = useState<number | undefined>(undefined);
   const [appliedOfficeId, setAppliedOfficeId] = useState<number | undefined>(undefined);
+  const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
   const { data: companiesData } = useList<Company>({
     resource: 'companies',
@@ -59,6 +64,7 @@ export function TripsList() {
     filters: [
       ...(appliedCompanyId ? [{ field: 'company_id', operator: 'eq' as const, value: appliedCompanyId }] : []),
       ...(appliedOfficeId ? [{ field: 'office_id', operator: 'eq' as const, value: appliedOfficeId }] : []),
+      ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
     ],
   });
 
@@ -74,14 +80,24 @@ export function TripsList() {
   const handleSearchFilters = () => {
     setAppliedCompanyId(selectedCompanyId);
     setAppliedOfficeId(selectedOfficeId);
+    setAppliedStatus(selectedStatus);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
     setSelectedCompanyId(undefined);
     setSelectedOfficeId(undefined);
+    setSelectedStatus(undefined);
     setAppliedCompanyId(undefined);
     setAppliedOfficeId(undefined);
+    setAppliedStatus(undefined);
+    setCurrent(1);
+  };
+
+  const handleStatusTabChange = (value: string) => {
+    const status = value === 'all' ? undefined : value;
+    setSelectedStatus(status);
+    setAppliedStatus(status);
     setCurrent(1);
   };
 
@@ -137,9 +153,13 @@ export function TripsList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <span className={item.status === 'completed' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-          {item.status}
-        </span>
+        <Badge variant={item.status === 'completed' ? 'default' : item.status === 'in_progress' ? 'secondary' : 'outline'}>
+          {item.status === 'completed'
+            ? t('trips.statusCompleted')
+            : item.status === 'in_progress'
+              ? t('trips.statusInProgress')
+              : t('trips.statusPending')}
+        </Badge>
       ),
     },
     {
@@ -205,66 +225,77 @@ export function TripsList() {
         }
       />
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Select
-            allowClear
-            showSearch
-            placeholder={t('companies.title')}
-            value={selectedCompanyId}
-            onChange={handleCompanyChange}
-            options={(companiesData?.data ?? []).map((company) => ({
-              label: company.name,
-              value: company.id,
-            }))}
-            optionFilterProp="label"
-          />
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6 space-y-4">
+          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
+            <TabsList variant="line" className="w-full justify-start">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="pending">{t('trips.statusPending')}</TabsTrigger>
+              <TabsTrigger value="in_progress">{t('trips.statusInProgress')}</TabsTrigger>
+              <TabsTrigger value="completed">{t('trips.statusCompleted')}</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-          <Select
-            allowClear
-            showSearch
-            placeholder={t('employees.office')}
-            value={selectedOfficeId}
-            onChange={handleOfficeChange}
-            options={filteredOffices.map((office) => ({
-              label: office.name,
-              value: office.id,
-            }))}
-            optionFilterProp="label"
-          />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <Select
+              allowClear
+              showSearch
+              placeholder={t('companies.title')}
+              value={selectedCompanyId}
+              onChange={handleCompanyChange}
+              options={(companiesData?.data ?? []).map((company) => ({
+                label: company.name,
+                value: company.id,
+              }))}
+              optionFilterProp="label"
+            />
 
-          <Button type="button" onClick={handleSearchFilters}>
-            {t('common.search')}
-          </Button>
+            <Select
+              allowClear
+              showSearch
+              placeholder={t('employees.office')}
+              value={selectedOfficeId}
+              onChange={handleOfficeChange}
+              options={filteredOffices.map((office) => ({
+                label: office.name,
+                value: office.id,
+              }))}
+              optionFilterProp="label"
+            />
 
-          <Button type="button" variant="outline" onClick={handleClearFilters}>
-            {t('common.reset')}
-          </Button>
-        </div>
+            <Button type="button" onClick={handleSearchFilters}>
+              {t('common.search')}
+            </Button>
 
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
-          <ErrorState
-            title={t('common.loadError')}
-            description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
-          />
-        ) : (
-          <DataTable<Trip>
-            data={listData}
-            columns={columns}
-            onRowClick={(record) => show('trips', record.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{
-              current,
-              total,
-              pageSize,
-              onPageChange: setCurrent,
-            }}
-          />
-        )}
-      </div>
+            <Button type="button" variant="outline" onClick={handleClearFilters}>
+              {t('common.reset')}
+            </Button>
+          </div>
+
+          {isLoading ? (
+            <TableSkeleton rows={5} columns={columns.length} />
+          ) : isError ? (
+            <ErrorState
+              title={t('common.loadError')}
+              description={t('common.tryAgainDescription')}
+              onRetry={() => refetch()}
+            />
+          ) : (
+            <DataTable<Trip>
+              data={listData}
+              columns={columns}
+              onRowClick={(record) => show('trips', record.id)}
+              emptyMessage={t('common.noData')}
+              pagination={{
+                current,
+                total,
+                pageSize,
+                onPageChange: setCurrent,
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}

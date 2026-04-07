@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
@@ -53,6 +56,12 @@ export function VehiclesList() {
     setCurrent(1);
   };
 
+  const handleStatusTabChange = (value: string) => {
+    setSelectedStatus(value === 'all' ? undefined : value);
+    setAppliedStatus(value === 'all' ? undefined : value);
+    setCurrent(1);
+  };
+
   const handleDelete = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setDeleteDialogOpen(true);
@@ -101,9 +110,9 @@ export function VehiclesList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <span className={item.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
           {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -163,50 +172,60 @@ export function VehiclesList() {
         }
       />
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Input
-            placeholder={t('common.search')}
-            value={searchKeyword}
-            onChange={(event) => setSearchKeyword(event.target.value)}
-          />
-          <Select
-            allowClear
-            placeholder={t('common.status')}
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-            options={[
-              { label: t('common.active'), value: 'active' },
-              { label: t('common.inactive'), value: 'inactive' },
-            ]}
-          />
-          <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
-          <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
-        </div>
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6 space-y-4">
+          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
+            <TabsList variant="line" className="w-full justify-start">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="active">{t('common.active')}</TabsTrigger>
+              <TabsTrigger value="inactive">{t('common.inactive')}</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
-          <ErrorState
-            title={t('common.loadError')}
-            description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
-          />
-        ) : (
-          <DataTable<Vehicle>
-            data={listData}
-            columns={columns}
-            onRowClick={(record) => show('vehicles', record.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{
-              current,
-              total,
-              pageSize,
-              onPageChange: setCurrent,
-            }}
-          />
-        )}
-      </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <Input
+              placeholder={t('common.search')}
+              value={searchKeyword}
+              onChange={(event) => setSearchKeyword(event.target.value)}
+            />
+            <Select
+              allowClear
+              placeholder={t('common.status')}
+              value={selectedStatus}
+              onChange={setSelectedStatus}
+              options={[
+                { label: t('common.active'), value: 'active' },
+                { label: t('common.inactive'), value: 'inactive' },
+              ]}
+            />
+            <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
+            <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
+          </div>
+
+          {isLoading ? (
+            <TableSkeleton rows={5} columns={columns.length} />
+          ) : isError ? (
+            <ErrorState
+              title={t('common.loadError')}
+              description={t('common.tryAgainDescription')}
+              onRetry={() => refetch()}
+            />
+          ) : (
+            <DataTable<Vehicle>
+              data={listData}
+              columns={columns}
+              onRowClick={(record) => show('vehicles', record.id)}
+              emptyMessage={t('common.noData')}
+              pagination={{
+                current,
+                total,
+                pageSize,
+                onPageChange: setCurrent,
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
