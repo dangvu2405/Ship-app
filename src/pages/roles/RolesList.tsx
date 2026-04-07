@@ -7,6 +7,7 @@ import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
+import { RoleFormDialog } from './RoleFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import PlusIcon from 'lucide-react/dist/esm/icons/plus';
 import EyeIcon from 'lucide-react/dist/esm/icons/eye';
@@ -19,10 +20,13 @@ import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 export function RolesList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { list } = useNavigation();
   const { mutate: deleteItem } = useDelete();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Role | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
+  const [activeRoleId, setActiveRoleId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
@@ -44,6 +48,19 @@ export function RolesList() {
     setSearchKeyword('');
     setAppliedKeyword('');
     setCurrent(1);
+  };
+
+  const handleOpenDialog = (mode: 'create' | 'edit' | 'show', roleId?: number) => {
+    setDialogMode(mode);
+    setActiveRoleId(roleId);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setActiveRoleId(undefined);
+    setDialogMode('create');
+    list('roles');
   };
 
   const confirmDelete = () => {
@@ -78,10 +95,10 @@ export function RolesList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); show('roles', record.id); }}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog('show', record.id); }}>
             <EyeIcon className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); edit('roles', record.id); }}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog('edit', record.id); }}>
             <PencilIcon className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
@@ -103,7 +120,7 @@ export function RolesList() {
         description={t('roles.descriptionPage')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('roles.title') }]}
         actions={
-          <Button onClick={() => create('roles')} className="gap-2">
+          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('roles.createRole')}
           </Button>
@@ -132,12 +149,19 @@ export function RolesList() {
           <DataTable<Role>
             data={listData}
             columns={columns}
-            onRowClick={(r) => show('roles', r.id)}
+            onRowClick={(r) => handleOpenDialog('show', r.id)}
             emptyMessage={t('common.noData')}
             pagination={{ current, total, pageSize, onPageChange: setCurrent }}
           />
         )}
       </div>
+      <RoleFormDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        recordId={activeRoleId}
+        onClose={handleCloseDialog}
+        onSuccess={refetch}
+      />
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.name} />
     </>
   );

@@ -109,6 +109,10 @@ export const FormItemSelect = ({
     ...selectPropsWithoutOptions,
     allowClear: resolvedAllowClear,
     showSearch: resolvedShowSearch,
+    optionFilterProp: selectProps?.optionFilterProp ?? 'label',
+    getPopupContainer:
+      selectProps?.getPopupContainer ??
+      ((triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body),
     mode: mode || selectProps?.mode,
     size: size || selectProps?.size,
     loading: loading ?? selectProps?.loading,

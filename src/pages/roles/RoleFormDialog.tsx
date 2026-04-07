@@ -14,15 +14,32 @@ import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler
 import { fetchPermissionsPage } from '@/services/permissions.service';
 import { syncRolePermissions } from '@/services/roles.service';
 
-export function RoleFormDialog() {
+interface RoleFormDialogProps {
+  open?: boolean;
+  mode?: 'create' | 'edit' | 'show';
+  recordId?: number;
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+export function RoleFormDialog({
+  open,
+  mode,
+  recordId,
+  onClose,
+  onSuccess,
+}: RoleFormDialogProps = {}) {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const { list } = useNavigation();
   const [form] = Form.useForm<RoleFormValues>();
-  const hasRecordId = !!id;
-  const isViewMode = location.pathname.includes('/show/');
+  const isControlled = typeof open === 'boolean';
+  const resolvedId = recordId ?? (id ? Number(id) : undefined);
+  const hasRecordId = !!resolvedId;
+  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const isEdit = hasRecordId && !isViewMode;
+  const dialogOpen = isControlled ? open : true;
   const [permissionOptions, setPermissionOptions] = useState<{ label: string; value: number }[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(true);
 
@@ -49,7 +66,7 @@ export function RoleFormDialog() {
 
   const { data, isLoading: isLoadingData } = useOne<Role>({
     resource: 'roles',
-    id: id || '',
+    id: resolvedId || '',
     queryOptions: { enabled: hasRecordId },
   });
 
@@ -57,25 +74,31 @@ export function RoleFormDialog() {
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<Role>();
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
-  const handleClose = () => list('roles');
+  const handleClose = () => {
+    onClose?.();
+    if (!isControlled) {
+      list('roles');
+    }
+  };
 
   const handleSubmit = (values: RoleFormValues) => {
     const { permission_ids = [], name, description } = values;
     const roleFields = { name, description };
 
-    if (isEdit && id) {
+    if (isEdit && resolvedId) {
       updateItem(
-        { resource: 'roles', id, values: roleFields },
+        { resource: 'roles', id: resolvedId, values: roleFields },
         {
           onSuccess: async () => {
             try {
-              await syncRolePermissions(id, permission_ids);
+              await syncRolePermissions(resolvedId, permission_ids);
             } catch (error) {
               toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('roles.permissions') }));
               return;
             }
             toast.success(t('notifications.updateSuccess', { item: t('roles.title') }));
-            list('roles');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
@@ -100,7 +123,8 @@ export function RoleFormDialog() {
             }
           }
           toast.success(t('notifications.createSuccess', { item: t('roles.title') }));
-          list('roles');
+          onSuccess?.();
+          handleClose();
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -125,7 +149,7 @@ export function RoleFormDialog() {
 
   if (hasRecordId && isLoadingData) {
     return (
-      <Dialog open onOpenChange={handleClose}>
+      <Dialog open={dialogOpen} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('roles.editRole')}</DialogTitle>
@@ -137,7 +161,7 @@ export function RoleFormDialog() {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && handleClose()}>
+    <Dialog open={dialogOpen} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('roles.editRole') : t('roles.createRole')}</DialogTitle>
