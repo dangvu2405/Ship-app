@@ -4,27 +4,40 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { VehicleAssignmentForm } from './VehicleAssignmentForm';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import ArrowLeftIcon from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { VehicleAssignment } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
-export function VehicleAssignmentFormDialog() {
+interface VehicleAssignmentFormDialogProps {
+  open?: boolean;
+  mode?: 'create' | 'edit' | 'show';
+  recordId?: number;
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+export function VehicleAssignmentFormDialog({ open, mode, recordId, onClose, onSuccess }: VehicleAssignmentFormDialogProps = {}) {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const { list } = useNavigation();
   const [form] = Form.useForm();
-  const hasRecordId = !!id;
-  const isViewMode = location.pathname.includes('/show/');
+  const isControlled = typeof open === 'boolean';
+  const resolvedId = recordId ?? (id ? Number(id) : undefined);
+  const hasRecordId = !!resolvedId;
+  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const isEdit = hasRecordId && !isViewMode;
+  const dialogOpen = isControlled ? open : true;
 
   const { data, isLoading: isLoadingData } = useOne<VehicleAssignment>({
     resource: 'vehicle_assignments',
-    id: id || '',
+    id: resolvedId || '',
     queryOptions: { enabled: hasRecordId },
   });
 
@@ -32,16 +45,29 @@ export function VehicleAssignmentFormDialog() {
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<VehicleAssignment>();
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
-  const handleClose = () => list('vehicle_assignments');
+  const handleClose = () => {
+    onClose?.();
+    if (!isControlled) {
+      list('vehicle_assignments');
+    }
+  };
+
+  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+    form,
+    isViewMode,
+    isSubmitting: isLoading,
+    onClose: handleClose,
+  });
 
   const handleSubmit = (values: Partial<VehicleAssignment>) => {
-    if (isEdit && id) {
+    if (isEdit && resolvedId) {
       updateItem(
-        { resource: 'vehicle_assignments', id, values },
+        { resource: 'vehicle_assignments', id: resolvedId, values },
         {
           onSuccess: () => {
             toast.success(t('notifications.updateSuccess', { item: t('vehicleAssignments.title') }));
-            list('vehicle_assignments');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
@@ -55,7 +81,8 @@ export function VehicleAssignmentFormDialog() {
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('vehicleAssignments.title') }));
-            list('vehicle_assignments');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
@@ -81,8 +108,8 @@ export function VehicleAssignmentFormDialog() {
 
   if (hasRecordId && isLoadingData) {
     return (
-      <Dialog open onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('vehicleAssignments.editAssignment')}</DialogTitle>
           </DialogHeader>
@@ -93,17 +120,32 @@ export function VehicleAssignmentFormDialog() {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('vehicleAssignments.editAssignment') : t('vehicleAssignments.createAssignment')}</DialogTitle>
           <DialogDescription>{isViewMode ? t('vehicleAssignments.editDescription') : isEdit ? t('vehicleAssignments.editDescription') : t('vehicleAssignments.createDescription')}</DialogDescription>
         </DialogHeader>
-        <Form form={form} onFinish={handleSubmit} layout="vertical" disabled={isViewMode}>
-          <VehicleAssignmentForm form={form} initialValues={data?.data} />
-        </Form>
-        <DialogFooter>
-          <Button variant="outline" type="button" onClick={handleClose} className="gap-2">
+
+        <div className="px-6 pb-6 space-y-4">
+          <Alert>
+            <AlertTitle>{t('formGuides.title')}</AlertTitle>
+            <AlertDescription>{t('formGuides.vehicleAssignment')}</AlertDescription>
+          </Alert>
+
+          <Form
+            form={form}
+            onFinish={handleSubmit}
+            layout="vertical"
+            validateTrigger={["onBlur", "onSubmit"]}
+            disabled={isViewMode}
+          >
+            <VehicleAssignmentForm form={form} initialValues={data?.data} />
+          </Form>
+        </div>
+
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+          <Button variant="outline" type="button" onClick={requestClose} className="gap-2">
             <ArrowLeftIcon className="h-4 w-4" />
             {t('common.back')}
           </Button>

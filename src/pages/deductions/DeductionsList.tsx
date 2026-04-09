@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -15,11 +16,16 @@ import type { Deduction } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { DeductionFormDialog } from './DeductionFormDialog';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function DeductionsList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Deduction | null>(null);
   const [current, setCurrent] = useState(1);
@@ -28,6 +34,8 @@ export function DeductionsList() {
     resource: 'deductions',
     pagination: { current, pageSize: 15 },
   });
+
+  const safeRefetch = useSafeRefetch('deductions-deductionslist', refetch);
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -38,7 +46,7 @@ export function DeductionsList() {
           toast.success(t('notifications.deleteSuccess', { item: t('deductions.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -48,7 +56,20 @@ export function DeductionsList() {
     );
   };
 
-  const columns: DataTableColumn<Deduction>[] = [
+  const handleCreate = () => {
+    setFormMode('create');
+    setEditingId(undefined);
+    setFormOpen(true);
+  };
+
+  const handleEdit = useCallback((id: number) => {
+    setFormMode('edit');
+    setEditingId(id);
+    setFormOpen(true);
+  }, []);
+
+  const columns = useMemo<DataTableColumn<Deduction>[]>(
+    () => [
     { key: 'code', header: t('deductions.code'), dataIndex: 'code' },
     { key: 'name', header: t('deductions.name'), dataIndex: 'name' },
     {
@@ -56,19 +77,49 @@ export function DeductionsList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); show('deductions', record.id); }}>
-            <EyeIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.view')}
+            onClick={(e) => {
+              e.stopPropagation();
+              show('deductions', record.id);
+            }}
+          >
+            <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); edit('deductions', record.id); }}>
-            <PencilIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.edit')}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record.id);
+            }}
+          >
+            <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
-            <Trash2Icon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            aria-label={t('common.delete')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(record);
+              setDeleteDialogOpen(true);
+            }}
+          >
+            <Trash2Icon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleEdit]
+  );
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -81,20 +132,21 @@ export function DeductionsList() {
         description={t('deductions.description')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('deductions.title') }]}
         actions={
-          <Button onClick={() => create('deductions')} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('deductions.createDeduction')}
           </Button>
         }
       />
-      <div className="bg-card shadow rounded-lg border p-6">
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
         {isLoading ? (
           <TableSkeleton rows={5} columns={columns.length} />
         ) : isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
+            onRetry={() => void safeRefetch(true)}
           />
         ) : (
           <DataTable<Deduction>
@@ -105,8 +157,23 @@ export function DeductionsList() {
             pagination={{ current, total, pageSize, onPageChange: setCurrent }}
           />
         )}
-      </div>
+        </CardContent>
+      </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.name} />
+      {formOpen && (
+        <DeductionFormDialog
+          open={formOpen}
+          mode={formMode}
+          recordId={editingId}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingId(undefined);
+          }}
+          onSuccess={() => {
+            void safeRefetch(true);
+          }}
+        />
+      )}
     </>
   );
 }

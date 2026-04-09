@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import { Pagination } from './Pagination';
 
 function getValue<T>(item: T, dataIndex?: string | string[], key?: string): unknown {
@@ -87,9 +88,12 @@ export function DataTable<T extends { id: number }>({
                 <tr
                   key={item.id}
                   onClick={() => onRowClick?.(item)}
-                  className={onRowClick
-                    ? 'group cursor-pointer even:bg-muted/30 hover:bg-primary/5 transition-colors'
-                    : 'even:bg-muted/30'}
+                  className={cn(
+                    onRowClick
+                      ? 'group cursor-pointer even:bg-muted/30 hover:bg-primary/5 transition-colors'
+                      : 'even:bg-muted/30',
+                    'supports-[content-visibility:auto]:[content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_3rem]'
+                  )}
                 >
                   {columns.map((column) => (
                     <td

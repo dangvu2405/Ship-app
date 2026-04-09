@@ -7,10 +7,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useAppStore } from '@/stores/app.store';
 import { useTranslation } from '@/hooks/useTranslation';
+import toast from 'react-hot-toast';
 
 export const Settings = () => {
-  const { theme, toggleTheme, locale, setLocale } = useAppStore();
+  const {
+    theme,
+    toggleTheme,
+    locale,
+    setLocale,
+    compactMode,
+    setCompactMode,
+    notifyEmail,
+    setNotifyEmail,
+    notifyPush,
+    setNotifyPush,
+    notifySound,
+    setNotifySound,
+    resetUiPreferences,
+  } = useAppStore();
   const { t } = useTranslation();
+  const compact = compactMode ?? false;
+  const emailOn = notifyEmail ?? true;
+  const pushOn = notifyPush ?? true;
+  const soundOn = notifySound ?? false;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -63,7 +82,7 @@ export const Settings = () => {
               <Label className="text-sm font-medium">{t('settings.appearance.compactMode')}</Label>
               <p className="text-xs text-muted-foreground mt-0.5">{t('settings.appearance.compactModeDescription')}</p>
             </div>
-            <Switch />
+            <Switch checked={compact} onCheckedChange={setCompactMode} />
           </div>
         </CardContent>
       </Card>
@@ -80,7 +99,7 @@ export const Settings = () => {
               <Label className="text-sm font-medium">{t('settings.notifications.email')}</Label>
               <p className="text-xs text-muted-foreground mt-0.5">{t('settings.notifications.emailDescription')}</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={emailOn} onCheckedChange={setNotifyEmail} />
           </div>
 
           <Separator />
@@ -90,7 +109,7 @@ export const Settings = () => {
               <Label className="text-sm font-medium">{t('settings.notifications.push')}</Label>
               <p className="text-xs text-muted-foreground mt-0.5">{t('settings.notifications.pushDescription')}</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={pushOn} onCheckedChange={setNotifyPush} />
           </div>
 
           <Separator />
@@ -100,7 +119,7 @@ export const Settings = () => {
               <Label className="text-sm font-medium">{t('settings.notifications.sound')}</Label>
               <p className="text-xs text-muted-foreground mt-0.5">{t('settings.notifications.soundDescription')}</p>
             </div>
-            <Switch />
+            <Switch checked={soundOn} onCheckedChange={setNotifySound} />
           </div>
         </CardContent>
       </Card>
@@ -135,8 +154,19 @@ export const Settings = () => {
 
       {/* Actions */}
       <div className="flex justify-end gap-3">
-        <Button variant="outline">{t('settings.resetToDefaults')}</Button>
-        <Button>{t('settings.saveSettings')}</Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            resetUiPreferences();
+            toast.success(t('settings.resetDone'));
+          }}
+        >
+          {t('settings.resetToDefaults')}
+        </Button>
+        <Button type="button" onClick={() => toast.success(t('settings.saved'))}>
+          {t('settings.saveSettings')}
+        </Button>
       </div>
     </div>
   );

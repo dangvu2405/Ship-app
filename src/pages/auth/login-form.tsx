@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import api from "@/services/api"
-import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +11,8 @@ import { useAuthStore } from "@/stores/auth.store"
 import { useTranslation } from "@/hooks/useTranslation"
 import { ROUTES } from "@/routes"
 import { TEST_ACCOUNTS_ENABLED } from "@/utils/constants"
+import { notifyErrorOnce } from "@/utils/errorToast"
+import toast from "react-hot-toast"
 
 const TEST_UI_ACCOUNT = {
   email: 'admin@abctransport.com',
@@ -58,8 +59,8 @@ export function LoginForm({
       setIsSubmitting(true)
       await login(email.trim(), password)
       navigate(ROUTES.dashboard)
-    } catch {
-      toast.error(t('auth.loginFailed'))
+    } catch (error) {
+      notifyErrorOnce('auth-login', error, { fallbackMessage: t('auth.loginFailed') })
     } finally {
       setIsSubmitting(false)
     }
@@ -70,8 +71,8 @@ export function LoginForm({
       setIsSubmitting(true)
       await login(email, 'password')
       navigate(ROUTES.dashboard)
-    } catch {
-      toast.error(t('auth.loginFailed'))
+    } catch (error) {
+      notifyErrorOnce('auth-login-test', error, { fallbackMessage: t('auth.loginFailed') })
     } finally {
       setIsSubmitting(false)
     }
@@ -85,8 +86,8 @@ export function LoginForm({
       setIsSubmitting(true)
       await login(TEST_UI_ACCOUNT.email, TEST_UI_ACCOUNT.password)
       navigate(ROUTES.dashboard)
-    } catch {
-      toast.error(t('auth.loginFailed'))
+    } catch (error) {
+      notifyErrorOnce('auth-login-test-ui', error, { fallbackMessage: t('auth.loginFailed') })
     } finally {
       setIsSubmitting(false)
     }
@@ -123,12 +124,13 @@ export function LoginForm({
                 <div className="grid gap-2">
                   <div className="flex items-center">
                     <Label htmlFor="password" className="text-slate-700 dark:text-slate-300">{t('auth.password')}</Label>
-                    <a
-                      href="#"
+                    <button
+                      type="button"
                       className="ml-auto text-sm text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline"
+                      onClick={() => toast(t('auth.forgotPasswordUnavailable'))}
                     >
                       {t('auth.forgotPassword')}
-                    </a>
+                    </button>
                   </div>
                   <Input
                     id="password"
@@ -139,29 +141,30 @@ export function LoginForm({
                     className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600"
                   />
                 </div>
-                <Button type="submit" disabled={isSubmitting} className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" loading={isSubmitting} className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
                   {t('auth.login')}
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={isSubmitting}
+                  loading={isSubmitting}
                   onClick={handleTestUILogin}
                   className="w-full h-11 text-base border-amber-500 text-amber-700 hover:bg-amber-50 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-950"
                 >
-                  Đăng nhập test UI
+                  {t('auth.testUiLogin')}
                 </Button>
                 
                 {testAccounts.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {testAccounts.map(acc => (
                       <Button 
-                        key={acc.role}
+                        key={`${acc.role}-${acc.email}`}
                         type="button" 
                         variant="outline"
                         onClick={() => handleTestLogin(acc.email)}
-                        disabled={isSubmitting || acc.email.startsWith('no-user')}
+                        loading={isSubmitting}
+                        disabled={acc.email.startsWith('no-user')}
                         className="w-full py-2 text-sm border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-950 flex flex-col items-center justify-center whitespace-normal h-auto min-h-12"
                       >
                         <span className="font-semibold block leading-tight">
@@ -226,9 +229,25 @@ export function LoginForm({
             </div>
           </CardContent>
         </Card>
-        <div className="text-balance text-center text-xs text-slate-500 dark:text-slate-400 mt-6 [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-blue-600 dark:hover:[&_a]:text-blue-400">
-          {t('auth.agreeTerms')} <a href="#">{t('auth.termsOfService')}</a>{" "}
-          and <a href="#">{t('auth.privacyPolicy')}</a>.
+        <div className="text-balance text-center text-xs text-slate-500 dark:text-slate-400 mt-6">
+          {t('auth.agreeTerms')}{" "}
+          <button
+            type="button"
+            className="text-blue-600 dark:text-blue-400 underline underline-offset-4 hover:text-blue-700 dark:hover:text-blue-300"
+            onClick={() => toast(t('auth.legalNotice'))}
+          >
+            {t('auth.termsOfService')}
+          </button>
+          {" "}
+          {t('common.and')}{" "}
+          <button
+            type="button"
+            className="text-blue-600 dark:text-blue-400 underline underline-offset-4 hover:text-blue-700 dark:hover:text-blue-300"
+            onClick={() => toast(t('auth.legalNotice'))}
+          >
+            {t('auth.privacyPolicy')}
+          </button>
+          .
         </div>
       </div>
     </div>

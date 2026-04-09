@@ -1,7 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select } from 'antd';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
@@ -9,16 +17,25 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import Edit from 'lucide-react/dist/esm/icons/edit';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
 import type { User } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { UserFormDialog } from './UserFormDialog';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function UsersList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [current, setCurrent] = useState(1);
@@ -39,6 +56,8 @@ export function UsersList() {
     ],
   });
 
+  const safeRefetch = useSafeRefetch('users-userslist', refetch);
+
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
     setAppliedStatus(selectedStatus);
@@ -53,10 +72,22 @@ export function UsersList() {
     setCurrent(1);
   };
 
-  const handleDelete = (user: User) => {
+  const handleCreate = () => {
+    setFormMode('create');
+    setEditingId(undefined);
+    setFormOpen(true);
+  };
+
+  const handleEdit = useCallback((id: number) => {
+    setFormMode('edit');
+    setEditingId(id);
+    setFormOpen(true);
+  }, []);
+
+  const handleDelete = useCallback((user: User) => {
     setSelectedUser(user);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
   const confirmDelete = () => {
     if (!selectedUser) return;
@@ -71,7 +102,7 @@ export function UsersList() {
           toast.success(t('notifications.deleteSuccess', { item: t('users.title') }));
           setDeleteDialogOpen(false);
           setSelectedUser(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) {
@@ -84,7 +115,8 @@ export function UsersList() {
     );
   };
 
-  const columns: DataTableColumn<User>[] = [
+  const columns = useMemo<DataTableColumn<User>[]>(
+    () => [
     { key: 'username', header: t('users.username'), dataIndex: 'username' },
     { key: 'email', header: t('users.email'), dataIndex: 'email' },
     { key: 'employee', header: t('users.employee'), dataIndex: ['employee', 'name'] },
@@ -93,9 +125,9 @@ export function UsersList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <span className={item.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
           {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -108,35 +140,34 @@ export function UsersList() {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); show('users', record.id); }}
-            className="h-8 w-8 p-0"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); edit('users', record.id); }}
-            className="h-8 w-8 p-0"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleDelete(record); }}
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
+                <MoreHorizontal className="h-4 w-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => show('users', record.id)}>
+                <Eye className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.view')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(record.id)}>
+                <Edit className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
+                <Trash2 className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleEdit, handleDelete]
+  );
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
@@ -154,14 +185,15 @@ export function UsersList() {
         description={t('users.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={() => create('users')} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2">
             <Plus className="h-4 w-4" />
             {t('users.createUser')}
           </Button>
         }
       />
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <SearchField
             placeholder={t('common.search')}
@@ -170,21 +202,24 @@ export function UsersList() {
           />
 
           <Select
-            allowClear
-            placeholder={t('common.status')}
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-            options={[
-              { label: t('common.active'), value: 'active' },
-              { label: t('common.inactive'), value: 'inactive' },
-            ]}
-          />
+            value={selectedStatus ?? 'all'}
+            onValueChange={(value) => setSelectedStatus(value === 'all' ? undefined : value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t('common.status')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('common.all')}</SelectItem>
+              <SelectItem value="active">{t('common.active')}</SelectItem>
+              <SelectItem value="inactive">{t('common.inactive')}</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <Button type="button" onClick={handleSearchFilters}>
+          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
             {t('common.search')}
           </Button>
 
-          <Button type="button" variant="outline" onClick={handleClearFilters}>
+          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
             {t('common.reset')}
           </Button>
         </div>
@@ -195,7 +230,7 @@ export function UsersList() {
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
+            onRetry={() => void safeRefetch(true)}
           />
         ) : (
           <DataTable<User>
@@ -211,7 +246,8 @@ export function UsersList() {
             }}
           />
         )}
-      </div>
+        </CardContent>
+      </Card>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
@@ -219,6 +255,21 @@ export function UsersList() {
         onConfirm={confirmDelete}
         itemName={selectedUser?.username}
       />
+
+      {formOpen && (
+        <UserFormDialog
+          open={formOpen}
+          mode={formMode}
+          recordId={editingId}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingId(undefined);
+          }}
+          onSuccess={() => {
+            void safeRefetch(true);
+          }}
+        />
+      )}
     </>
   );
 }

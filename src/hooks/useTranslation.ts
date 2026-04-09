@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useAppStore } from '@/stores/app.store';
 import { translations, type TranslationKeys } from '@/locales';
 
@@ -7,7 +8,9 @@ type NestedKeyOf<ObjectType extends object> = {
     : `${Key}`;
 }[keyof ObjectType & (string | number)];
 
-type TranslationPath = NestedKeyOf<TranslationKeys>;
+export type TranslationPath = NestedKeyOf<TranslationKeys>;
+
+export type Translate = (key: TranslationPath, params?: Record<string, string | number>) => string;
 
 /**
  * Hook to use translations
@@ -30,9 +33,9 @@ type TranslationPath = NestedKeyOf<TranslationKeys>;
  */
 export const useTranslation = () => {
   const locale = useAppStore((state) => state.locale);
-  const translations_obj = translations[locale];
 
-  const t = (key: TranslationPath, params?: Record<string, string | number>): string => {
+  const t = useCallback((key: TranslationPath, params?: Record<string, string | number>): string => {
+    const translations_obj = translations[locale];
     const keys = key.split('.');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let value: any = translations_obj;
@@ -57,7 +60,7 @@ export const useTranslation = () => {
     }
 
     return value;
-  };
+  }, [locale]);
 
   return {
     t,

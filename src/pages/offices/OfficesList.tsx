@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useDelete, useList, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
+import { OfficeFormDialog } from './OfficeFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import PlusIcon from 'lucide-react/dist/esm/icons/plus';
 import EyeIcon from 'lucide-react/dist/esm/icons/eye';
@@ -19,13 +20,17 @@ import type { Company, Office } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function OfficesList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<Office | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
+  const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | undefined>(undefined);
@@ -50,6 +55,8 @@ export function OfficesList() {
     ],
   });
 
+  const safeRefetch = useSafeRefetch('offices-officeslist', refetch);
+
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
     setAppliedCompanyId(selectedCompanyId);
@@ -64,6 +71,18 @@ export function OfficesList() {
     setCurrent(1);
   };
 
+  const handleOpenDialog = useCallback((mode: 'create' | 'edit' | 'show', id?: number) => {
+    setDialogMode(mode);
+    setActiveId(id);
+    setDialogOpen(true);
+  }, []);
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setDialogMode('create');
+    setActiveId(undefined);
+  };
+
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
@@ -73,7 +92,7 @@ export function OfficesList() {
           toast.success(t('notifications.deleteSuccess', { item: t('offices.title') }));
           setDeleteOpen(false);
           setSelected(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -83,7 +102,8 @@ export function OfficesList() {
     );
   };
 
-  const columns: DataTableColumn<Office>[] = [
+  const columns = useMemo<DataTableColumn<Office>[]>(
+    () => [
     { key: 'code', header: t('companies.code'), dataIndex: 'code' },
     { key: 'name', header: t('companies.name'), dataIndex: 'name' },
     {
@@ -101,40 +121,45 @@ export function OfficesList() {
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
+            aria-label={t('common.view')}
             onClick={(e) => {
               e.stopPropagation();
               show('offices', record.id);
             }}
           >
-            <EyeIcon className="h-4 w-4" />
+            <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
+            aria-label={t('common.edit')}
             onClick={(e) => {
               e.stopPropagation();
-              edit('offices', record.id);
+              handleOpenDialog('edit', record.id);
             }}
           >
-            <PencilIcon className="h-4 w-4" />
+            <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0 text-destructive"
+            aria-label={t('common.delete')}
             onClick={(e) => {
               e.stopPropagation();
               setSelected(record);
               setDeleteOpen(true);
             }}
           >
-            <TrashIcon className="h-4 w-4" />
+            <TrashIcon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleOpenDialog]
+  );
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -149,7 +174,7 @@ export function OfficesList() {
           { label: t('offices.title') },
         ]}
         actions={
-          <Button onClick={() => create('offices')} className="gap-2">
+          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('offices.createOffice')}
           </Button>
@@ -177,11 +202,11 @@ export function OfficesList() {
             optionFilterProp="label"
           />
 
-          <Button type="button" onClick={handleSearchFilters}>
+          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
             {t('common.search')}
           </Button>
 
-          <Button type="button" variant="outline" onClick={handleClearFilters}>
+          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
             {t('common.reset')}
           </Button>
           </div>
@@ -192,7 +217,7 @@ export function OfficesList() {
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
-              onRetry={() => refetch()}
+              onRetry={() => void safeRefetch(true)}
             />
           ) : (
             <DataTable<Office>
@@ -210,6 +235,15 @@ export function OfficesList() {
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
         itemName={selected?.name}
+      />
+      <OfficeFormDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        recordId={activeId}
+        onClose={handleCloseDialog}
+        onSuccess={() => {
+          void safeRefetch(true);
+        }}
       />
     </>
   );

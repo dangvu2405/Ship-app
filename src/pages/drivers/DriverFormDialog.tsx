@@ -8,24 +8,36 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { DriverForm } from './DriverForm';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import ArrowLeftIcon from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Driver } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
-export function DriverFormDialog() {
+interface DriverFormDialogProps {
+  open?: boolean;
+  mode?: 'create' | 'edit' | 'show';
+  recordId?: number;
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: DriverFormDialogProps = {}) {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const { list } = useNavigation();
   const [form] = Form.useForm();
-  const hasRecordId = !!id;
-  const isViewMode = location.pathname.includes('/show/');
+  const isControlled = typeof open === 'boolean';
+  const resolvedId = recordId ?? (id ? Number(id) : undefined);
+  const hasRecordId = !!resolvedId;
+  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const isEdit = hasRecordId && !isViewMode;
+  const dialogOpen = isControlled ? open : true;
 
   const { data, isLoading: isLoadingData } = useOne<Driver>({
     resource: 'drivers',
-    id: id || '',
+    id: resolvedId || '',
     queryOptions: { enabled: hasRecordId },
   });
 
@@ -33,16 +45,29 @@ export function DriverFormDialog() {
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<Driver>();
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
-  const handleClose = () => list('drivers');
+  const handleClose = () => {
+    onClose?.();
+    if (!isControlled) {
+      list('drivers');
+    }
+  };
+
+  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+    form,
+    isViewMode,
+    isSubmitting: isLoading,
+    onClose: handleClose,
+  });
 
   const handleSubmit = (values: Partial<Driver>) => {
-    if (isEdit && id) {
+    if (isEdit && resolvedId) {
       updateItem(
-        { resource: 'drivers', id, values },
+        { resource: 'drivers', id: resolvedId, values },
         {
           onSuccess: () => {
             toast.success(t('notifications.updateSuccess', { item: t('drivers.title') }));
-            list('drivers');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
@@ -56,7 +81,8 @@ export function DriverFormDialog() {
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('drivers.title') }));
-            list('drivers');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
@@ -75,8 +101,8 @@ export function DriverFormDialog() {
 
   if (hasRecordId && isLoadingData) {
     return (
-      <Dialog open onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('drivers.editDriver')}</DialogTitle>
           </DialogHeader>
@@ -87,8 +113,8 @@ export function DriverFormDialog() {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('drivers.editDriver') : t('drivers.createDriver')}</DialogTitle>
           <DialogDescription>{isViewMode ? t('drivers.editDescription') : isEdit ? t('drivers.editDescription') : t('drivers.createDescription')}</DialogDescription>
@@ -96,8 +122,8 @@ export function DriverFormDialog() {
 
         <div className="px-6 pb-6 space-y-4">
           <Alert>
-            <AlertTitle>Form guide</AlertTitle>
-            <AlertDescription>Please verify license number and expiration date before saving.</AlertDescription>
+            <AlertTitle>{t('formGuides.title')}</AlertTitle>
+            <AlertDescription>{t('formGuides.driver')}</AlertDescription>
           </Alert>
 
           <Form
@@ -112,7 +138,7 @@ export function DriverFormDialog() {
         </div>
 
         <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
-          <Button variant="outline" type="button" onClick={handleClose} className="gap-2">
+          <Button variant="outline" type="button" onClick={requestClose} className="gap-2">
             <ArrowLeftIcon className="h-4 w-4" />
             {t('common.back')}
           </Button>

@@ -2,7 +2,10 @@ import * as React from "react"
 import { Select as SelectPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { IconSelector, IconCheck, IconChevronUp, IconChevronDown } from "@tabler/icons-react"
+import IconSelector from "@tabler/icons-react/dist/esm/icons/IconSelector.mjs"
+import IconCheck from "@tabler/icons-react/dist/esm/icons/IconCheck.mjs"
+import IconChevronUp from "@tabler/icons-react/dist/esm/icons/IconChevronUp.mjs"
+import IconChevronDown from "@tabler/icons-react/dist/esm/icons/IconChevronDown.mjs"
 
 function Select({
   ...props

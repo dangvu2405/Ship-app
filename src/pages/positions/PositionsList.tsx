@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useDelete, useList, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
+import { PositionFormDialog } from './PositionFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import PlusIcon from 'lucide-react/dist/esm/icons/plus';
 import EyeIcon from 'lucide-react/dist/esm/icons/eye';
@@ -16,13 +18,17 @@ import type { Position } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function PositionsList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<Position | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
+  const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
@@ -35,6 +41,8 @@ export function PositionsList() {
     ],
   });
 
+  const safeRefetch = useSafeRefetch('positions-positionslist', refetch);
+
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
     setCurrent(1);
@@ -46,8 +54,22 @@ export function PositionsList() {
     setCurrent(1);
   };
 
-  const formatMoney = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+  const handleOpenDialog = useCallback((mode: 'create' | 'edit' | 'show', id?: number) => {
+    setDialogMode(mode);
+    setActiveId(id);
+    setDialogOpen(true);
+  }, []);
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setDialogMode('create');
+    setActiveId(undefined);
+  };
+
+  const formatMoney = useCallback(
+    (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n),
+    []
+  );
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -58,7 +80,7 @@ export function PositionsList() {
           toast.success(t('notifications.deleteSuccess', { item: t('positions.title') }));
           setDeleteOpen(false);
           setSelected(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -68,7 +90,8 @@ export function PositionsList() {
     );
   };
 
-  const columns: DataTableColumn<Position>[] = [
+  const columns = useMemo<DataTableColumn<Position>[]>(
+    () => [
     { key: 'code', header: t('companies.code'), dataIndex: 'code' },
     { key: 'name', header: t('companies.name'), dataIndex: 'name' },
     {
@@ -87,40 +110,45 @@ export function PositionsList() {
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
+            aria-label={t('common.view')}
             onClick={(e) => {
               e.stopPropagation();
               show('positions', record.id);
             }}
           >
-            <EyeIcon className="h-4 w-4" />
+            <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
+            aria-label={t('common.edit')}
             onClick={(e) => {
               e.stopPropagation();
-              edit('positions', record.id);
+              handleOpenDialog('edit', record.id);
             }}
           >
-            <PencilIcon className="h-4 w-4" />
+            <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0 text-destructive"
+            aria-label={t('common.delete')}
             onClick={(e) => {
               e.stopPropagation();
               setSelected(record);
               setDeleteOpen(true);
             }}
           >
-            <TrashIcon className="h-4 w-4" />
+            <TrashIcon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, formatMoney, handleOpenDialog]
+  );
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -135,13 +163,14 @@ export function PositionsList() {
           { label: t('positions.title') },
         ]}
         actions={
-          <Button onClick={() => create('positions')} className="gap-2">
+          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('positions.createPosition')}
           </Button>
         }
       />
-      <div className="bg-card shadow rounded-lg border p-6">
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <SearchField
             placeholder={t('common.search')}
@@ -149,11 +178,11 @@ export function PositionsList() {
             onChange={setSearchKeyword}
           />
 
-          <Button type="button" onClick={handleSearchFilters}>
+          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
             {t('common.search')}
           </Button>
 
-          <Button type="button" variant="outline" onClick={handleClearFilters}>
+          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
             {t('common.reset')}
           </Button>
         </div>
@@ -164,7 +193,7 @@ export function PositionsList() {
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
+            onRetry={() => void safeRefetch(true)}
           />
         ) : (
           <DataTable<Position>
@@ -175,12 +204,22 @@ export function PositionsList() {
             pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
           />
         )}
-      </div>
+        </CardContent>
+      </Card>
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
         itemName={selected?.name}
+      />
+      <PositionFormDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        recordId={activeId}
+        onClose={handleCloseDialog}
+        onSuccess={() => {
+          void safeRefetch(true);
+        }}
       />
     </>
   );

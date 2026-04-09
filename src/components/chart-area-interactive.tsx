@@ -1,7 +1,9 @@
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useTranslation } from "@/hooks/useTranslation"
+import { useAppStore } from "@/stores/app.store"
 import {
   Card,
   CardContent,
@@ -10,10 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart"
 import {
   Select,
@@ -26,117 +29,81 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
-const chartData = [
-  { date: "2024-04-01", desktop: 222, mobile: 150 },
-  { date: "2024-04-02", desktop: 97, mobile: 180 },
-  { date: "2024-04-03", desktop: 167, mobile: 120 },
-  { date: "2024-04-04", desktop: 242, mobile: 260 },
-  { date: "2024-04-05", desktop: 373, mobile: 290 },
-  { date: "2024-04-06", desktop: 301, mobile: 340 },
-  { date: "2024-04-07", desktop: 245, mobile: 180 },
-  { date: "2024-04-08", desktop: 409, mobile: 320 },
-  { date: "2024-04-09", desktop: 59, mobile: 110 },
-  { date: "2024-04-10", desktop: 261, mobile: 190 },
-  { date: "2024-04-11", desktop: 327, mobile: 350 },
-  { date: "2024-04-12", desktop: 292, mobile: 210 },
-  { date: "2024-04-13", desktop: 342, mobile: 380 },
-  { date: "2024-04-14", desktop: 137, mobile: 220 },
-  { date: "2024-04-15", desktop: 120, mobile: 170 },
-  { date: "2024-04-16", desktop: 138, mobile: 190 },
-  { date: "2024-04-17", desktop: 446, mobile: 360 },
-  { date: "2024-04-18", desktop: 364, mobile: 410 },
-  { date: "2024-04-19", desktop: 243, mobile: 180 },
-  { date: "2024-04-20", desktop: 89, mobile: 150 },
-  { date: "2024-04-21", desktop: 137, mobile: 200 },
-  { date: "2024-04-22", desktop: 224, mobile: 170 },
-  { date: "2024-04-23", desktop: 138, mobile: 230 },
-  { date: "2024-04-24", desktop: 387, mobile: 290 },
-  { date: "2024-04-25", desktop: 215, mobile: 250 },
-  { date: "2024-04-26", desktop: 75, mobile: 130 },
-  { date: "2024-04-27", desktop: 383, mobile: 420 },
-  { date: "2024-04-28", desktop: 122, mobile: 180 },
-  { date: "2024-04-29", desktop: 315, mobile: 240 },
-  { date: "2024-04-30", desktop: 454, mobile: 380 },
-  { date: "2024-05-01", desktop: 165, mobile: 220 },
-  { date: "2024-05-02", desktop: 293, mobile: 310 },
-  { date: "2024-05-03", desktop: 247, mobile: 190 },
-  { date: "2024-05-04", desktop: 385, mobile: 420 },
-  { date: "2024-05-05", desktop: 481, mobile: 390 },
-  { date: "2024-05-06", desktop: 498, mobile: 520 },
-  { date: "2024-05-07", desktop: 388, mobile: 300 },
-  { date: "2024-05-08", desktop: 149, mobile: 210 },
-  { date: "2024-05-09", desktop: 227, mobile: 180 },
-  { date: "2024-05-10", desktop: 293, mobile: 330 },
-  { date: "2024-05-11", desktop: 335, mobile: 270 },
-  { date: "2024-05-12", desktop: 197, mobile: 240 },
-  { date: "2024-05-13", desktop: 197, mobile: 160 },
-  { date: "2024-05-14", desktop: 448, mobile: 490 },
-  { date: "2024-05-15", desktop: 473, mobile: 380 },
-  { date: "2024-05-16", desktop: 338, mobile: 400 },
-  { date: "2024-05-17", desktop: 499, mobile: 420 },
-  { date: "2024-05-18", desktop: 315, mobile: 350 },
-  { date: "2024-05-19", desktop: 235, mobile: 180 },
-  { date: "2024-05-20", desktop: 177, mobile: 230 },
-  { date: "2024-05-21", desktop: 82, mobile: 140 },
-  { date: "2024-05-22", desktop: 81, mobile: 120 },
-  { date: "2024-05-23", desktop: 252, mobile: 290 },
-  { date: "2024-05-24", desktop: 294, mobile: 220 },
-  { date: "2024-05-25", desktop: 201, mobile: 250 },
-  { date: "2024-05-26", desktop: 213, mobile: 170 },
-  { date: "2024-05-27", desktop: 420, mobile: 460 },
-  { date: "2024-05-28", desktop: 233, mobile: 190 },
-  { date: "2024-05-29", desktop: 78, mobile: 130 },
-  { date: "2024-05-30", desktop: 340, mobile: 280 },
-  { date: "2024-05-31", desktop: 178, mobile: 230 },
-  { date: "2024-06-01", desktop: 178, mobile: 200 },
-  { date: "2024-06-02", desktop: 470, mobile: 410 },
-  { date: "2024-06-03", desktop: 103, mobile: 160 },
-  { date: "2024-06-04", desktop: 439, mobile: 380 },
-  { date: "2024-06-05", desktop: 88, mobile: 140 },
-  { date: "2024-06-06", desktop: 294, mobile: 250 },
-  { date: "2024-06-07", desktop: 323, mobile: 370 },
-  { date: "2024-06-08", desktop: 385, mobile: 320 },
-  { date: "2024-06-09", desktop: 438, mobile: 480 },
-  { date: "2024-06-10", desktop: 155, mobile: 200 },
-  { date: "2024-06-11", desktop: 92, mobile: 150 },
-  { date: "2024-06-12", desktop: 492, mobile: 420 },
-  { date: "2024-06-13", desktop: 81, mobile: 130 },
-  { date: "2024-06-14", desktop: 426, mobile: 380 },
-  { date: "2024-06-15", desktop: 307, mobile: 350 },
-  { date: "2024-06-16", desktop: 371, mobile: 310 },
-  { date: "2024-06-17", desktop: 475, mobile: 520 },
-  { date: "2024-06-18", desktop: 107, mobile: 170 },
-  { date: "2024-06-19", desktop: 341, mobile: 290 },
-  { date: "2024-06-20", desktop: 408, mobile: 450 },
-  { date: "2024-06-21", desktop: 169, mobile: 210 },
-  { date: "2024-06-22", desktop: 317, mobile: 270 },
-  { date: "2024-06-23", desktop: 480, mobile: 530 },
-  { date: "2024-06-24", desktop: 132, mobile: 180 },
-  { date: "2024-06-25", desktop: 141, mobile: 190 },
-  { date: "2024-06-26", desktop: 434, mobile: 380 },
-  { date: "2024-06-27", desktop: 448, mobile: 490 },
-  { date: "2024-06-28", desktop: 149, mobile: 200 },
-  { date: "2024-06-29", desktop: 103, mobile: 160 },
-  { date: "2024-06-30", desktop: 446, mobile: 400 },
-]
+import { useDashboardRevenueChartData, type RevenueChartTimeRange } from "@/hooks/useDashboardRevenueChartData"
+import { formatCurrencyVND } from "@/utils/format"
+import type { Company, Office } from "@/types"
 
-const chartConfig = {
-  visitors: {
-    label: "Visitors",
-  },
-  desktop: {
-    label: "Desktop",
-    color: "hsl(var(--chart-1))",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "hsl(var(--chart-2))",
-  },
-} satisfies ChartConfig
+const CHART_HUES = [1, 2, 3, 4, 5] as const
 
-export function ChartAreaInteractive() {
+function formatAxisVnd(v: number): string {
+  if (!Number.isFinite(v)) return ""
+  const abs = Math.abs(v)
+  if (abs >= 1e9) return `${(v / 1e9).toFixed(1)}B`
+  if (abs >= 1e6) return `${(v / 1e6).toFixed(1)}M`
+  if (abs >= 1e3) return `${(v / 1e3).toFixed(0)}k`
+  return String(Math.round(v))
+}
+
+export function ChartAreaInteractive({
+  companyId,
+  onCompanyIdChange,
+  companies,
+  offices,
+}: {
+  companyId?: number
+  onCompanyIdChange: (id: number | undefined) => void
+  companies: Company[]
+  offices: Office[]
+}) {
+  const { t } = useTranslation()
+  const appLocale = useAppStore((s) => s.locale)
+  const dateLocale = appLocale === "vi" ? "vi-VN" : "en-US"
   const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("30d")
+  const [timeRange, setTimeRange] = React.useState<RevenueChartTimeRange>("30d")
+  const [reduceMotion, setReduceMotion] = React.useState(false)
+
+  const { chartData, seriesKeys, loading, error } = useDashboardRevenueChartData({
+    companyId,
+    timeRange,
+    offices,
+  })
+
+  const seriesLabels = React.useMemo(() => {
+    const companyById = new Map(companies.map((c) => [c.id, c]))
+    const officeById = new Map(offices.map((o) => [o.id, o]))
+    const out: Record<string, string> = {}
+    for (const k of seriesKeys) {
+      if (k === "other") {
+        out[k] = t("dashboard.chart.otherSeries")
+      } else if (k === "co_other") {
+        out[k] = t("dashboard.chart.unassigned")
+      } else if (k === "of_other") {
+        out[k] = t("dashboard.chart.unassigned")
+      } else if (k.startsWith("co_")) {
+        const id = Number(k.slice(3))
+        out[k] = Number.isFinite(id) ? companyById.get(id)?.name ?? `#${id}` : k
+      } else if (k.startsWith("of_")) {
+        const id = Number(k.slice(3))
+        out[k] = Number.isFinite(id) ? officeById.get(id)?.name ?? `#${id}` : k
+      } else {
+        out[k] = k
+      }
+    }
+    return out
+  }, [seriesKeys, companies, offices, t])
+
+  const chartConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {}
+    for (let i = 0; i < seriesKeys.length; i++) {
+      const k = seriesKeys[i]
+      const hue = CHART_HUES[i % CHART_HUES.length]
+      cfg[k] = {
+        label: seriesLabels[k] ?? k,
+        color: `hsl(var(--chart-${hue}))`,
+      }
+    }
+    return cfg
+  }, [seriesKeys, seriesLabels])
 
   React.useEffect(() => {
     if (isMobile) {
@@ -144,146 +111,178 @@ export function ChartAreaInteractive() {
     }
   }, [isMobile])
 
-  const filteredData = chartData.filter((item) => {
-    const date = new Date(item.date)
-    const referenceDate = new Date("2024-06-30")
-    let daysToSubtract = 90
-    if (timeRange === "30d") {
-      daysToSubtract = 30
-    } else if (timeRange === "7d") {
-      daysToSubtract = 7
+  React.useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const update = () => setReduceMotion(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+
+  const formatShortDate = React.useCallback(
+    (value: string | number) => {
+      const date = new Date(value)
+      return date.toLocaleDateString(dateLocale, {
+        month: "short",
+        day: "numeric",
+      })
+    },
+    [dateLocale],
+  )
+
+  const setRange = React.useCallback((value: string) => {
+    if (value === "90d" || value === "30d" || value === "7d") {
+      setTimeRange(value)
     }
-    const startDate = new Date(referenceDate)
-    startDate.setDate(startDate.getDate() - daysToSubtract)
-    return date >= startDate
-  })
+  }, [])
+
+  const hasAnyPoint = seriesKeys.some((k) =>
+    chartData.some((row) => Number(row[k] ?? 0) > 0),
+  )
 
   return (
-    <Card className="@container/card">
-      <CardHeader className="relative">
-        <CardTitle>Total Visitors</CardTitle>
-        <CardDescription>
-          <span className="@[540px]/card:block hidden">
-            Total for the last 3 months
-          </span>
-          <span className="@[540px]/card:hidden">Last 3 months</span>
-        </CardDescription>
-        <div className="absolute right-4 top-4">
+    <Card className="@container/card" aria-label={t("dashboard.chart.revenueAriaSummary")}>
+      <CardHeader className="relative space-y-3">
+        <div className="flex flex-col gap-3 @[640px]/card:flex-row @[640px]/card:items-start @[640px]/card:justify-between">
+          <div className="min-w-0 flex-1 space-y-1 pr-0 @[640px]/card:pr-2">
+            <CardTitle>{t("dashboard.chart.revenueTitle")}</CardTitle>
+            <CardDescription>
+              <span className="@[540px]/card:block hidden">{t("dashboard.chart.revenueDescriptionLong")}</span>
+              <span className="@[540px]/card:hidden">{t("dashboard.chart.revenueDescriptionShort")}</span>
+            </CardDescription>
+          </div>
+          <div className="flex w-full shrink-0 flex-col gap-2 @[640px]/card:w-auto @[640px]/card:min-w-[12rem]">
+            <Select
+              value={companyId != null ? String(companyId) : "all"}
+              onValueChange={(v) => onCompanyIdChange(v === "all" ? undefined : Number(v))}
+            >
+              <SelectTrigger className="w-full" aria-label={t("dashboard.filterByCompany")}>
+                <SelectValue placeholder={t("dashboard.allCompanies")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("dashboard.allCompanies")}</SelectItem>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex justify-end">
           <ToggleGroup
             type="single"
             value={timeRange}
-            onValueChange={setTimeRange}
+            onValueChange={setRange}
             variant="outline"
             className="@[767px]/card:flex hidden"
           >
             <ToggleGroupItem value="90d" className="h-8 px-2.5">
-              Last 3 months
+              {t("dashboard.chart.range90d")}
             </ToggleGroupItem>
             <ToggleGroupItem value="30d" className="h-8 px-2.5">
-              Last 30 days
+              {t("dashboard.chart.range30d")}
             </ToggleGroupItem>
             <ToggleGroupItem value="7d" className="h-8 px-2.5">
-              Last 7 days
+              {t("dashboard.chart.range7d")}
             </ToggleGroupItem>
           </ToggleGroup>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger
-              className="@[767px]/card:hidden flex w-40"
-              aria-label="Select a value"
-            >
-              <SelectValue placeholder="Last 3 months" />
+          <Select value={timeRange} onValueChange={setRange}>
+            <SelectTrigger className="@[767px]/card:hidden flex w-40" aria-label={t("dashboard.chart.selectRange")}>
+              <SelectValue placeholder={t("dashboard.chart.range90d")} />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="90d" className="rounded-lg">
-                Last 3 months
+                {t("dashboard.chart.range90d")}
               </SelectItem>
               <SelectItem value="30d" className="rounded-lg">
-                Last 30 days
+                {t("dashboard.chart.range30d")}
               </SelectItem>
               <SelectItem value="7d" className="rounded-lg">
-                Last 7 days
+                {t("dashboard.chart.range7d")}
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-[250px] w-full"
-        >
-          <AreaChart data={filteredData}>
-            <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={1.0}
+      <CardContent className="px-2 pt-2 sm:px-6 sm:pt-4">
+        {loading ? (
+          <div className="flex h-[280px] w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+            {t("common.loading")}
+          </div>
+        ) : error ? (
+          <div className="flex h-[280px] w-full items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 px-4 text-center text-sm text-destructive">
+            {error}
+          </div>
+        ) : !hasAnyPoint ? (
+          <div className="flex h-[280px] w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+            {t("dashboard.chart.noRevenueData")}
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
+            <LineChart accessibilityLayer data={chartData} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={24}
+                tickFormatter={formatShortDate}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                width={48}
+                tickFormatter={formatAxisVnd}
+              />
+              <ChartTooltip
+                cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null
+                  return (
+                    <div className="grid min-w-[10rem] gap-1.5 rounded-lg border border-border/60 bg-background px-2.5 py-2 text-xs shadow-lg">
+                      <div className="font-medium">{formatShortDate(label as string)}</div>
+                      <div className="grid gap-1">
+                        {payload
+                          .filter((p) => p.type !== "none")
+                          .map((p) => {
+                            const key = String(p.dataKey ?? "")
+                            const name = chartConfig[key]?.label ?? key
+                            return (
+                              <div key={key} className="flex justify-between gap-6 tabular-nums">
+                                <span className="text-muted-foreground">{name}</span>
+                                <span className="font-medium">{formatCurrencyVND(Number(p.value))}</span>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+              <ChartLegend
+                verticalAlign="bottom"
+                content={<ChartLegendContent className="flex-wrap justify-center gap-x-3 gap-y-2 pt-3" />}
+              />
+              {seriesKeys.map((key) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={`var(--color-${key})`}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 3 }}
+                  connectNulls
+                  isAnimationActive={!reduceMotion}
                 />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value) => {
-                const date = new Date(value)
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              }}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }}
-                  indicator="dot"
-                />
-              }
-            />
-            <Area
-              dataKey="mobile"
-              type="natural"
-              fill="url(#fillMobile)"
-              stroke="var(--color-mobile)"
-              stackId="a"
-            />
-            <Area
-              dataKey="desktop"
-              type="natural"
-              fill="url(#fillDesktop)"
-              stroke="var(--color-desktop)"
-              stackId="a"
-            />
-          </AreaChart>
-        </ChartContainer>
+              ))}
+            </LineChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   )

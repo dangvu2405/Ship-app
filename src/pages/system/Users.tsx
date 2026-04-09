@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/common/PageHeader';
+import { Card, CardContent } from '@/components/ui/card';
 import type { BreadcrumbItem } from '@/components/common/Breadcrumb';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
@@ -13,9 +14,11 @@ export const Users = () => {
   return (
     <>
       <PageHeader title={t('users.title')} description={t('users.description')} breadcrumb={breadcrumb} />
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <p className="text-gray-600 dark:text-gray-400">{t('users.comingSoon')}</p>
-      </div>
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
+          <p className="text-muted-foreground">{t('users.comingSoon')}</p>
+        </CardContent>
+      </Card>
     </>
   );
 };

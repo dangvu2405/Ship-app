@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
@@ -17,11 +18,16 @@ import type { Customer } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { CustomerFormDialog } from './CustomerFormDialog';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function CustomersList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
   const [current, setCurrent] = useState(1);
@@ -39,6 +45,8 @@ export function CustomersList() {
     ],
   });
 
+  const safeRefetch = useSafeRefetch('customers-customerslist', refetch);
+
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
     setAppliedType(selectedType);
@@ -53,6 +61,18 @@ export function CustomersList() {
     setCurrent(1);
   };
 
+  const handleCreate = () => {
+    setFormMode('create');
+    setEditingId(undefined);
+    setFormOpen(true);
+  };
+
+  const handleEdit = useCallback((id: number) => {
+    setFormMode('edit');
+    setEditingId(id);
+    setFormOpen(true);
+  }, []);
+
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
@@ -62,7 +82,7 @@ export function CustomersList() {
           toast.success(t('notifications.deleteSuccess', { item: t('customers.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -72,7 +92,8 @@ export function CustomersList() {
     );
   };
 
-  const columns: DataTableColumn<Customer>[] = [
+  const columns = useMemo<DataTableColumn<Customer>[]>(
+    () => [
     { key: 'name', header: t('customers.name'), dataIndex: 'name' },
     {
       key: 'type',
@@ -87,19 +108,49 @@ export function CustomersList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); show('customers', record.id); }}>
-            <EyeIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.view')}
+            onClick={(e) => {
+              e.stopPropagation();
+              show('customers', record.id);
+            }}
+          >
+            <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); edit('customers', record.id); }}>
-            <PencilIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.edit')}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record.id);
+            }}
+          >
+            <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
-            <Trash2Icon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            aria-label={t('common.delete')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(record);
+              setDeleteDialogOpen(true);
+            }}
+          >
+            <Trash2Icon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleEdit]
+  );
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -112,13 +163,14 @@ export function CustomersList() {
         description={t('customers.description')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('customers.title') }]}
         actions={
-          <Button onClick={() => create('customers')} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('customers.createCustomer')}
           </Button>
         }
       />
-      <div className="bg-card shadow rounded-lg border p-6">
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <SearchField
             placeholder={t('common.search')}
@@ -137,8 +189,8 @@ export function CustomersList() {
             ]}
           />
 
-          <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
-          <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
+          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
+          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
         </div>
 
         {isLoading ? (
@@ -147,7 +199,7 @@ export function CustomersList() {
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
+            onRetry={() => void safeRefetch(true)}
           />
         ) : (
           <DataTable<Customer>
@@ -158,8 +210,23 @@ export function CustomersList() {
             pagination={{ current, total, pageSize, onPageChange: setCurrent }}
           />
         )}
-      </div>
+        </CardContent>
+      </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.name} />
+      {formOpen && (
+        <CustomerFormDialog
+          open={formOpen}
+          mode={formMode}
+          recordId={editingId}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingId(undefined);
+          }}
+          onSuccess={() => {
+            void safeRefetch(true);
+          }}
+        />
+      )}
     </>
   );
 }

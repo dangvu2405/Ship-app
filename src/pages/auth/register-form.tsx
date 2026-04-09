@@ -7,9 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import authService from '@/services/auth.service'
 import { ROUTES } from '@/routes'
+import { notifyErrorOnce } from '@/utils/errorToast'
+import { useTranslation } from '@/hooks/useTranslation'
 
 export function RegisterForm() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [form, setForm] = useState({
     username: '',
@@ -27,7 +30,7 @@ export function RegisterForm() {
     if (isSubmitting) return
 
     if (form.password !== form.passwordConfirmation) {
-      toast.error('Password confirmation does not match')
+      toast.error(t('auth.registerPasswordMismatch'))
       return
     }
 
@@ -41,14 +44,14 @@ export function RegisterForm() {
       })
 
       if (response.success) {
-        toast.success('Registration successful. Please login.')
+        toast.success(t('auth.registerSuccess'))
         navigate(ROUTES.login)
         return
       }
 
-      toast.error(response.message || 'Registration failed')
-    } catch {
-      toast.error('Registration failed')
+      toast.error(response.message || t('auth.registerFailed'))
+    } catch (error) {
+      notifyErrorOnce('auth-register', error, { fallbackMessage: t('auth.registerFailed') })
     } finally {
       setIsSubmitting(false)
     }
@@ -61,61 +64,73 @@ export function RegisterForm() {
           <CardContent className="p-8 md:p-10 bg-white dark:bg-slate-800">
             <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
               <div className="flex flex-col items-center text-center mb-2">
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create account</h1>
-                <p className="text-slate-500 dark:text-slate-400">Register to access Ship ERP</p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.registerTitle')}</h1>
+                <p className="text-slate-500 dark:text-slate-400">{t('auth.registerSubtitle')}</p>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">{t('users.username')}</Label>
                 <Input
                   id="username"
+                  name="username"
+                  autoComplete="username"
                   value={form.username}
                   onChange={(e) => updateField('username', e.target.value)}
+                  placeholder={t('auth.registerUsernamePlaceholder')}
                   required
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   value={form.email}
                   onChange={(e) => updateField('email', e.target.value)}
+                  placeholder={t('auth.emailPlaceholder')}
                   required
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('auth.password')}</Label>
                 <Input
                   id="password"
+                  name="new-password"
                   type="password"
+                  autoComplete="new-password"
                   value={form.password}
                   onChange={(e) => updateField('password', e.target.value)}
+                  placeholder={t('auth.registerPasswordPlaceholder')}
                   required
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="passwordConfirmation">Confirm password</Label>
+                <Label htmlFor="passwordConfirmation">{t('auth.confirmPassword')}</Label>
                 <Input
                   id="passwordConfirmation"
+                  name="password-confirmation"
                   type="password"
+                  autoComplete="new-password"
                   value={form.passwordConfirmation}
                   onChange={(e) => updateField('passwordConfirmation', e.target.value)}
+                  placeholder={t('auth.registerPasswordConfirmPlaceholder')}
                   required
                 />
               </div>
 
-              <Button type="submit" disabled={isSubmitting} className="w-full h-11">
-                Register
+              <Button type="submit" loading={isSubmitting} className="w-full h-11">
+                {t('auth.register')}
               </Button>
 
               <div className="text-center text-sm text-slate-600 dark:text-slate-400">
-                Already have an account?{' '}
+                {t('auth.alreadyHaveAccount')}{' '}
                 <Link to={ROUTES.login} className="text-blue-600 dark:text-blue-400 underline underline-offset-4">
-                  Login
+                  {t('auth.login')}
                 </Link>
               </div>
             </form>

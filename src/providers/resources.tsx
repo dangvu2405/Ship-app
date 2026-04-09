@@ -96,6 +96,18 @@ export const resources: ResourceProps[] = [
     },
   },
   {
+    name: 'trip_bonus_rules',
+    list: ROUTES.admin.trip_bonus_rules.list,
+    create: ROUTES.admin.trip_bonus_rules.create,
+    edit: ROUTES.admin.trip_bonus_rules.edit,
+    show: ROUTES.admin.trip_bonus_rules.show,
+    meta: {
+      label: 'Trip bonus rules',
+      icon: 'DollarOutlined',
+      canDelete: true,
+    },
+  },
+  {
     name: 'customers',
     list: ROUTES.admin.customers.list,
     create: ROUTES.admin.customers.create,

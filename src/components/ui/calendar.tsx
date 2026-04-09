@@ -8,7 +8,9 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { IconChevronLeft, IconChevronRight, IconChevronDown } from "@tabler/icons-react"
+import IconChevronLeft from "@tabler/icons-react/dist/esm/icons/IconChevronLeft.mjs"
+import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs"
+import IconChevronDown from "@tabler/icons-react/dist/esm/icons/IconChevronDown.mjs"
 
 function Calendar({
   className,
@@ -197,6 +199,7 @@ function CalendarDayButton({
       ref={ref}
       variant="ghost"
       size="icon"
+      aria-label={day.date.toLocaleDateString(locale?.code)}
       data-day={day.date.toLocaleDateString(locale?.code)}
       data-selected-single={
         modifiers.selected &&

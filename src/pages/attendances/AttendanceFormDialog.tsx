@@ -4,9 +4,11 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { AttendanceForm } from './AttendanceForm';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import ArrowLeftIcon from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Attendance } from '@/types';
@@ -22,19 +24,40 @@ function formatTime(v: string | undefined): string | undefined {
   return `${h}:${m}`;
 }
 
-export function AttendanceFormDialog() {
+function toMinutes(v?: string): number | null {
+  if (!v) return null;
+  const match = /^(\d{2}):(\d{2})$/.exec(v);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
+interface AttendanceFormDialogProps {
+  open?: boolean;
+  mode?: 'create' | 'edit' | 'show';
+  recordId?: number;
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+export function AttendanceFormDialog({ open, mode, recordId, onClose, onSuccess }: AttendanceFormDialogProps = {}) {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const { list } = useNavigation();
   const [form] = Form.useForm();
-  const hasRecordId = !!id;
-  const isViewMode = location.pathname.includes('/show/');
+  const isControlled = typeof open === 'boolean';
+  const resolvedId = recordId ?? (id ? Number(id) : undefined);
+  const hasRecordId = !!resolvedId;
+  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const isEdit = hasRecordId && !isViewMode;
+  const dialogOpen = isControlled ? open : true;
 
   const { data, isLoading: isLoadingData } = useOne<Attendance>({
     resource: 'attendances',
-    id: id || '',
+    id: resolvedId || '',
     queryOptions: { enabled: hasRecordId },
   });
 
@@ -42,21 +65,48 @@ export function AttendanceFormDialog() {
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<Attendance>();
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
-  const handleClose = () => list('attendances');
+  const handleClose = () => {
+    onClose?.();
+    if (!isControlled) {
+      list('attendances');
+    }
+  };
+
+  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+    form,
+    isViewMode,
+    isSubmitting: isLoading,
+    onClose: handleClose,
+  });
 
   const handleSubmit = (values: Partial<Attendance>) => {
+    const checkInFormatted = formatTime(values.check_in as string | undefined);
+    const checkOutFormatted = formatTime(values.check_out as string | undefined);
+    const checkInMinutes = toMinutes(checkInFormatted);
+    const checkOutMinutes = toMinutes(checkOutFormatted);
+    const workedMinutes =
+      checkInMinutes !== null && checkOutMinutes !== null && checkOutMinutes >= checkInMinutes
+        ? checkOutMinutes - checkInMinutes
+        : null;
+    const workHours = workedMinutes !== null ? Math.round((workedMinutes / 60) * 100) / 100 : undefined;
+    const overtimeHours =
+      workHours !== undefined ? Math.max(0, Math.round((workHours - 8) * 100) / 100) : undefined;
+
     const payload = {
       ...values,
-      check_in: formatTime(values.check_in as string | undefined),
-      check_out: formatTime(values.check_out as string | undefined),
+      check_in: checkInFormatted,
+      check_out: checkOutFormatted,
+      work_hours: workHours,
+      overtime_hours: overtimeHours,
     };
-    if (isEdit && id) {
+    if (isEdit && resolvedId) {
       updateItem(
-        { resource: 'attendances', id, values: payload },
+        { resource: 'attendances', id: resolvedId, values: payload },
         {
           onSuccess: () => {
             toast.success(t('notifications.updateSuccess', { item: t('attendances.title') }));
-            list('attendances');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
@@ -70,7 +120,8 @@ export function AttendanceFormDialog() {
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('attendances.title') }));
-            list('attendances');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
@@ -97,8 +148,8 @@ export function AttendanceFormDialog() {
 
   if (hasRecordId && isLoadingData) {
     return (
-      <Dialog open onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('attendances.editAttendance')}</DialogTitle>
           </DialogHeader>
@@ -109,17 +160,31 @@ export function AttendanceFormDialog() {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('attendances.editAttendance') : t('attendances.createAttendance')}</DialogTitle>
           <DialogDescription>{isViewMode ? t('attendances.editDescription') : isEdit ? t('attendances.editDescription') : t('attendances.createDescription')}</DialogDescription>
         </DialogHeader>
-        <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={{ status: 'present' }} disabled={isViewMode}>
-          <AttendanceForm form={form} initialValues={data?.data} />
-        </Form>
-        <DialogFooter>
-          <Button variant="outline" type="button" onClick={handleClose} className="gap-2">
+        <div className="px-6 pb-6 space-y-4">
+          <Alert>
+            <AlertTitle>{t('formGuides.title')}</AlertTitle>
+            <AlertDescription>{t('formGuides.attendance')}</AlertDescription>
+          </Alert>
+
+          <Form
+            form={form}
+            onFinish={handleSubmit}
+            layout="vertical"
+            validateTrigger={["onBlur", "onSubmit"]}
+            initialValues={{ status: 'present' }}
+            disabled={isViewMode}
+          >
+            <AttendanceForm form={form} initialValues={data?.data} />
+          </Form>
+        </div>
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+          <Button variant="outline" type="button" onClick={requestClose} className="gap-2">
             <ArrowLeftIcon className="h-4 w-4" />
             {t('common.back')}
           </Button>

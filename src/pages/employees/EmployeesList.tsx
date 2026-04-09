@@ -1,29 +1,44 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Select } from 'antd';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
+import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import Edit from 'lucide-react/dist/esm/icons/edit';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
 import type { Employee } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function EmployeesList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
+  const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
@@ -43,6 +58,8 @@ export function EmployeesList() {
       ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
     ],
   });
+
+  const safeRefetch = useSafeRefetch('employees-employeeslist', refetch);
 
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
@@ -64,9 +81,21 @@ export function EmployeesList() {
     setCurrent(1);
   };
 
-  const handleDelete = (employee: Employee) => {
+  const handleDelete = useCallback((employee: Employee) => {
     setSelectedEmployee(employee);
     setDeleteDialogOpen(true);
+  }, []);
+
+  const handleOpenDialog = useCallback((mode: 'create' | 'edit' | 'show', id?: number) => {
+    setDialogMode(mode);
+    setActiveId(id);
+    setDialogOpen(true);
+  }, []);
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setDialogMode('create');
+    setActiveId(undefined);
   };
 
   const confirmDelete = () => {
@@ -82,7 +111,7 @@ export function EmployeesList() {
           toast.success(t('notifications.deleteSuccess', { item: t('employees.title') }));
           setDeleteDialogOpen(false);
           setSelectedEmployee(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) {
@@ -95,7 +124,8 @@ export function EmployeesList() {
     );
   };
 
-  const columns: DataTableColumn<Employee>[] = [
+  const columns = useMemo<DataTableColumn<Employee>[]>(
+    () => [
     { key: 'code', header: t('employees.code'), dataIndex: 'code' },
     { key: 'name', header: t('employees.name'), dataIndex: 'name' },
     { key: 'email', header: t('employees.email'), dataIndex: 'email' },
@@ -123,35 +153,34 @@ export function EmployeesList() {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); show('employees', record.id); }}
-            className="h-8 w-8 p-0"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); edit('employees', record.id); }}
-            className="h-8 w-8 p-0"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleDelete(record); }}
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
+                <MoreHorizontal className="h-4 w-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => show('employees', record.id)}>
+                <Eye className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.view')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenDialog('edit', record.id)}>
+                <Edit className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
+                <Trash2 className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleDelete, handleOpenDialog]
+  );
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
@@ -169,7 +198,7 @@ export function EmployeesList() {
         description={t('employees.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={() => create('employees')} className="gap-2">
+          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
             <Plus className="h-4 w-4" />
             {t('employees.createEmployee')}
           </Button>
@@ -180,7 +209,7 @@ export function EmployeesList() {
         <CardContent className="p-6 space-y-4">
           <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
             <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
               <TabsTrigger value="active">{t('common.active')}</TabsTrigger>
               <TabsTrigger value="inactive">{t('common.inactive')}</TabsTrigger>
             </TabsList>
@@ -194,21 +223,24 @@ export function EmployeesList() {
             />
 
             <Select
-              allowClear
-              placeholder={t('employees.type')}
-              value={selectedType}
-              onChange={setSelectedType}
-              options={[
-                { label: t('employees.typeOffice'), value: 'office' },
-                { label: t('employees.typeDriver'), value: 'driver' },
-              ]}
-            />
+              value={selectedType ?? 'all'}
+              onValueChange={(value) => setSelectedType(value === 'all' ? undefined : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t('employees.type')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('common.all')}</SelectItem>
+                <SelectItem value="office">{t('employees.typeOffice')}</SelectItem>
+                <SelectItem value="driver">{t('employees.typeDriver')}</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <Button type="button" onClick={handleSearchFilters}>
+            <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
               {t('common.search')}
             </Button>
 
-            <Button type="button" variant="outline" onClick={handleClearFilters}>
+            <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
               {t('common.reset')}
             </Button>
           </div>
@@ -219,7 +251,7 @@ export function EmployeesList() {
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
-              onRetry={() => refetch()}
+              onRetry={() => void safeRefetch(true)}
             />
           ) : (
             <DataTable<Employee>
@@ -243,6 +275,15 @@ export function EmployeesList() {
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDelete}
         itemName={selectedEmployee?.name}
+      />
+      <EmployeeFormDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        recordId={activeId}
+        onClose={handleCloseDialog}
+        onSuccess={() => {
+          void safeRefetch(true);
+        }}
       />
     </>
   );

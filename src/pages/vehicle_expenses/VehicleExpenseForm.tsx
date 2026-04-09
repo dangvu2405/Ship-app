@@ -74,7 +74,16 @@ export function VehicleExpenseForm(props: VehicleExpenseFormProps) {
         options={typeOptions}
         rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.type') }) }]}
       />
-      <FormItemNumber name="amount" label={t('vehicleExpenses.amount')} required min={0} rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.amount') }) }]} />
+      <FormItemNumber
+        name="amount"
+        label={t('vehicleExpenses.amount')}
+        required
+        min={1}
+        rules={[
+          { required: true, message: t('validation.required', { field: t('vehicleExpenses.amount') }) },
+          { type: 'number', min: 1, message: t('validation.min', { min: 1 }) }
+        ]}
+      />
       <FormItemText name="expense_date" label={t('vehicleExpenses.expenseDate')} type="date" required rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.expenseDate') }) }]} />
       <FormItemTextArea name="note" label={t('vehicleExpenses.note')} rows={2} />
     </>

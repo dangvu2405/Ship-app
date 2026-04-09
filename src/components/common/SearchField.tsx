@@ -1,5 +1,5 @@
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search';
 
 interface SearchFieldProps {
   value: string;

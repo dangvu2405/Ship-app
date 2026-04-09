@@ -51,6 +51,8 @@ const VehiclesList = lazy(() => import('@/pages/vehicles/VehiclesList').then((m)
 const VehicleFormDialog = lazy(() => import('@/pages/vehicles/VehicleFormDialog').then((m) => ({ default: m.VehicleFormDialog })));
 const TripsList = lazy(() => import('@/pages/trips/TripsList').then((m) => ({ default: m.TripsList })));
 const TripFormDialog = lazy(() => import('@/pages/trips/TripFormDialog').then((m) => ({ default: m.TripFormDialog })));
+const TripBonusRulesList = lazy(() => import('@/pages/trip_bonus_rules/TripBonusRulesList').then((m) => ({ default: m.TripBonusRulesList })));
+const TripBonusRuleFormDialog = lazy(() => import('@/pages/trip_bonus_rules/TripBonusRuleFormDialog').then((m) => ({ default: m.TripBonusRuleFormDialog })));
 const CustomersList = lazy(() => import('@/pages/customers/CustomersList').then((m) => ({ default: m.CustomersList })));
 const CustomerFormDialog = lazy(() => import('@/pages/customers/CustomerFormDialog').then((m) => ({ default: m.CustomerFormDialog })));
 const DriversList = lazy(() => import('@/pages/drivers/DriversList').then((m) => ({ default: m.DriversList })));
@@ -74,6 +76,7 @@ const UsersList = lazy(() => import('@/pages/users/UsersList').then((m) => ({ de
 const UserFormDialog = lazy(() => import('@/pages/users/UserFormDialog').then((m) => ({ default: m.UserFormDialog })));
 const RolesList = lazy(() => import('@/pages/roles/RolesList').then((m) => ({ default: m.RolesList })));
 const RoleFormDialog = lazy(() => import('@/pages/roles/RoleFormDialog').then((m) => ({ default: m.RoleFormDialog })));
+const Notifications = lazy(() => import('@/pages/system/Notifications').then((m) => ({ default: m.Notifications })));
 const Profile = lazy(() => import('@/pages/system/Profile').then((m) => ({ default: m.Profile })));
 const Settings = lazy(() => import('@/pages/system/Settings').then((m) => ({ default: m.Settings })));
 
@@ -82,11 +85,18 @@ export const crudRoutes: CrudRouteConfig[] = [
   { key: 'offices', routes: ROUTES.admin.offices, List: OfficesList, Form: OfficeFormDialog },
   { key: 'departments', routes: ROUTES.admin.departments, List: DepartmentsList, Form: DepartmentFormDialog },
   { key: 'positions', routes: ROUTES.admin.positions, List: PositionsList, Form: PositionFormDialog },
-  { key: 'employees', routes: ROUTES.admin.employees, List: EmployeesList, Form: EmployeeFormDialog },
-  { key: 'vehicles', routes: ROUTES.admin.vehicles, List: VehiclesList, Form: VehicleFormDialog },
-  { key: 'trips', routes: ROUTES.admin.trips, List: TripsList, Form: TripFormDialog },
+  { key: 'employees', routes: ROUTES.admin.employees, List: EmployeesList, Form: EmployeeFormDialog, requiredRole: 'admin' },
+  { key: 'vehicles', routes: ROUTES.admin.vehicles, List: VehiclesList, Form: VehicleFormDialog, requiredRole: 'admin' },
+  { key: 'trips', routes: ROUTES.admin.trips, List: TripsList, Form: TripFormDialog, requiredRole: 'admin' },
+  {
+    key: 'trip_bonus_rules',
+    routes: ROUTES.admin.trip_bonus_rules,
+    List: TripBonusRulesList,
+    Form: TripBonusRuleFormDialog,
+    requiredRole: 'admin',
+  },
   { key: 'customers', routes: ROUTES.admin.customers, List: CustomersList, Form: CustomerFormDialog },
-  { key: 'drivers', routes: ROUTES.admin.drivers, List: DriversList, Form: DriverFormDialog },
+  { key: 'drivers', routes: ROUTES.admin.drivers, List: DriversList, Form: DriverFormDialog, requiredRole: 'admin' },
   { key: 'invoices', routes: ROUTES.admin.invoices, List: InvoicesList, Form: InvoiceFormDialog },
   { key: 'vehicle_assignments', routes: ROUTES.admin.vehicle_assignments, List: VehicleAssignmentsList, Form: VehicleAssignmentFormDialog },
   { key: 'vehicle_expenses', routes: ROUTES.admin.vehicle_expenses, List: VehicleExpensesList, Form: VehicleExpenseFormDialog },
@@ -100,6 +110,7 @@ export const crudRoutes: CrudRouteConfig[] = [
 
 export const singleRoutes: SingleRouteConfig[] = [
   { key: 'reports', path: ROUTES.admin.reports.list, Component: Reports },
+  { key: 'notifications', path: ROUTES.admin.notifications, Component: Notifications },
   { key: 'profile', path: ROUTES.admin.profile, Component: Profile },
   { key: 'settings', path: ROUTES.admin.settings, Component: Settings },
 ];

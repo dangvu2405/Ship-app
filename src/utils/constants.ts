@@ -1,30 +1,47 @@
 /**
- * Đồng bộ URI với Laravel (routes/api.php → prefix `api`).
- * @see ship-app-api/config/ship.php — API_URI_PREFIX (mặc định `api`)
+ * Đồng bộ với ship-app-api `routes/api.php`: nhóm versioned `/api/v1/...`.
+ * @see ship-app-api/docs/FRONTEND_API_ENDPOINTS.md
  */
 
 import { LEGACY_ROUTES } from '@/routes';
 
-/** Luôn `/api` trừ khi bạn đổi API_URI_PREFIX ở backend và sửa giá trị này. */
-export const API_PREFIX = '/api' as const;
+/** Gốc REST versioned (axios baseURL). */
+export const API_PREFIX = '/api/v1' as const;
 
 function trimTrailingSlashes(s: string): string {
   return s.replace(/\/+$/, '');
 }
 
+/**
+ * Bỏ `/v1` ở cuối base → `/api` (RouteServiceProvider gắn `api_v2.php` dưới `/api/v2/...`).
+ */
+export function resolveApiRootBaseUrl(versionedBase: string): string {
+  const t = trimTrailingSlashes(versionedBase);
+  return t.replace(/\/v1\/?$/, '') || '/api';
+}
+
 /** Origin backend: scheme + host + port, không có path (khớp APP_URL của Laravel). */
 const DEFAULT_API_ORIGIN = 'http://localhost:8080';
 
+/** Chuẩn hóa env cũ kết thúc `/api` thành `/api/v1`. */
+function normalizeExplicitApiBase(url: string): string {
+  const t = trimTrailingSlashes(url);
+  if (/\/api$/i.test(t) && !/\/v1$/i.test(t)) {
+    return `${t}/v1`;
+  }
+  return t;
+}
+
 /**
- * Giải quyết base URL cho axios / Refine:
- * 1. `VITE_API_BASE_URL` — URL đầy đủ …/api (ghi đè mọi quy tắc).
- * 2. Dev: luôn `/api` → cùng origin với Vite, proxy tới backend (target: `VITE_API_ORIGIN` trong vite.config).
- * 3. Build production: `VITE_API_ORIGIN` + API_PREFIX, hoặc mặc định Docker :8080.
+ * Base URL cho axios / Refine simple-rest:
+ * 1. `VITE_API_BASE_URL` — …/api/v1 (hoặc …/api → tự thêm /v1).
+ * 2. Dev: `/api/v1` → Vite proxy `/api` tới backend.
+ * 3. Prod: `VITE_API_ORIGIN` + `/api/v1`.
  */
 function resolveApiBaseUrl(): string {
   const explicit = import.meta.env.VITE_API_BASE_URL?.trim();
   if (explicit) {
-    return trimTrailingSlashes(explicit);
+    return normalizeExplicitApiBase(explicit);
   }
 
   if (import.meta.env.DEV) {
@@ -40,6 +57,9 @@ function resolveApiBaseUrl(): string {
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();
+
+/** Gốc `/api` (không có /v1) — dùng với `useApiRoot` trên axios. */
+export const API_ROOT_BASE_URL = resolveApiRootBaseUrl(API_BASE_URL);
 
 // Versioned localStorage keys - bump version on schema changes
 export const STORAGE_KEYS = {

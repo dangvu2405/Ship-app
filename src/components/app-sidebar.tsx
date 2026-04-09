@@ -1,29 +1,18 @@
 import * as React from "react"
 import { Link } from "react-router-dom"
 import LayoutDashboardIcon from "lucide-react/dist/esm/icons/layout-dashboard"
-import UsersIcon from "lucide-react/dist/esm/icons/users"
 import SettingsIcon from "lucide-react/dist/esm/icons/settings"
-import BuildingIcon from "lucide-react/dist/esm/icons/building"
-import UserIcon from "lucide-react/dist/esm/icons/user"
-import TruckIcon from "lucide-react/dist/esm/icons/truck"
 import RouteIcon from "lucide-react/dist/esm/icons/route"
+import PercentIcon from "lucide-react/dist/esm/icons/percent"
 import DollarSignIcon from "lucide-react/dist/esm/icons/dollar-sign"
 import FileTextIcon from "lucide-react/dist/esm/icons/file-text"
-import HelpCircleIcon from "lucide-react/dist/esm/icons/help-circle"
-import SearchIcon from "lucide-react/dist/esm/icons/search"
 import AnchorIcon from "lucide-react/dist/esm/icons/anchor"
-import MapPinIcon from "lucide-react/dist/esm/icons/map-pin"
-import BriefcaseIcon from "lucide-react/dist/esm/icons/briefcase"
-import NetworkIcon from "lucide-react/dist/esm/icons/network"
-import ContactIcon from "lucide-react/dist/esm/icons/contact"
-import CircleUserIcon from "lucide-react/dist/esm/icons/circle-user"
-import ScrollTextIcon from "lucide-react/dist/esm/icons/scroll-text"
-import Link2Icon from "lucide-react/dist/esm/icons/link-2"
-import WalletCardsIcon from "lucide-react/dist/esm/icons/wallet-cards"
-import GiftIcon from "lucide-react/dist/esm/icons/gift"
-import CircleMinusIcon from "lucide-react/dist/esm/icons/circle-minus"
-import CalendarDaysIcon from "lucide-react/dist/esm/icons/calendar-days"
 import ShieldIcon from "lucide-react/dist/esm/icons/shield"
+import LayersIcon from "lucide-react/dist/esm/icons/layers"
+import UserRoundCogIcon from "lucide-react/dist/esm/icons/user-round-cog"
+import CarFrontIcon from "lucide-react/dist/esm/icons/car-front"
+import BellIcon from "lucide-react/dist/esm/icons/bell"
+import CircleUserIcon from "lucide-react/dist/esm/icons/circle-user"
 
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -46,41 +35,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { t } = useTranslation()
   const isAdmin = user?.roles?.some((role) => role.name === 'admin') ?? false
 
-  const navMain = [
+  const adminMenu = [
     {
       title: t('dashboard.title'),
       url: ROUTES.dashboard,
       icon: LayoutDashboardIcon,
-    },
-    {
-      title: t('companies.title'),
-      url: ROUTES.admin.companies.list,
-      icon: BuildingIcon,
-    },
-    {
-      title: t('offices.title'),
-      url: ROUTES.admin.offices.list,
-      icon: MapPinIcon,
-    },
-    {
-      title: t('departments.title'),
-      url: ROUTES.admin.departments.list,
-      icon: NetworkIcon,
-    },
-    {
-      title: t('positions.title'),
-      url: ROUTES.admin.positions.list,
-      icon: BriefcaseIcon,
-    },
-    {
-      title: t('employees.title'),
-      url: ROUTES.admin.employees.list,
-      icon: UserIcon,
-    },
-    {
-      title: t('vehicles.title'),
-      url: ROUTES.admin.vehicles.list,
-      icon: TruckIcon,
     },
     {
       title: t('trips.title'),
@@ -88,44 +47,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: RouteIcon,
     },
     {
-      title: t('customers.title'),
-      url: ROUTES.admin.customers.list,
-      icon: ContactIcon,
-    },
-    {
-      title: t('drivers.title'),
-      url: ROUTES.admin.drivers.list,
-      icon: CircleUserIcon,
-    },
-    {
-      title: t('invoices.title'),
-      url: ROUTES.admin.invoices.list,
-      icon: ScrollTextIcon,
-    },
-    {
-      title: t('vehicleAssignments.title'),
-      url: ROUTES.admin.vehicle_assignments.list,
-      icon: Link2Icon,
-    },
-    {
-      title: t('vehicleExpenses.title'),
-      url: ROUTES.admin.vehicle_expenses.list,
-      icon: WalletCardsIcon,
-    },
-    {
-      title: t('allowances.title'),
-      url: ROUTES.admin.allowances.list,
-      icon: GiftIcon,
-    },
-    {
-      title: t('deductions.title'),
-      url: ROUTES.admin.deductions.list,
-      icon: CircleMinusIcon,
-    },
-    {
-      title: t('attendances.title'),
-      url: ROUTES.admin.attendances.list,
-      icon: CalendarDaysIcon,
+      title: t('tripBonusRules.title'),
+      url: ROUTES.admin.trip_bonus_rules.list,
+      icon: PercentIcon,
+      adminOnly: true,
     },
     {
       title: t('payrolls.title'),
@@ -138,20 +63,83 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: FileTextIcon,
     },
     {
-      title: t('users.title'),
-      url: ROUTES.admin.users.list,
-      icon: UsersIcon,
-      adminOnly: true,
+      title: t('companies.title'),
+      icon: LayersIcon,
+      items: [
+        { title: t('companies.title'), url: ROUTES.admin.companies.list },
+        { title: t('offices.title'), url: ROUTES.admin.offices.list },
+        { title: t('departments.title'), url: ROUTES.admin.departments.list },
+        { title: t('positions.title'), url: ROUTES.admin.positions.list },
+      ],
     },
     {
-      title: t('roles.title'),
-      url: ROUTES.admin.roles.list,
+      title: t('employees.title'),
+      icon: UserRoundCogIcon,
+      items: [
+        { title: t('employees.title'), url: ROUTES.admin.employees.list },
+        { title: t('attendances.title'), url: ROUTES.admin.attendances.list },
+        { title: t('drivers.title'), url: ROUTES.admin.drivers.list },
+        { title: t('customers.title'), url: ROUTES.admin.customers.list },
+        { title: t('allowances.title'), url: ROUTES.admin.allowances.list },
+        { title: t('deductions.title'), url: ROUTES.admin.deductions.list },
+      ],
+    },
+    {
+      title: t('vehicles.title'),
+      icon: CarFrontIcon,
+      items: [
+        { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
+        { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
+        { title: t('vehicleAssignments.title'), url: ROUTES.admin.vehicle_assignments.list },
+        { title: t('vehicleExpenses.title'), url: ROUTES.admin.vehicle_expenses.list },
+      ],
+    },
+    {
+      title: t('users.title'),
       icon: ShieldIcon,
       adminOnly: true,
+      items: [
+        { title: t('users.title'), url: ROUTES.admin.users.list },
+        { title: t('roles.title'), url: ROUTES.admin.roles.list },
+      ],
     },
   ]
 
-  const filteredNavMain = navMain.filter((item) => {
+  const operatorMenu = [
+    {
+      title: t('dashboard.title'),
+      url: ROUTES.dashboard,
+      icon: LayoutDashboardIcon,
+    },
+    {
+      title: t('trips.title'),
+      url: ROUTES.admin.trips.list,
+      icon: RouteIcon,
+    },
+    {
+      title: t('payrolls.title'),
+      url: ROUTES.admin.payrolls.list,
+      icon: DollarSignIcon,
+    },
+    {
+      title: t('employees.title'),
+      icon: UserRoundCogIcon,
+      items: [
+        { title: t('employees.title'), url: ROUTES.admin.employees.list },
+        { title: t('attendances.title'), url: ROUTES.admin.attendances.list },
+      ],
+    },
+    {
+      title: t('vehicles.title'),
+      icon: CarFrontIcon,
+      items: [
+        { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
+        { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
+      ],
+    },
+  ]
+
+  const filteredNavMain = (isAdmin ? adminMenu : operatorMenu).filter((item) => {
     if (!('adminOnly' in item) || !item.adminOnly) {
       return true
     }
@@ -160,19 +148,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const navSecondary = [
     {
+      title: t('header.notifications'),
+      url: ROUTES.admin.notifications,
+      icon: BellIcon,
+    },
+    {
+      title: t('header.profile'),
+      url: ROUTES.admin.profile,
+      icon: CircleUserIcon,
+    },
+    {
       title: t('header.settings'),
       url: ROUTES.admin.settings,
       icon: SettingsIcon,
-    },
-    {
-      title: 'Get Help',
-      url: "#",
-      icon: HelpCircleIcon,
-    },
-    {
-      title: t('common.search'),
-      url: "#",
-      icon: SearchIcon,
     },
   ]
 

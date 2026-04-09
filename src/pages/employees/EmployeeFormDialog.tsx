@@ -15,24 +15,36 @@ import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { EmployeeForm } from './EmployeeForm';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ArrowLeft } from 'lucide-react';
+import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Employee } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
-export function EmployeeFormDialog() {
+interface EmployeeFormDialogProps {
+  open?: boolean;
+  mode?: 'create' | 'edit' | 'show';
+  recordId?: number;
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+export function EmployeeFormDialog({ open, mode, recordId, onClose, onSuccess }: EmployeeFormDialogProps = {}) {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const { list } = useNavigation();
   const [form] = Form.useForm();
-  const hasRecordId = !!id;
-  const isViewMode = location.pathname.includes('/show/');
+  const isControlled = typeof open === 'boolean';
+  const resolvedId = recordId ?? (id ? Number(id) : undefined);
+  const hasRecordId = !!resolvedId;
+  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const isEdit = hasRecordId && !isViewMode;
+  const dialogOpen = isControlled ? open : true;
 
   const { data, isLoading: isLoadingData } = useOne<Employee>({
     resource: 'employees',
-    id: id || '',
+    id: resolvedId || '',
     queryOptions: { enabled: hasRecordId },
   });
 
@@ -42,17 +54,18 @@ export function EmployeeFormDialog() {
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
   const handleSubmit = (values: Partial<Employee>) => {
-    if (isEdit && id) {
+    if (isEdit && resolvedId) {
       updateItem(
         {
           resource: 'employees',
-          id,
+          id: resolvedId,
           values,
         },
         {
           onSuccess: () => {
             toast.success(t('notifications.updateSuccess', { item: t('employees.title') }));
-            list('employees');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) {
@@ -74,7 +87,8 @@ export function EmployeeFormDialog() {
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('employees.title') }));
-            list('employees');
+            onSuccess?.();
+            handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) {
@@ -91,8 +105,18 @@ export function EmployeeFormDialog() {
   };
 
   const handleClose = () => {
-    list('employees');
+    onClose?.();
+    if (!isControlled) {
+      list('employees');
+    }
   };
+
+  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+    form,
+    isViewMode,
+    isSubmitting: isLoading,
+    onClose: handleClose,
+  });
 
   useEffect(() => {
     if (hasRecordId && data?.data) {
@@ -102,8 +126,8 @@ export function EmployeeFormDialog() {
 
   if (hasRecordId && isLoadingData) {
     return (
-      <Dialog open={true} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('employees.editEmployee')}</DialogTitle>
           </DialogHeader>
@@ -114,8 +138,8 @@ export function EmployeeFormDialog() {
   }
 
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>
             {isViewMode ? t('common.view') : isEdit ? t('employees.editEmployee') : t('employees.createEmployee')}
@@ -127,8 +151,8 @@ export function EmployeeFormDialog() {
 
         <div className="px-6 pb-6 space-y-4">
           <Alert>
-            <AlertTitle>Form guide</AlertTitle>
-            <AlertDescription>Fields marked with * are required. Validation runs on blur and submit.</AlertDescription>
+            <AlertTitle>{t('formGuides.title')}</AlertTitle>
+            <AlertDescription>{t('formGuides.employee')}</AlertDescription>
           </Alert>
 
           <Form
@@ -143,7 +167,7 @@ export function EmployeeFormDialog() {
         </div>
 
         <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
-          <Button variant="outline" onClick={handleClose} type="button" className="gap-2">
+          <Button variant="outline" onClick={requestClose} type="button" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             {t('common.back')}
           </Button>

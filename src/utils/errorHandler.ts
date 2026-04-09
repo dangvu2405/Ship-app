@@ -10,10 +10,16 @@ import { AxiosError } from 'axios';
 
 export type ErrorMode = 'global' | 'local' | 'silent';
 
+/** Laravel-style + spec-style `{ error: { code, message, details } }`. */
 export interface ApiErrorResponse {
   message?: string;
   code?: string;
   errors?: Record<string, string[]>;
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, string[] | string> | string;
+  };
 }
 
 const GLOBAL_TECHNICAL_STATUSES = new Set([401, 403]);
@@ -35,7 +41,9 @@ export const isToastShown = (error: unknown): boolean => {
 export const getErrorMessage = (error: unknown): string => {
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as AxiosError<ApiErrorResponse>;
-    return axiosError.response?.data?.message || 'An error occurred';
+    const data = axiosError.response?.data;
+    const nested = data?.error && typeof data.error === 'object' ? data.error.message : undefined;
+    return nested || data?.message || 'An error occurred';
   }
 
   if (error instanceof Error && error.message) {
@@ -63,7 +71,8 @@ export const getErrorStatus = (error: unknown): number | undefined => {
 export const getErrorCode = (error: unknown): string | undefined => {
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as AxiosError<ApiErrorResponse>;
-    return axiosError.response?.data?.code;
+    const data = axiosError.response?.data;
+    return data?.error?.code ?? data?.code;
   }
 
   return undefined;
@@ -72,17 +81,29 @@ export const getErrorCode = (error: unknown): string | undefined => {
 /**
  * Extract validation errors from Axios error
  */
+function flattenDetails(details: Record<string, string[] | string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  Object.entries(details).forEach(([key, value]) => {
+    out[key] = Array.isArray(value) ? (value[0] ?? '') : String(value);
+  });
+  return out;
+}
+
 export const getValidationErrors = (error: unknown): Record<string, string> => {
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as AxiosError<ApiErrorResponse>;
-    const errors = axiosError.response?.data?.errors;
-    
+    const data = axiosError.response?.data;
+    const errors = data?.errors;
     if (errors) {
       const formattedErrors: Record<string, string> = {};
       Object.entries(errors).forEach(([key, value]) => {
         formattedErrors[key] = Array.isArray(value) ? value[0] : String(value);
       });
       return formattedErrors;
+    }
+    const details = data?.error?.details;
+    if (details && typeof details === 'object' && !Array.isArray(details)) {
+      return flattenDetails(details as Record<string, string[] | string>);
     }
   }
   return {};

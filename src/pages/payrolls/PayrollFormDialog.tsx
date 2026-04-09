@@ -10,16 +10,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { PayrollForm } from './PayrollForm';
 import { useTranslation } from '@/hooks/useTranslation';
-
-type Translate = ReturnType<typeof useTranslation>['t'];
-import { ArrowLeft } from 'lucide-react';
+import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Payroll, PayrollDetail } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import payrollService from '@/services/payroll.service';
+import { formatCurrencyVND } from '@/utils/format';
 import { useCallback, useState } from 'react';
 import {
   Table,
@@ -30,6 +31,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/hooks/useAuth';
+
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+interface PayrollFormDialogProps {
+  open?: boolean;
+  mode?: 'create' | 'edit' | 'show';
+  recordId?: number;
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
 
 function statusLabel(status: string, t: Translate): string {
   switch (status) {
@@ -37,27 +49,33 @@ function statusLabel(status: string, t: Translate): string {
       return t('payrolls.statusLocked');
     case 'approved':
       return t('payrolls.statusApproved');
-    case 'paid':
-      return t('payrolls.statusPaid');
+    case 'generated':
+    case 'draft':
+      return t('payrolls.statusGenerated');
     default:
-      return t('payrolls.statusDraft');
+      return status;
   }
 }
 
-export function PayrollFormDialog() {
+export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: PayrollFormDialogProps = {}) {
   const { t } = useTranslation();
+  const { hasRole } = useAuth();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const { list } = useNavigation();
   const invalidate = useInvalidate();
   const [form] = Form.useForm();
-  const hasRecordId = Boolean(id);
-  const isViewMode = location.pathname.includes('/show/');
+  const isControlled = typeof open === 'boolean';
+  const resolvedId = recordId ?? (id ? Number(id) : undefined);
+  const hasRecordId = Boolean(resolvedId);
+  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const isAdmin = hasRole('admin');
+  const dialogOpen = isControlled ? open : true;
 
   const { data, isLoading: isLoadingData, refetch } = useOne<Payroll>({
     resource: 'payrolls',
-    id: id || '',
+    id: resolvedId || '',
     queryOptions: { enabled: hasRecordId },
   });
 
@@ -68,8 +86,18 @@ export function PayrollFormDialog() {
   const isLoading = isCreating || (hasRecordId && isLoadingData);
 
   const handleClose = () => {
-    list('payrolls');
+    onClose?.();
+    if (!isControlled) {
+      list('payrolls');
+    }
   };
+
+  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+    form,
+    isViewMode,
+    isSubmitting: isLoading || actionLoading !== null,
+    onClose: handleClose,
+  });
 
   const refreshPayroll = useCallback(async () => {
     await invalidate({ resource: 'payrolls', invalidates: ['list'] });
@@ -89,8 +117,9 @@ export function PayrollFormDialog() {
       {
         onSuccess: () => {
           toast.success(t('notifications.createSuccess', { item: t('payrolls.title') }));
+          onSuccess?.();
           void invalidate({ resource: 'payrolls', invalidates: ['list'] });
-          list('payrolls');
+          handleClose();
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) {
@@ -105,7 +134,7 @@ export function PayrollFormDialog() {
   };
 
   const runPayrollAction = async (key: string, fn: () => Promise<unknown>) => {
-    if (!id) return;
+    if (!resolvedId) return;
     try {
       setActionLoading(key);
       await fn();
@@ -121,13 +150,10 @@ export function PayrollFormDialog() {
     }
   };
 
-  const formatMoney = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
-
   if (hasRecordId && isLoadingData) {
     return (
-      <Dialog open={true} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('payrolls.editPayroll')}</DialogTitle>
           </DialogHeader>
@@ -138,12 +164,15 @@ export function PayrollFormDialog() {
   }
 
   if (hasRecordId && payroll) {
+    const payrollId = resolvedId as number;
     const locked = payroll.status === 'locked';
+    const canApprove = payroll.status === 'generated' || payroll.status === 'draft';
+    const canLock = payroll.status === 'approved' && isAdmin;
     const details = payroll.details ?? [];
 
     return (
-      <Dialog open={true} onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('payrolls.editPayroll')}</DialogTitle>
             <DialogDescription>
@@ -160,9 +189,9 @@ export function PayrollFormDialog() {
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={locked || actionLoading !== null}
+                  disabled={locked || actionLoading !== null || !canApprove}
                   onClick={() =>
-                    runPayrollAction('approve', () => payrollService.approve(Number(id)))
+                    runPayrollAction('approve', () => payrollService.approve(payrollId))
                   }
                 >
                   {actionLoading === 'approve' ? t('common.loading') : t('payrolls.approve')}
@@ -171,8 +200,9 @@ export function PayrollFormDialog() {
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={locked || actionLoading !== null}
-                  onClick={() => runPayrollAction('lock', () => payrollService.lock(Number(id)))}
+                  disabled={locked || actionLoading !== null || !canLock}
+                  title={isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
+                  onClick={() => runPayrollAction('lock', () => payrollService.lock(payrollId))}
                 >
                   {actionLoading === 'lock' ? t('common.loading') : t('payrolls.lock')}
                 </Button>
@@ -182,10 +212,10 @@ export function PayrollFormDialog() {
                   size="sm"
                   disabled={actionLoading !== null}
                   onClick={async () => {
-                    if (!id) return;
+                    if (!resolvedId) return;
                     try {
                       setActionLoading('export');
-                      await payrollService.downloadExport(Number(id));
+                      await payrollService.downloadExport(resolvedId);
                       toast.success(t('payrolls.exportJson'));
                     } catch (error) {
                       if (!shouldShowLocalErrorToast(error)) {
@@ -225,7 +255,7 @@ export function PayrollFormDialog() {
                         {(row as PayrollDetail & { employee?: { name?: string; code?: string } }).employee?.code ?? '—'}{' '}
                         {(row as PayrollDetail & { employee?: { name?: string } }).employee?.name ?? ''}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatMoney(row.net_salary)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrencyVND(row.net_salary)}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -234,7 +264,7 @@ export function PayrollFormDialog() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleClose} type="button" className="gap-2">
+            <Button variant="outline" onClick={requestClose} type="button" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               {t('common.back')}
             </Button>
@@ -245,19 +275,31 @@ export function PayrollFormDialog() {
   }
 
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>{t('payrolls.createPayroll')}</DialogTitle>
           <DialogDescription>{t('payrolls.createDescription')}</DialogDescription>
         </DialogHeader>
 
-        <Form form={form} onFinish={handleCreate} layout="vertical">
-          <PayrollForm form={form} />
-        </Form>
+        <div className="px-6 pb-6 space-y-4">
+          <Alert>
+            <AlertTitle>{t('formGuides.title')}</AlertTitle>
+            <AlertDescription>{t('formGuides.payrollCreate')}</AlertDescription>
+          </Alert>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} type="button" className="gap-2">
+          <Form
+            form={form}
+            onFinish={handleCreate}
+            layout="vertical"
+            validateTrigger={["onBlur", "onSubmit"]}
+          >
+            <PayrollForm form={form} />
+          </Form>
+        </div>
+
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+          <Button variant="outline" onClick={requestClose} type="button" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             {t('common.back')}
           </Button>

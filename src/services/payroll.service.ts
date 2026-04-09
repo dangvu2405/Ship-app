@@ -1,6 +1,7 @@
 import api from './api';
 import { ApiResponse, Payroll, PayrollDetail, PaginatedResponse } from '@/types';
 import { ENDPOINTS } from './endpoints';
+import { buildPayrollDetailCsv } from '@/utils/payrollCsv';
 
 class PayrollService {
   async getAll(params?: {
@@ -43,6 +44,19 @@ class PayrollService {
     const a = document.createElement('a');
     a.href = url;
     a.download = `payroll-${id}-export.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Cùng nguồn JSON export, chuyển sang CSV chuẩn cột cố định (UTF-8 BOM). */
+  async downloadExportCsv(id: number): Promise<void> {
+    const response = await api.get(ENDPOINTS.payrolls.export(id));
+    const csv = buildPayrollDetailCsv(response.data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payroll-${id}-export.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

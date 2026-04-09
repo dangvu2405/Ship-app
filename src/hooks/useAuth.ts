@@ -7,6 +7,8 @@ export const useAuth = () => {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const navigate = useNavigate();
 
+  const normalizeRole = (role: string): string => role.trim().toLowerCase();
+
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
       checkAuth();
@@ -22,7 +24,8 @@ export const useAuth = () => {
   };
 
   const hasRole = (role: string): boolean => {
-    return user?.roles?.some((r) => r.name === role) ?? false;
+    const targetRole = normalizeRole(role);
+    return user?.roles?.some((r) => normalizeRole(r.name) === targetRole) ?? false;
   };
 
   const hasPermission = (permission: string): boolean => {

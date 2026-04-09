@@ -1,7 +1,8 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Home, ArrowLeft } from 'lucide-react';
+import Home from 'lucide-react/dist/esm/icons/home';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import { ROUTES } from '@/routes';
 
 export function NotFound() {
@@ -19,12 +20,14 @@ export function NotFound() {
           {t('404.description')}
         </p>
         <div className="mt-8 flex justify-center gap-4">
-          <Button onClick={() => navigate(ROUTES.dashboard)} className="gap-2">
-            <Home className="h-4 w-4" />
-            {t('404.goToDashboard')}
+          <Button asChild className="gap-2">
+            <Link to={ROUTES.dashboard}>
+              <Home className="h-4 w-4" aria-hidden />
+              {t('404.goToDashboard')}
+            </Link>
           </Button>
-          <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
+          <Button type="button" variant="outline" onClick={() => navigate(-1)} className="gap-2">
+            <ArrowLeft className="h-4 w-4" aria-hidden />
             {t('404.goBack')}
           </Button>
         </div>

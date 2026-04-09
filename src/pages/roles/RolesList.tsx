@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
-import { RoleFormDialog } from './RoleFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import PlusIcon from 'lucide-react/dist/esm/icons/plus';
 import EyeIcon from 'lucide-react/dist/esm/icons/eye';
@@ -17,16 +17,18 @@ import type { Role } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { RoleFormDialog } from './RoleFormDialog';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function RolesList() {
   const { t } = useTranslation();
-  const { list } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Role | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
-  const [activeRoleId, setActiveRoleId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
@@ -39,6 +41,8 @@ export function RolesList() {
     ],
   });
 
+  const safeRefetch = useSafeRefetch('roles-roleslist', refetch);
+
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
     setCurrent(1);
@@ -50,18 +54,17 @@ export function RolesList() {
     setCurrent(1);
   };
 
-  const handleOpenDialog = (mode: 'create' | 'edit' | 'show', roleId?: number) => {
-    setDialogMode(mode);
-    setActiveRoleId(roleId);
-    setDialogOpen(true);
+  const handleCreate = () => {
+    setFormMode('create');
+    setEditingId(undefined);
+    setFormOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setActiveRoleId(undefined);
-    setDialogMode('create');
-    list('roles');
-  };
+  const handleEdit = useCallback((id: number) => {
+    setFormMode('edit');
+    setEditingId(id);
+    setFormOpen(true);
+  }, []);
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -72,7 +75,7 @@ export function RolesList() {
           toast.success(t('notifications.deleteSuccess', { item: t('roles.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -82,7 +85,8 @@ export function RolesList() {
     );
   };
 
-  const columns: DataTableColumn<Role>[] = [
+  const columns = useMemo<DataTableColumn<Role>[]>(
+    () => [
     { key: 'name', header: t('roles.name'), dataIndex: 'name' },
     { key: 'description', header: t('roles.description'), dataIndex: 'description' },
     {
@@ -95,19 +99,49 @@ export function RolesList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog('show', record.id); }}>
-            <EyeIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.view')}
+            onClick={(e) => {
+              e.stopPropagation();
+              show('roles', record.id);
+            }}
+          >
+            <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog('edit', record.id); }}>
-            <PencilIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.edit')}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record.id);
+            }}
+          >
+            <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
-            <Trash2Icon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            aria-label={t('common.delete')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(record);
+              setDeleteDialogOpen(true);
+            }}
+          >
+            <Trash2Icon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleEdit]
+  );
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -120,21 +154,22 @@ export function RolesList() {
         description={t('roles.descriptionPage')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('roles.title') }]}
         actions={
-          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('roles.createRole')}
           </Button>
         }
       />
-      <div className="bg-card shadow rounded-lg border p-6">
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <SearchField
             placeholder={t('common.search')}
             value={searchKeyword}
             onChange={setSearchKeyword}
           />
-          <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
-          <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
+          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
+          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
         </div>
 
         {isLoading ? (
@@ -143,26 +178,34 @@ export function RolesList() {
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
+            onRetry={() => void safeRefetch(true)}
           />
         ) : (
           <DataTable<Role>
             data={listData}
             columns={columns}
-            onRowClick={(r) => handleOpenDialog('show', r.id)}
+            onRowClick={(r) => show('roles', r.id)}
             emptyMessage={t('common.noData')}
             pagination={{ current, total, pageSize, onPageChange: setCurrent }}
           />
         )}
-      </div>
-      <RoleFormDialog
-        open={dialogOpen}
-        mode={dialogMode}
-        recordId={activeRoleId}
-        onClose={handleCloseDialog}
-        onSuccess={refetch}
-      />
+        </CardContent>
+      </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.name} />
+      {formOpen && (
+        <RoleFormDialog
+          open={formOpen}
+          mode={formMode}
+          recordId={editingId}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingId(undefined);
+          }}
+          onSuccess={() => {
+            void safeRefetch(true);
+          }}
+        />
+      )}
     </>
   );
 }

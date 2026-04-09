@@ -7,8 +7,10 @@ const crud = (base: string) => ({
 
 export const ENDPOINTS = {
   public: {
+    /** Trong `/api/v1` */
     root: '/',
     health: '/health',
+    /** Swagger: `/api/documentation` — gọi với axios `{ useApiRoot: true }`. */
     docs: '/documentation',
   },
   auth: {
@@ -16,7 +18,8 @@ export const ENDPOINTS = {
     logout: '/auth/logout',
     refresh: '/auth/refresh',
     register: '/auth/register',
-    me: '/user',
+    /** Chuẩn REST; `/user` vẫn có trên BE để tương thích. */
+    me: '/auth/me',
   },
   companies: crud('/companies'),
   offices: crud('/offices'),
@@ -36,6 +39,16 @@ export const ENDPOINTS = {
   vehicleExpenses: crud('/vehicle_expenses'),
   customers: crud('/customers'),
   trips: crud('/trips'),
+  chat: {
+    messages: '/chat/messages',
+    messagesStream: '/chat/messages/stream',
+    sessions: '/chat/sessions',
+    sessionById: (sessionId: Id) => `/chat/sessions/${sessionId}`,
+  },
+  attendanceLate: {
+    list: '/attendances/late/list',
+    notify: '/attendances/late/notify',
+  },
   tripBonusRules: crud('/trip_bonus_rules'),
   invoices: crud('/invoices'),
   allowances: crud('/allowances'),
@@ -56,6 +69,34 @@ export const ENDPOINTS = {
     employees: {
       base: '/v2/employees',
       byId: (id: Id) => `/v2/employees/${id}`,
+    },
+  },
+  /**
+   * Contract paths from FRONTEND_MUST_HAVE_SCHEMA_HANDOFF — enable when backend exposes routes.
+   */
+  planned: {
+    leaveTypes: crud('/leave-types'),
+    leaveRequests: {
+      ...crud('/leave-requests'),
+      submit: (id: Id) => `/leave-requests/${id}/submit`,
+      approve: (id: Id) => `/leave-requests/${id}/approve`,
+      reject: (id: Id) => `/leave-requests/${id}/reject`,
+      cancel: (id: Id) => `/leave-requests/${id}/cancel`,
+    },
+    leaveBalanceByEmployee: (employeeId: Id, balanceId: Id) => `/employees/${employeeId}/leave-balances/${balanceId}`,
+    taxBrackets: crud('/tax-brackets'),
+    insuranceRates: crud('/insurance-rates'),
+    payrollDetailEarnings: (payrollDetailId: Id) => `/payroll-details/${payrollDetailId}/earnings`,
+    payrollEarningById: (id: Id) => `/payroll-earnings/${id}`,
+    payrollDetailDeductions: (payrollDetailId: Id) => `/payroll-details/${payrollDetailId}/deductions`,
+    payslips: {
+      ...crud('/payslips'),
+      issue: (id: Id) => `/payslips/${id}/issue`,
+    },
+    chartOfAccounts: crud('/chart-of-accounts'),
+    journalEntries: {
+      ...crud('/journal-entries'),
+      post: (id: Id) => `/journal-entries/${id}/post`,
     },
   },
 } as const;

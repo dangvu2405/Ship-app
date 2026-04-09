@@ -5,6 +5,7 @@ import { ConfigProvider, theme as antdTheme } from 'antd';
 import { Toaster } from 'react-hot-toast';
 import { Fragment, Suspense, useEffect } from 'react';
 import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
+import { FloatingChatAssistant } from '@/components/common/FloatingChatAssistant';
 import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
@@ -30,7 +31,7 @@ function App() {
   const { defaultAlgorithm, darkAlgorithm } = antdTheme;
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
       <Refine
         dataProvider={dataProvider}
@@ -79,6 +80,7 @@ function App() {
         <DocumentTitleHandler />
         <Toaster position="top-right" />
         <ShadcnToaster />
+        <FloatingChatAssistant />
       </Refine>
       </ConfigProvider>
     </BrowserRouter>

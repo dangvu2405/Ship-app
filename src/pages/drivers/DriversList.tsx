@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,11 +21,16 @@ import type { Driver } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { DriverFormDialog } from './DriverFormDialog';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function DriversList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Driver | null>(null);
   const [current, setCurrent] = useState(1);
@@ -44,6 +49,8 @@ export function DriversList() {
         : []),
     ],
   });
+
+  const safeRefetch = useSafeRefetch('drivers-driverslist', refetch);
 
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
@@ -65,6 +72,18 @@ export function DriversList() {
     setCurrent(1);
   };
 
+  const handleCreate = () => {
+    setFormMode('create');
+    setEditingId(undefined);
+    setFormOpen(true);
+  };
+
+  const handleEdit = useCallback((id: number) => {
+    setFormMode('edit');
+    setEditingId(id);
+    setFormOpen(true);
+  }, []);
+
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
@@ -74,7 +93,7 @@ export function DriversList() {
           toast.success(t('notifications.deleteSuccess', { item: t('drivers.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -84,7 +103,8 @@ export function DriversList() {
     );
   };
 
-  const columns: DataTableColumn<Driver>[] = [
+  const columns = useMemo<DataTableColumn<Driver>[]>(
+    () => [
     {
       key: 'employee',
       header: t('drivers.employee'),
@@ -117,19 +137,49 @@ export function DriversList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); show('drivers', record.id); }}>
-            <EyeIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.view')}
+            onClick={(e) => {
+              e.stopPropagation();
+              show('drivers', record.id);
+            }}
+          >
+            <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); edit('drivers', record.id); }}>
-            <PencilIcon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={t('common.edit')}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record.id);
+            }}
+          >
+            <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
-            <Trash2Icon className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            aria-label={t('common.delete')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(record);
+              setDeleteDialogOpen(true);
+            }}
+          >
+            <Trash2Icon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleEdit]
+  );
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -142,7 +192,7 @@ export function DriversList() {
         description={t('drivers.description')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('drivers.title') }]}
         actions={
-          <Button onClick={() => create('drivers')} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('drivers.createDriver')}
           </Button>
@@ -152,7 +202,7 @@ export function DriversList() {
         <CardContent className="p-6 space-y-4">
           <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
             <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
               <TabsTrigger value="available">{t('drivers.statusAvailable')}</TabsTrigger>
               <TabsTrigger value="on_trip">{t('drivers.statusOnTrip')}</TabsTrigger>
               <TabsTrigger value="off">{t('drivers.statusOff')}</TabsTrigger>
@@ -176,8 +226,8 @@ export function DriversList() {
                 { label: t('drivers.statusOff'), value: 'off' },
               ]}
             />
-            <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
-            <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
+            <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
+            <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
           </div>
 
           {isLoading ? (
@@ -186,7 +236,7 @@ export function DriversList() {
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
-              onRetry={() => refetch()}
+              onRetry={() => void safeRefetch(true)}
             />
           ) : (
             <DataTable<Driver>
@@ -200,6 +250,20 @@ export function DriversList() {
         </CardContent>
       </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.license_no} />
+      {formOpen && (
+        <DriverFormDialog
+          open={formOpen}
+          mode={formMode}
+          recordId={editingId}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingId(undefined);
+          }}
+          onSuccess={() => {
+            void safeRefetch(true);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -2,7 +2,8 @@ import * as React from "react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { IconCheck, IconChevronRight } from "@tabler/icons-react"
+import IconCheck from "@tabler/icons-react/dist/esm/icons/IconCheck.mjs"
+import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs"
 
 function DropdownMenu({
   ...props

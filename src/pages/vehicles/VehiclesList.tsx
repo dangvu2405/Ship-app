@@ -1,29 +1,44 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Select } from 'antd';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
+import { VehicleFormDialog } from './VehicleFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import Edit from 'lucide-react/dist/esm/icons/edit';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
 import type { Vehicle } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function VehiclesList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
+  const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
@@ -41,6 +56,8 @@ export function VehiclesList() {
       ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
     ],
   });
+
+  const safeRefetch = useSafeRefetch('vehicles-vehicleslist', refetch);
 
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
@@ -62,9 +79,21 @@ export function VehiclesList() {
     setCurrent(1);
   };
 
-  const handleDelete = (vehicle: Vehicle) => {
+  const handleDelete = useCallback((vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setDeleteDialogOpen(true);
+  }, []);
+
+  const handleOpenDialog = useCallback((mode: 'create' | 'edit' | 'show', id?: number) => {
+    setDialogMode(mode);
+    setActiveId(id);
+    setDialogOpen(true);
+  }, []);
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setDialogMode('create');
+    setActiveId(undefined);
   };
 
   const confirmDelete = () => {
@@ -80,7 +109,7 @@ export function VehiclesList() {
           toast.success(t('notifications.deleteSuccess', { item: t('vehicles.title') }));
           setDeleteDialogOpen(false);
           setSelectedVehicle(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) {
@@ -93,7 +122,8 @@ export function VehiclesList() {
     );
   };
 
-  const columns: DataTableColumn<Vehicle>[] = [
+  const columns = useMemo<DataTableColumn<Vehicle>[]>(
+    () => [
     { key: 'plate_number', header: t('vehicles.plateNumber'), dataIndex: 'plate_number' },
     { key: 'type', header: t('vehicles.type'), dataIndex: 'type' },
     { key: 'brand', header: t('vehicles.brand'), dataIndex: 'brand' },
@@ -119,35 +149,34 @@ export function VehiclesList() {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); show('vehicles', record.id); }}
-            className="h-8 w-8 p-0"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); edit('vehicles', record.id); }}
-            className="h-8 w-8 p-0"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleDelete(record); }}
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
+                <MoreHorizontal className="h-4 w-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => show('vehicles', record.id)}>
+                <Eye className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.view')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenDialog('edit', record.id)}>
+                <Edit className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
+                <Trash2 className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleDelete, handleOpenDialog]
+  );
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
@@ -165,7 +194,7 @@ export function VehiclesList() {
         description={t('vehicles.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={() => create('vehicles')} className="gap-2">
+          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
             <Plus className="h-4 w-4" />
             {t('vehicles.createVehicle')}
           </Button>
@@ -176,7 +205,7 @@ export function VehiclesList() {
         <CardContent className="p-6 space-y-4">
           <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
             <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
               <TabsTrigger value="active">{t('common.active')}</TabsTrigger>
               <TabsTrigger value="inactive">{t('common.inactive')}</TabsTrigger>
             </TabsList>
@@ -189,17 +218,20 @@ export function VehiclesList() {
               onChange={setSearchKeyword}
             />
             <Select
-              allowClear
-              placeholder={t('common.status')}
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              options={[
-                { label: t('common.active'), value: 'active' },
-                { label: t('common.inactive'), value: 'inactive' },
-              ]}
-            />
-            <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
-            <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
+              value={selectedStatus ?? 'all'}
+              onValueChange={(value) => setSelectedStatus(value === 'all' ? undefined : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t('common.status')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('common.all')}</SelectItem>
+                <SelectItem value="active">{t('common.active')}</SelectItem>
+                <SelectItem value="inactive">{t('common.inactive')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
+            <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
           </div>
 
           {isLoading ? (
@@ -208,7 +240,7 @@ export function VehiclesList() {
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
-              onRetry={() => refetch()}
+              onRetry={() => void safeRefetch(true)}
             />
           ) : (
             <DataTable<Vehicle>
@@ -232,6 +264,15 @@ export function VehiclesList() {
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDelete}
         itemName={selectedVehicle?.plate_number}
+      />
+      <VehicleFormDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        recordId={activeId}
+        onClose={handleCloseDialog}
+        onSuccess={() => {
+          void safeRefetch(true);
+        }}
       />
     </>
   );

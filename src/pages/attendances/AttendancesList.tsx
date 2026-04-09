@@ -1,6 +1,14 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
@@ -12,15 +20,46 @@ import PlusIcon from 'lucide-react/dist/esm/icons/plus';
 import EyeIcon from 'lucide-react/dist/esm/icons/eye';
 import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
 import Trash2Icon from 'lucide-react/dist/esm/icons/trash-2';
+import MoreHorizontalIcon from 'lucide-react/dist/esm/icons/more-horizontal';
 import type { Attendance } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { AttendanceFormDialog } from './AttendanceFormDialog';
+import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+
+const getAttendanceStatusVariant = (status?: string): 'default' | 'secondary' | 'destructive' => {
+  if (status === 'absent') return 'destructive';
+  if (status === 'late' || status === 'half_day' || status === 'leave') return 'secondary';
+  return 'default';
+};
+
+const getAttendanceStatusLabel = (
+  status: string | undefined,
+  t: ReturnType<typeof useTranslation>['t']
+): string => {
+  switch (status) {
+    case 'absent':
+      return t('attendances.statusAbsent');
+    case 'late':
+      return t('attendances.statusLate');
+    case 'half_day':
+      return t('attendances.statusHalfDay');
+    case 'leave':
+      return t('attendances.statusLeave');
+    case 'present':
+    default:
+      return t('attendances.statusPresent');
+  }
+};
 
 export function AttendancesList() {
   const { t } = useTranslation();
-  const { show, create, edit } = useNavigation();
+  const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Attendance | null>(null);
   const [current, setCurrent] = useState(1);
@@ -29,6 +68,20 @@ export function AttendancesList() {
     resource: 'attendances',
     pagination: { current, pageSize: 15 },
   });
+
+  const safeRefetch = useSafeRefetch('attendances-attendanceslist', refetch);
+
+  const handleCreate = () => {
+    setFormMode('create');
+    setEditingId(undefined);
+    setFormOpen(true);
+  };
+
+  const handleEdit = useCallback((id: number) => {
+    setFormMode('edit');
+    setEditingId(id);
+    setFormOpen(true);
+  }, []);
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -39,7 +92,7 @@ export function AttendancesList() {
           toast.success(t('notifications.deleteSuccess', { item: t('attendances.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
-          refetch();
+          void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -49,7 +102,8 @@ export function AttendancesList() {
     );
   };
 
-  const columns: DataTableColumn<Attendance>[] = [
+  const columns = useMemo<DataTableColumn<Attendance>[]>(
+    () => [
     { key: 'employee', header: t('attendances.employee'), render: (r) => r.employee?.name ?? `#${r.employee_id}` },
     {
       key: 'date',
@@ -59,25 +113,48 @@ export function AttendancesList() {
     },
     { key: 'check_in', header: t('attendances.checkIn'), dataIndex: 'check_in' },
     { key: 'check_out', header: t('attendances.checkOut'), dataIndex: 'check_out' },
-    { key: 'status', header: t('common.status'), dataIndex: 'status' },
+    {
+      key: 'status',
+      header: t('common.status'),
+      dataIndex: 'status',
+      render: (r) => (
+        <Badge variant={getAttendanceStatusVariant(r.status)}>
+          {getAttendanceStatusLabel(r.status, t)}
+        </Badge>
+      ),
+    },
     {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); show('attendances', record.id); }}>
-            <EyeIcon className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); edit('attendances', record.id); }}>
-            <PencilIcon className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
-            <Trash2Icon className="h-4 w-4" />
-          </Button>
+        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
+                <MoreHorizontalIcon className="h-4 w-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => show('attendances', record.id)}>
+                <EyeIcon className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.view')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(record.id)}>
+                <PencilIcon className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => { setSelected(record); setDeleteDialogOpen(true); }}>
+                <Trash2Icon className="h-4 w-4 mr-2" aria-hidden />
+                {t('common.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
-  ];
+  ],
+    [t, show, handleEdit]
+  );
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -90,20 +167,21 @@ export function AttendancesList() {
         description={t('attendances.description')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('attendances.title') }]}
         actions={
-          <Button onClick={() => create('attendances')} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2">
             <PlusIcon className="h-4 w-4" />
             {t('attendances.createAttendance')}
           </Button>
         }
       />
-      <div className="bg-card shadow rounded-lg border p-6">
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
         {isLoading ? (
           <TableSkeleton rows={5} columns={columns.length} />
         ) : isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
+            onRetry={() => void safeRefetch(true)}
           />
         ) : (
           <DataTable<Attendance>
@@ -114,8 +192,23 @@ export function AttendancesList() {
             pagination={{ current, total, pageSize, onPageChange: setCurrent }}
           />
         )}
-      </div>
+        </CardContent>
+      </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.date} />
+      {formOpen && (
+        <AttendanceFormDialog
+          open={formOpen}
+          mode={formMode}
+          recordId={editingId}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingId(undefined);
+          }}
+          onSuccess={() => {
+            void safeRefetch(true);
+          }}
+        />
+      )}
     </>
   );
 }

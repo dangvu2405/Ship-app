@@ -14,8 +14,23 @@ import { TableSkeleton } from './TableSkeleton';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
+import type { ActivityLog } from '@/types';
 import BellIcon from 'lucide-react/dist/esm/icons/bell';
 import CheckCheckIcon from 'lucide-react/dist/esm/icons/check-check';
+
+type NotificationTab = 'all' | 'activity' | 'system' | 'user';
+
+const NOTIFICATION_TAB_VALUES: NotificationTab[] = ['all', 'activity', 'system', 'user'];
+
+function filterLogsForTab(tab: NotificationTab, logs: ActivityLog[]): ActivityLog[] {
+  if (tab === 'all') return logs;
+  if (tab === 'activity') {
+    return logs.filter((log) => ['create', 'update', 'delete'].includes(log.type));
+  }
+  if (tab === 'system') return logs.filter((log) => log.type === 'system');
+  if (tab === 'user') return logs.filter((log) => log.type === 'user');
+  return logs;
+}
 
 interface NotificationPopupProps {
   children?: React.ReactNode;
@@ -25,7 +40,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'activity' | 'system' | 'user'>('all');
+  const [activeTab, setActiveTab] = useState<NotificationTab>('all');
 
   const {
     activityLogs,
@@ -59,16 +74,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
     navigate(ROUTES.admin.notifications);
   };
 
-  // Filter notifications by type
-  const filteredLogs = activityLogs.filter((log) => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'activity') {
-      return ['create', 'update', 'delete'].includes(log.type);
-    }
-    if (activeTab === 'system') return log.type === 'system';
-    if (activeTab === 'user') return log.type === 'user';
-    return true;
-  });
+  const filteredLogs = filterLogsForTab(activeTab, activityLogs);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -79,8 +85,9 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
             size="icon"
             className="h-8 w-8 relative"
             title={t('header.notifications')}
+            aria-label={t('header.notifications')}
           >
-            <BellIcon className="h-4 w-4" />
+            <BellIcon className="h-4 w-4" aria-hidden />
             {unreadCount > 0 && (
               <Badge
                 variant="destructive"
@@ -109,52 +116,73 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
               onClick={handleMarkAllAsRead}
               className="h-7 text-xs"
             >
-              <CheckCheckIcon className="h-3 w-3 mr-1" />
+              <CheckCheckIcon className="h-3 w-3 mr-1" aria-hidden />
               {t('notifications.markAllRead')}
             </Button>
           )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-          <TabsList className="w-full rounded-none border-b">
-            <TabsTrigger value="all" className="flex-1">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NotificationTab)} className="w-full">
+          <TabsList className="w-full min-w-0 rounded-none border-b flex overflow-x-auto overflow-y-hidden">
+            <TabsTrigger
+              value="all"
+              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
+              title={t('notifications.all')}
+            >
               {t('notifications.all')}
             </TabsTrigger>
-            <TabsTrigger value="activity" className="flex-1">
+            <TabsTrigger
+              value="activity"
+              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
+              title={t('notifications.activity')}
+            >
               {t('notifications.activity')}
             </TabsTrigger>
-            <TabsTrigger value="system" className="flex-1">
+            <TabsTrigger
+              value="system"
+              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
+              title={t('notifications.system')}
+            >
               {t('notifications.system')}
             </TabsTrigger>
-            <TabsTrigger value="user" className="flex-1">
+            <TabsTrigger
+              value="user"
+              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
+              title={t('notifications.user')}
+            >
               {t('notifications.user')}
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value={activeTab} className="m-0">
-            <div className="max-h-[400px] overflow-y-auto">
-              {activityLoading ? (
-                <div className="p-4">
-                  <TableSkeleton rows={5} columns={1} />
+          {NOTIFICATION_TAB_VALUES.map((tab) => {
+            const logs = filterLogsForTab(tab, activityLogs);
+            return (
+              <TabsContent key={tab} value={tab} className="m-0">
+                <div className="max-h-[400px] overflow-y-auto">
+                  {activityLoading ? (
+                    <div className="p-4">
+                      <TableSkeleton rows={5} columns={1} />
+                    </div>
+                  ) : logs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                      <BellIcon className="h-12 w-12 text-muted-foreground mb-2" aria-hidden />
+                      <p className="text-sm text-muted-foreground">{t('notifications.empty')}</p>
+                    </div>
+                  ) : (
+                    <div className="p-2">
+                      {logs.map((notification) => (
+                        <NotificationItem
+                          key={notification.id}
+                          notification={notification}
+                          onClick={() => handleMarkAsRead(notification.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : filteredLogs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <BellIcon className="h-12 w-12 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">{t('notifications.empty')}</p>
-                </div>
-              ) : (
-                <div className="p-2">
-                  {filteredLogs.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      onClick={() => handleMarkAsRead(notification.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
+              </TabsContent>
+            );
+          })}
         </Tabs>
 
         {filteredLogs.length > 0 && (

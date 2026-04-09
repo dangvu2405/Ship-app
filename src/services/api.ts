@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
-import { API_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
+import { API_BASE_URL, API_ROOT_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { clearAuthToken } from '@/lib/auth-session';
@@ -17,6 +17,8 @@ declare module 'axios' {
     skipToast?: boolean; // Skip automatic toast notification
     skipErrorToast?: boolean; // Skip only error toast
     errorMode?: ErrorMode; // Controls which layer owns error UI: global | local | silent
+    /** Gọi dưới `/api` (vd `/api/v2/...`), không dùng base `/api/v1`. */
+    useApiRoot?: boolean;
   }
 }
 
@@ -46,7 +48,11 @@ const api: AxiosInstance = axios.create({
 
 // Request interceptor
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig & { useApiRoot?: boolean }) => {
+    if (config.useApiRoot) {
+      config.baseURL = API_ROOT_BASE_URL;
+      delete config.useApiRoot;
+    }
     // Get token from localStorage (set by authProvider after login)
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     if (token) {

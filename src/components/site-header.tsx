@@ -44,6 +44,7 @@ export function SiteHeader() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Toggle Theme"
             className="h-8 w-8"
             onClick={toggleTheme}
             title={theme === 'dark' ? t('header.switchToLightMode') : t('header.switchToDarkMode')}

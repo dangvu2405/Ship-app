@@ -11,8 +11,11 @@ interface CustomerFormProps {
 }
 
 export function CustomerForm(props: CustomerFormProps) {
-  void props;
+  const { form } = props;
   const { t } = useTranslation();
+  // Spec: nếu type=company thì tax_code bắt buộc
+  const customerType = Form.useWatch('type', form);
+  const isCompany = customerType === 'company';
   const typeOptions = [
     { label: t('customers.typeCompany'), value: 'company' },
     { label: t('customers.typeIndividual'), value: 'individual' },
@@ -22,7 +25,17 @@ export function CustomerForm(props: CustomerFormProps) {
     <>
       <FormItemText name="name" label={t('customers.name')} required rules={[{ required: true, message: t('validation.required', { field: t('customers.name') }) }]} />
       <FormItemSelect name="type" label={t('customers.type')} required options={typeOptions} rules={[{ required: true, message: t('validation.required', { field: t('customers.type') }) }]} />
-      <FormItemText name="tax_code" label={t('customers.taxCode')} />
+      <FormItemText
+        name="tax_code"
+        label={t('customers.taxCode')}
+        required={isCompany}
+        rules={[
+          {
+            required: isCompany,
+            message: t('validation.required', { field: t('customers.taxCode') }),
+          },
+        ]}
+      />
       <FormItemText name="email" label={t('customers.email')} type="email" rules={[{ type: 'email', message: t('validation.email') }]} />
       <FormItemText name="phone" label={t('customers.phone')} />
       <FormItemTextArea name="address" label={t('customers.address')} rows={2} />

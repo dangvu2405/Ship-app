@@ -116,6 +116,7 @@ function DragHandle({ id }: { id: number }) {
       {...listeners}
       variant="ghost"
       size="icon"
+      aria-label="Drag to reorder"
       className="size-7 text-muted-foreground hover:bg-transparent"
     >
       <GripVerticalIcon className="size-3 text-muted-foreground" />
@@ -284,6 +285,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
             variant="ghost"
             className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
             size="icon"
+            aria-label="Actions"
           >
             <MoreVerticalIcon />
             <span className="sr-only">Open menu</span>
@@ -579,6 +581,7 @@ export function DataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
+                aria-label="Previous page"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -589,6 +592,7 @@ export function DataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
+                aria-label="Next page"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
@@ -599,6 +603,7 @@ export function DataTable({
                 variant="outline"
                 className="hidden size-8 lg:flex"
                 size="icon"
+                aria-label="Last page"
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >

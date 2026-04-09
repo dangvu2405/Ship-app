@@ -210,7 +210,7 @@
     position: relative;
     border-radius: calc(var(--radius) - 1px);
     box-shadow: var(--shadow-raised);
-    transition: all 0.15s ease;
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-bottom-width 0.15s ease;
     border-bottom-width: 2px;
   }
   .sku-btn:hover {
@@ -236,7 +236,7 @@
     box-shadow: var(--shadow-inner);
     border: 1.5px solid hsl(var(--border));
     background: hsl(var(--background));
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
   .sku-input:focus {
     border-color: hsl(var(--ring));

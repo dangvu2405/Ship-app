@@ -34,6 +34,12 @@ class TripService {
     const response = await api.delete(ENDPOINTS.trips.byId(id));
     return response.data;
   }
+
+  /** Chuyển trạng thái trip: pending→in_progress (start) hoặc in_progress→completed (complete) */
+  async updateStatus(id: number, status: 'in_progress' | 'completed' | 'cancelled'): Promise<ApiResponse<Trip>> {
+    const response = await api.put(ENDPOINTS.trips.byId(id), { status });
+    return response.data;
+  }
 }
 
 export default new TripService();

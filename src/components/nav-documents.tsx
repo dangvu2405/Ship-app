@@ -1,4 +1,4 @@
-import { type LucideIcon } from "lucide-react"
+import type { LucideIcon } from 'lucide-react';
 import FolderIcon from "lucide-react/dist/esm/icons/folder"
 import MoreHorizontalIcon from "lucide-react/dist/esm/icons/more-horizontal"
 import ShareIcon from "lucide-react/dist/esm/icons/share"

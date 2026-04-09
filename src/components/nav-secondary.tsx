@@ -1,5 +1,5 @@
 import * as React from "react"
-import { type LucideIcon } from "lucide-react"
+import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation } from "react-router-dom"
 
 import {
@@ -28,19 +28,6 @@ export function NavSecondary({
         <SidebarMenu>
           {items.map((item) => {
             const isActive = location.pathname === item.url
-            // Skip navigation for hash links
-            if (item.url === '#') {
-              return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            }
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild isActive={isActive}>

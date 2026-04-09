@@ -2,7 +2,8 @@ import * as React from "react"
 import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { IconChevronRight, IconDots } from "@tabler/icons-react"
+import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs"
+import IconDots from "@tabler/icons-react/dist/esm/icons/IconDots.mjs"
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (

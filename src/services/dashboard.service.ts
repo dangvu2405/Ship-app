@@ -6,7 +6,7 @@ import { ENDPOINTS } from './endpoints';
 function mapLegacyDashboardPayload(raw: Record<string, unknown>): DashboardStats {
   const companiesCount = Number(raw.companies_count ?? 0);
   const payrollsCount = Number(raw.payrolls_count ?? 0);
-  return {
+  const base: DashboardStats = {
     companies:
       raw.companies && typeof raw.companies === 'object'
         ? (raw.companies as DashboardStats['companies'])
@@ -28,14 +28,37 @@ function mapLegacyDashboardPayload(raw: Record<string, unknown>): DashboardStats
         ? (raw.payrolls as DashboardStats['payrolls'])
         : { total: payrollsCount, pending: payrollsCount, completed: 0 },
   };
+
+  const revenueCandidates = [raw.revenue_total, raw.trips_revenue, raw.trip_revenue_total, raw.sales_total];
+  for (const c of revenueCandidates) {
+    const n = typeof c === 'number' ? c : Number(c);
+    if (Number.isFinite(n)) {
+      base.revenue = { total: n };
+      break;
+    }
+  }
+  if (!base.revenue && typeof raw.revenue === 'number') {
+    base.revenue = { total: raw.revenue };
+  } else if (!base.revenue && raw.revenue && typeof raw.revenue === 'object' && raw.revenue !== null) {
+    const r = raw.revenue as Record<string, unknown>;
+    const t = r.total ?? r.amount ?? r.value;
+    const n = typeof t === 'number' ? t : Number(t);
+    if (Number.isFinite(n)) base.revenue = { total: n };
+  }
+
+  return base;
 }
 
 class DashboardService {
-  async getStats(month?: number, year?: number): Promise<ApiResponse<DashboardStats>> {
+  async getStats(month?: number, year?: number, companyId?: number): Promise<ApiResponse<DashboardStats>> {
     const m = month ?? new Date().getMonth() + 1;
     const y = year ?? new Date().getFullYear();
     const response = await api.get(ENDPOINTS.reports.dashboard, {
-      params: { month: m, year: y },
+      params: {
+        month: m,
+        year: y,
+        ...(companyId != null ? { company_id: companyId } : {}),
+      },
     });
     const body = response.data as ApiResponse<Record<string, unknown>>;
     if (body.success && body.data && typeof body.data === 'object') {

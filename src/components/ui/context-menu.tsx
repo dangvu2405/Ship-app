@@ -2,7 +2,8 @@ import * as React from "react"
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { IconChevronRight, IconCheck } from "@tabler/icons-react"
+import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs"
+import IconCheck from "@tabler/icons-react/dist/esm/icons/IconCheck.mjs"
 
 function ContextMenu({
   ...props

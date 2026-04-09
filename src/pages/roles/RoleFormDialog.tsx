@@ -4,9 +4,11 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { RoleForm, type RoleFormValues } from './RoleForm';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import ArrowLeftIcon from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Role } from '@/types';
@@ -22,13 +24,7 @@ interface RoleFormDialogProps {
   onSuccess?: () => void;
 }
 
-export function RoleFormDialog({
-  open,
-  mode,
-  recordId,
-  onClose,
-  onSuccess,
-}: RoleFormDialogProps = {}) {
+export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: RoleFormDialogProps = {}) {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
@@ -80,6 +76,13 @@ export function RoleFormDialog({
       list('roles');
     }
   };
+
+  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+    form,
+    isViewMode,
+    isSubmitting: isLoading,
+    onClose: handleClose,
+  });
 
   const handleSubmit = (values: RoleFormValues) => {
     const { permission_ids = [], name, description } = values;
@@ -149,8 +152,8 @@ export function RoleFormDialog({
 
   if (hasRecordId && isLoadingData) {
     return (
-      <Dialog open={dialogOpen} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('roles.editRole')}</DialogTitle>
           </DialogHeader>
@@ -161,17 +164,31 @@ export function RoleFormDialog({
   }
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('roles.editRole') : t('roles.createRole')}</DialogTitle>
           <DialogDescription>{isViewMode ? t('roles.editDescription') : isEdit ? t('roles.editDescription') : t('roles.createDescription')}</DialogDescription>
         </DialogHeader>
-        <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={{ permission_ids: [] }} disabled={isViewMode}>
-          <RoleForm permissionOptions={permissionOptions} permissionsLoading={permissionsLoading} />
-        </Form>
-        <DialogFooter>
-          <Button variant="outline" type="button" onClick={handleClose} className="gap-2">
+        <div className="px-6 pb-6 space-y-4">
+          <Alert>
+            <AlertTitle>{t('formGuides.title')}</AlertTitle>
+            <AlertDescription>{t('formGuides.role')}</AlertDescription>
+          </Alert>
+
+          <Form
+            form={form}
+            onFinish={handleSubmit}
+            layout="vertical"
+            validateTrigger={["onBlur", "onSubmit"]}
+            initialValues={{ permission_ids: [] }}
+            disabled={isViewMode}
+          >
+            <RoleForm permissionOptions={permissionOptions} permissionsLoading={permissionsLoading} />
+          </Form>
+        </div>
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+          <Button variant="outline" type="button" onClick={requestClose} className="gap-2">
             <ArrowLeftIcon className="h-4 w-4" />
             {t('common.back')}
           </Button>

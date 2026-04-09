@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Loader2 } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 
 interface DeleteConfirmDialogProps {
   open: boolean;
