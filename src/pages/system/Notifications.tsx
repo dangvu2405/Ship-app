@@ -1,4 +1,4 @@
-import BellRing from 'lucide-react/dist/esm/icons/bell-ring';
+import { BellRing } from 'lucide-react';
 import { AttendanceLatePanel } from '@/components/common/AttendanceLatePanel';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -9,7 +9,7 @@ export const Notifications = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <BellRing className="h-5 w-5 text-primary" aria-hidden />
+          <BellRing className="h-5 w-5 text-primary" />
           <h1>{t('notificationCenter.title')}</h1>
         </div>
         <p className="text-muted-foreground">{t('notificationCenter.description')}</p>

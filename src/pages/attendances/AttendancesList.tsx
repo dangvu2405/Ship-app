@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -27,6 +27,8 @@ import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { AttendanceFormDialog } from './AttendanceFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 
 const getAttendanceStatusVariant = (status?: string): 'default' | 'secondary' | 'destructive' => {
   if (status === 'absent') return 'destructive';
@@ -56,7 +58,7 @@ const getAttendanceStatusLabel = (
 export function AttendancesList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('attendances');
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -64,9 +66,10 @@ export function AttendancesList() {
   const [selected, setSelected] = useState<Attendance | null>(null);
   const [current, setCurrent] = useState(1);
 
-  const { data, isLoading, isError, refetch } = useList<Attendance>({
+  const { data, isLoading, isError, refetch } = useResourceListQuery<Attendance>({
     resource: 'attendances',
-    pagination: { current, pageSize: 15 },
+    current,
+    pageSize: 15,
   });
 
   const safeRefetch = useSafeRefetch('attendances-attendanceslist', refetch);
@@ -86,7 +89,7 @@ export function AttendancesList() {
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
-      { resource: 'attendances', id: selected.id },
+      { id: selected.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('attendances.title') }));
@@ -175,22 +178,29 @@ export function AttendancesList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
             onRetry={() => void safeRefetch(true)}
           />
         ) : (
-          <DataTable<Attendance>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('attendances', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Attendance>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('attendances', r.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('attendances.title') })}
+              emptyAction={
+                <Button onClick={handleCreate} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('attendances.createAttendance')}
+                </Button>
+              }
+              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>

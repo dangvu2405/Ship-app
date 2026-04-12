@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { Form } from 'antd';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,30 +10,30 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import Plus from 'lucide-react/dist/esm/icons/plus';
-import Eye from 'lucide-react/dist/esm/icons/eye';
-import Edit from 'lucide-react/dist/esm/icons/edit';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
+import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import type { User } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { UserFormDialog } from './UserFormDialog';
-import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+
+type UserFilterForm = {
+  status?: string;
+};
 
 export function UsersList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [filterForm] = Form.useForm<UserFilterForm>();
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -40,11 +41,18 @@ export function UsersList() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<User>({
+  const userStatusOptions = useMemo(
+    () => [
+      { label: t('common.active'), value: 'active' },
+      { label: t('common.inactive'), value: 'inactive' },
+    ],
+    [t],
+  );
+
+  const { data, isLoading, isFetching, isError, refetch } = useList<User>({
     resource: 'users',
     pagination: {
       current,
@@ -56,17 +64,16 @@ export function UsersList() {
     ],
   });
 
-  const safeRefetch = useSafeRefetch('users-userslist', refetch);
-
   const handleSearchFilters = () => {
+    const { status } = filterForm.getFieldsValue();
     setAppliedKeyword(searchKeyword.trim());
-    setAppliedStatus(selectedStatus);
+    setAppliedStatus(status);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
     setSearchKeyword('');
-    setSelectedStatus(undefined);
+    filterForm.resetFields();
     setAppliedKeyword('');
     setAppliedStatus(undefined);
     setCurrent(1);
@@ -78,16 +85,16 @@ export function UsersList() {
     setFormOpen(true);
   };
 
-  const handleEdit = useCallback((id: number) => {
+  const handleEdit = (id: number) => {
     setFormMode('edit');
     setEditingId(id);
     setFormOpen(true);
-  }, []);
+  };
 
-  const handleDelete = useCallback((user: User) => {
+  const handleDelete = (user: User) => {
     setSelectedUser(user);
     setDeleteDialogOpen(true);
-  }, []);
+  };
 
   const confirmDelete = () => {
     if (!selectedUser) return;
@@ -102,7 +109,7 @@ export function UsersList() {
           toast.success(t('notifications.deleteSuccess', { item: t('users.title') }));
           setDeleteDialogOpen(false);
           setSelectedUser(null);
-          void safeRefetch(true);
+          refetch();
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) {
@@ -115,8 +122,7 @@ export function UsersList() {
     );
   };
 
-  const columns = useMemo<DataTableColumn<User>[]>(
-    () => [
+  const columns: DataTableColumn<User>[] = [
     { key: 'username', header: t('users.username'), dataIndex: 'username' },
     { key: 'email', header: t('users.email'), dataIndex: 'email' },
     { key: 'employee', header: t('users.employee'), dataIndex: ['employee', 'name'] },
@@ -165,9 +171,7 @@ export function UsersList() {
         </div>
       ),
     },
-  ],
-    [t, show, handleEdit, handleDelete]
-  );
+  ];
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
@@ -194,57 +198,68 @@ export function UsersList() {
 
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <SearchField
+        <ListPageFilters variant="grid-4">
+          <ListPageFilters.Search
             placeholder={t('common.search')}
             value={searchKeyword}
             onChange={setSearchKeyword}
           />
 
-          <Select
-            value={selectedStatus ?? 'all'}
-            onValueChange={(value) => setSelectedStatus(value === 'all' ? undefined : value)}
+          <Form
+            form={filterForm}
+            layout="vertical"
+            requiredMark={false}
+            colon={false}
+            className="contents min-w-0 w-full"
           >
-            <SelectTrigger>
-              <SelectValue placeholder={t('common.status')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('common.all')}</SelectItem>
-              <SelectItem value="active">{t('common.active')}</SelectItem>
-              <SelectItem value="inactive">{t('common.inactive')}</SelectItem>
-            </SelectContent>
-          </Select>
+            <FormItemSelect
+              noStyle
+              name="status"
+              label={null}
+              placeholder={t('common.status')}
+              options={userStatusOptions}
+              allowClear
+              selectProps={{
+                classNames: { root: 'list-page-filters__select' },
+              }}
+            />
+          </Form>
 
-          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
-            {t('common.search')}
-          </Button>
+          <ListPageFilters.Actions
+            onSearch={handleSearchFilters}
+            onReset={handleClearFilters}
+            busy={isFetching && !isLoading}
+          />
+        </ListPageFilters>
 
-          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
-            {t('common.reset')}
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => void safeRefetch(true)}
+            onRetry={() => refetch()}
           />
         ) : (
-          <DataTable<User>
-            data={listData}
-            columns={columns}
-            onRowClick={(record) => show('users', record.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{
-              current,
-              total,
-              pageSize,
-              onPageChange: setCurrent,
-            }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<User>
+              data={listData}
+              columns={columns}
+              onRowClick={(record) => show('users', record.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('users.title') })}
+              emptyAction={
+                <Button onClick={handleCreate} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  {t('users.createUser')}
+                </Button>
+              }
+              pagination={{
+                current,
+                total,
+                pageSize,
+                onPageChange: setCurrent,
+              }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>
@@ -266,7 +281,7 @@ export function UsersList() {
             setEditingId(undefined);
           }}
           onSuccess={() => {
-            void safeRefetch(true);
+            refetch();
           }}
         />
       )}

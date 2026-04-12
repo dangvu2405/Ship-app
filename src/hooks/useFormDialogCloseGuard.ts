@@ -1,7 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { FormInstance } from 'antd';
-
-import { useTranslation } from '@/hooks/useTranslation';
 
 type UseFormDialogCloseGuardOptions = {
   form: FormInstance;
@@ -10,33 +8,62 @@ type UseFormDialogCloseGuardOptions = {
   onClose: () => void;
 };
 
+export type UnsavedChangesWarningDialogController = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirmDiscard: () => void;
+};
+
 export const useFormDialogCloseGuard = ({
   form,
   isViewMode,
   isSubmitting = false,
   onClose,
 }: UseFormDialogCloseGuardOptions) => {
-  const { t } = useTranslation();
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+
+  const performClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
 
   const requestClose = useCallback(() => {
     if (isSubmitting) return;
 
     if (!isViewMode && form.isFieldsTouched(true)) {
-      const confirmed = window.confirm(t('common.unsavedChangesConfirm'));
-      if (!confirmed) return;
+      setDiscardDialogOpen(true);
+      return;
     }
 
-    onClose();
-  }, [form, isSubmitting, isViewMode, onClose, t]);
+    performClose();
+  }, [form, isSubmitting, isViewMode, performClose]);
 
-  const handleDialogOpenChange = useCallback((nextOpen: boolean) => {
-    if (!nextOpen) {
-      requestClose();
-    }
-  }, [requestClose]);
+  const handleConfirmDiscard = useCallback(() => {
+    setDiscardDialogOpen(false);
+    performClose();
+  }, [performClose]);
+
+  const handleDiscardDialogOpenChange = useCallback((open: boolean) => {
+    setDiscardDialogOpen(open);
+  }, []);
+
+  const handleDialogOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        requestClose();
+      }
+    },
+    [requestClose],
+  );
+
+  const unsavedChangesWarningProps: UnsavedChangesWarningDialogController = {
+    open: discardDialogOpen,
+    onOpenChange: handleDiscardDialogOpenChange,
+    onConfirmDiscard: handleConfirmDiscard,
+  };
 
   return {
     requestClose,
     handleDialogOpenChange,
+    unsavedChangesWarningProps,
   };
 };

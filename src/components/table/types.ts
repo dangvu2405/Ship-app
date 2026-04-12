@@ -41,8 +41,7 @@ export interface BaseTableColumn<T> extends Omit<ColumnsType<T>[0], 'render'> {
   /** Data index (field name or array of nested fields) */
   dataIndex?: string | string[];
   /** Custom render function */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  render?: (value: any, record: T, index: number) => ReactNode;
+  render?: (value: unknown, record: T, index: number) => ReactNode;
   /** Whether column is sortable (boolean or custom sorter function) */
   sorter?: boolean | ((a: T, b: T) => number);
   /** Whether column is filterable */
@@ -62,8 +61,7 @@ export interface BaseTableColumn<T> extends Omit<ColumnsType<T>[0], 'render'> {
 /**
  * Base Table Props
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface BaseTableProps<T extends Record<string, any>> 
+export interface BaseTableProps<T extends Record<string, unknown>>
   extends Omit<TableProps<T>, 'columns' | 'dataSource'> {
   /** Table columns configuration */
   columns: BaseTableColumn<T>[];

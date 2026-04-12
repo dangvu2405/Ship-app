@@ -1,20 +1,16 @@
-import { lazy, Suspense, useMemo, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import { useList } from "@refinedev/core"
 import { SectionCards } from "@/components/section-cards"
 import { useDashboardStats } from "@/hooks/useDashboardStats"
 import { useDashboardTripRevenue } from "@/hooks/useDashboardTripRevenue"
 import { DashboardRecentTrips } from "@/components/dashboard/DashboardRecentTrips"
+import { DashboardChartSkeleton } from "@/components/dashboard/DashboardChartSkeleton"
+import { lazyWithMinDelay } from "@/utils/lazyWithMinDelay"
 import type { Company, Office } from "@/types"
 
-const ChartAreaInteractive = lazy(() =>
-  import("@/components/chart-area-interactive").then((m) => ({ default: m.ChartAreaInteractive }))
+const ChartAreaInteractive = lazyWithMinDelay(() =>
+  import("@/components/chart-area-interactive").then((m) => ({ default: m.ChartAreaInteractive })),
 )
-
-function ChartFallback() {
-  return (
-    <div className="h-[320px] w-full animate-pulse rounded-xl border border-border bg-muted/40" aria-hidden />
-  )
-}
 
 export default function Dashboard() {
   const [companyId, setCompanyId] = useState<number | undefined>(undefined)
@@ -76,7 +72,7 @@ export default function Dashboard() {
         }}
       />
       <div className="space-y-4 px-4 pb-6 lg:px-6">
-        <Suspense fallback={<ChartFallback />}>
+        <Suspense fallback={<DashboardChartSkeleton />}>
           <ChartAreaInteractive
             companyId={companyId}
             onCompanyIdChange={setCompanyId}

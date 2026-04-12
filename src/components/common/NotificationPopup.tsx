@@ -99,7 +99,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
           </Button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[350px] p-0" align="end">
+      <DropdownMenuContent className="w-full max-w-[min(350px,calc(100vw-1rem))] p-0" align="end">
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">{t('notifications.title')}</h3>

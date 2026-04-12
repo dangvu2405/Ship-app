@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -18,11 +18,13 @@ import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { DeductionFormDialog } from './DeductionFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 
 export function DeductionsList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('deductions');
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -30,9 +32,10 @@ export function DeductionsList() {
   const [selected, setSelected] = useState<Deduction | null>(null);
   const [current, setCurrent] = useState(1);
 
-  const { data, isLoading, isError, refetch } = useList<Deduction>({
+  const { data, isLoading, isError, refetch } = useResourceListQuery<Deduction>({
     resource: 'deductions',
-    pagination: { current, pageSize: 15 },
+    current,
+    pageSize: 15,
   });
 
   const safeRefetch = useSafeRefetch('deductions-deductionslist', refetch);
@@ -40,7 +43,7 @@ export function DeductionsList() {
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
-      { resource: 'deductions', id: selected.id },
+      { id: selected.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('deductions.title') }));
@@ -140,22 +143,29 @@ export function DeductionsList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
             onRetry={() => void safeRefetch(true)}
           />
         ) : (
-          <DataTable<Deduction>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('deductions', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Deduction>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('deductions', r.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('deductions.title') })}
+              emptyAction={
+                <Button onClick={handleCreate} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('deductions.createDeduction')}
+                </Button>
+              }
+              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>

@@ -10,7 +10,22 @@ type NestedKeyOf<ObjectType extends object> = {
 
 export type TranslationPath = NestedKeyOf<TranslationKeys>;
 
-export type Translate = (key: TranslationPath, params?: Record<string, string | number>) => string;
+export type Translate = (key: string, params?: Record<string, string | number>) => string;
+
+const getNestedTranslationValue = (source: unknown, key: string): unknown => {
+  const keys = key.split('.');
+  let value: unknown = source;
+
+  for (const part of keys) {
+    if (value && typeof value === 'object' && part in value) {
+      value = (value as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  return value;
+};
 
 /**
  * Hook to use translations
@@ -34,22 +49,30 @@ export type Translate = (key: TranslationPath, params?: Record<string, string | 
 export const useTranslation = () => {
   const locale = useAppStore((state) => state.locale);
 
-  const t = useCallback((key: TranslationPath, params?: Record<string, string | number>): string => {
-    const translations_obj = translations[locale];
-    const keys = key.split('.');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let value: any = translations_obj;
+  const t = useCallback((key: string, params?: Record<string, string | number>): string => {
+    const translationsObj = translations[locale];
+    const directValue = getNestedTranslationValue(translationsObj, key);
+    const englishValue = getNestedTranslationValue(translations.en, key);
 
-    for (const k of keys) {
-      if (value && typeof value === 'object' && k in value) {
-        value = value[k as keyof typeof value];
-      } else {
-        return key;
+    let value = typeof directValue === 'string'
+      ? directValue
+      : typeof englishValue === 'string'
+        ? englishValue
+        : undefined;
+
+    if (!value) {
+      const localeLoadError = getNestedTranslationValue(translationsObj, 'common.loadError');
+      const englishLoadError = getNestedTranslationValue(translations.en, 'common.loadError');
+      value = typeof localeLoadError === 'string'
+        ? localeLoadError
+        : typeof englishLoadError === 'string'
+          ? englishLoadError
+          : 'Unavailable';
+
+      if (import.meta.env.DEV) {
+        // Keep missing-key visibility for development while avoiding raw key leakage in production UI.
+        console.warn(`[i18n] Missing translation key: "${key}" for locale "${locale}"`);
       }
-    }
-
-    if (typeof value !== 'string') {
-      return key;
     }
 
     // Replace parameters in translation string

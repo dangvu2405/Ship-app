@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,6 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { useAppStore } from '@/stores/app.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import toast from 'react-hot-toast';
+import api from '@/services/api';
+import { ENDPOINTS } from '@/services/endpoints';
+
+type ApiHealthState = 'idle' | 'loading' | 'ok' | 'error';
 
 export const Settings = () => {
   const {
@@ -26,6 +31,26 @@ export const Settings = () => {
     resetUiPreferences,
   } = useAppStore();
   const { t } = useTranslation();
+  const [apiHealth, setApiHealth] = useState<ApiHealthState>('idle');
+
+  const refreshApiHealth = useCallback(async () => {
+    setApiHealth('loading');
+    try {
+      await api.get(ENDPOINTS.public.health, {
+        useApiRoot: true,
+        skipErrorToast: true,
+        errorMode: 'silent',
+      });
+      setApiHealth('ok');
+    } catch {
+      setApiHealth('error');
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshApiHealth();
+  }, [refreshApiHealth]);
+
   const compact = compactMode ?? false;
   const emailOn = notifyEmail ?? true;
   const pushOn = notifyPush ?? true;
@@ -140,9 +165,24 @@ export const Settings = () => {
               <span className="text-sm text-muted-foreground">{t('settings.system.environment')}</span>
               <Badge variant="secondary">{t('settings.system.development')}</Badge>
             </div>
-            <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
               <span className="text-sm text-muted-foreground">{t('settings.system.apiStatus')}</span>
-              <Badge variant="outline">{t('settings.system.connected')}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    apiHealth === 'ok' ? 'default' : apiHealth === 'error' ? 'destructive' : 'secondary'
+                  }
+                >
+                  {apiHealth === 'loading' || apiHealth === 'idle'
+                    ? t('settings.system.apiChecking')
+                    : apiHealth === 'ok'
+                      ? t('settings.system.apiOnline')
+                      : t('settings.system.apiOffline')}
+                </Badge>
+                <Button type="button" variant="outline" size="sm" onClick={() => void refreshApiHealth()}>
+                  {t('settings.system.recheckApi')}
+                </Button>
+              </div>
             </div>
             <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
               <span className="text-sm text-muted-foreground">{t('settings.system.lastUpdated')}</span>

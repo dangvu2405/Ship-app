@@ -1,4 +1,4 @@
-import { Table, Space, Button, Popconfirm, Tooltip, message } from 'antd';
+import { App, Table, Space, Button, Popconfirm, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { 
   EditOutlined, 
@@ -44,8 +44,7 @@ export type { BaseTableProps, BaseTableAction, BaseTableColumn } from './types';
  * />
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function BaseTable<T extends Record<string, any>>({
+export function BaseTable<T extends Record<string, unknown>>({
   columns,
   dataSource,
   loading,
@@ -74,15 +73,36 @@ export function BaseTable<T extends Record<string, any>>({
 }: BaseTableProps<T>) {
   const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const { message } = App.useApp();
+
+  const getRecordKey = (record: T): string | number | undefined => {
+    if (typeof rowKey === 'function') {
+      return rowKey(record);
+    }
+
+    if (typeof rowKey === 'string') {
+      const value = record[rowKey as keyof T];
+      if (typeof value === 'string' || typeof value === 'number') {
+        return value;
+      }
+    }
+
+    return undefined;
+  };
 
   // Handle delete action
   const handleDelete = async (record: T) => {
     if (useRefineDelete && resource) {
+      const id = getRecordKey(record);
+      if (id === undefined) {
+        message.error(deleteErrorMessage);
+        return;
+      }
+
       deleteItem(
         {
           resource,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          id: (record as any)[rowKey as string],
+          id,
         },
         {
           onSuccess: () => {
@@ -108,8 +128,11 @@ export function BaseTable<T extends Record<string, any>>({
     if (onView) {
       onView(record);
     } else if (resource) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      show(resource, (record as any)[rowKey as string]);
+      const id = getRecordKey(record);
+      if (id === undefined) {
+        return;
+      }
+      show(resource, id);
     }
   };
 
@@ -118,8 +141,11 @@ export function BaseTable<T extends Record<string, any>>({
     if (onEdit) {
       onEdit(record);
     } else if (resource) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      show(resource, (record as any)[rowKey as string]);
+      const id = getRecordKey(record);
+      if (id === undefined) {
+        return;
+      }
+      show(resource, id);
     }
   };
 
@@ -168,8 +194,7 @@ export function BaseTable<T extends Record<string, any>>({
         width: 150,
         fixed: 'right' as const,
         align: 'center' as const,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        render: (_: any, record: T) => {
+        render: (_: unknown, record: T) => {
           return (
             <Space size="small">
               {tableActions.map((action) => {

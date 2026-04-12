@@ -1,8 +1,6 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
-import { FormItemText } from '@/components/form/FormItemText';
-import { FormItemNumber } from '@/components/form/FormItemNumber';
+import { FormAccordionSections, FormItemNumber, FormItemSelect, FormItemText } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Attendance, Employee } from '@/types';
 
@@ -50,7 +48,6 @@ export function AttendanceForm(props: AttendanceFormProps) {
     { label: t('attendances.statusLeave'), value: 'leave' },
   ];
 
-  /** Khi check_in hoặc check_out thay đổi → tự tính work/overtime hours */
   const handleTimeChange = () => {
     const checkIn: string = form.getFieldValue('check_in') ?? '';
     const checkOut: string = form.getFieldValue('check_out') ?? '';
@@ -61,66 +58,91 @@ export function AttendanceForm(props: AttendanceFormProps) {
   };
 
   return (
-    <>
-      <FormItemSelect
-        name="employee_id"
-        label={t('attendances.employee')}
-        required
-        options={employeeOptions}
-        loading={isLoading}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('attendances.employee') }) }]}
-      />
-      <FormItemText
-        name="date"
-        label={t('attendances.date')}
-        type="date"
-        required
-        rules={[{ required: true, message: t('validation.required', { field: t('attendances.date') }) }]}
-      />
-      <FormItemText
-        name="check_in"
-        label={t('attendances.checkIn')}
-        placeholder="08:00"
-        inputProps={{ onChange: handleTimeChange }}
-      />
-      <FormItemText
-        name="check_out"
-        label={t('attendances.checkOut')}
-        placeholder="17:00"
-        inputProps={{ onChange: handleTimeChange }}
-        rules={[
-          {
-            validator: (_, value) => {
-              const checkIn = form.getFieldValue('check_in');
-              if (!checkIn || !value || value >= checkIn) {
-                return Promise.resolve();
-              }
-              return Promise.reject(new Error(t('validation.checkOutAfterCheckIn')));
-            },
-          },
-        ]}
-      />
-      <FormItemNumber
-        name="work_hours"
-        label={t('attendances.workHours')}
-        min={0}
-        disabled
-      />
-      <FormItemNumber
-        name="overtime_hours"
-        label={t('attendances.overtimeHours')}
-        min={0}
-        disabled
-      />
-      <FormItemSelect
-        name="status"
-        label={t('common.status')}
-        required
-        options={statusOptions}
-        rules={[{ required: true, message: t('validation.required', { field: t('common.status') }) }]}
-      />
-    </>
+    <FormAccordionSections
+      defaultOpen="relations"
+      sections={[
+        {
+          value: 'relations',
+          titleKey: 'relations',
+          children: (
+            <>
+              <FormItemSelect
+                name="employee_id"
+                label={t('attendances.employee')}
+                required
+                options={employeeOptions}
+                loading={isLoading}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                rules={[{ required: true, message: t('validation.required', { field: t('attendances.employee') }) }]}
+              />
+              <FormItemText
+                name="date"
+                label={t('attendances.date')}
+                type="date"
+                required
+                rules={[{ required: true, message: t('validation.required', { field: t('attendances.date') }) }]}
+              />
+            </>
+          ),
+        },
+        {
+          value: 'schedule',
+          titleKey: 'schedule',
+          children: (
+            <>
+              <FormItemText
+                name="check_in"
+                label={t('attendances.checkIn')}
+                placeholder="08:00"
+                inputProps={{ onChange: handleTimeChange }}
+              />
+              <FormItemText
+                name="check_out"
+                label={t('attendances.checkOut')}
+                placeholder="17:00"
+                inputProps={{ onChange: handleTimeChange }}
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      const checkIn = form.getFieldValue('check_in');
+                      if (!checkIn || !value || value >= checkIn) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t('validation.checkOutAfterCheckIn')));
+                    },
+                  },
+                ]}
+              />
+              <FormItemNumber
+                name="work_hours"
+                label={t('attendances.workHours')}
+                min={0}
+                disabled
+              />
+              <FormItemNumber
+                name="overtime_hours"
+                label={t('attendances.overtimeHours')}
+                min={0}
+                disabled
+              />
+            </>
+          ),
+        },
+        {
+          value: 'status',
+          titleKey: 'status',
+          children: (
+            <FormItemSelect
+              name="status"
+              label={t('common.status')}
+              required
+              options={statusOptions}
+              rules={[{ required: true, message: t('validation.required', { field: t('common.status') }) }]}
+            />
+          ),
+        },
+      ]}
+    />
   );
 }

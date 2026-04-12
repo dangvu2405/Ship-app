@@ -154,9 +154,32 @@ function DialogDescription({
   )
 }
 
-/** Chiều rộng form modal: gần full viewport, không cắt nội dung (dùng trên DialogContent). */
-export const formDialogContentClassName =
-  'w-full min-w-0 max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden';
+/** Preset chiều rộng tối đa cho modal form (create/edit). */
+export type FormDialogSize = 'narrow' | 'default' | 'wide' | 'xlarge'
+
+const formDialogMaxWidthClass: Record<FormDialogSize, string> = {
+  narrow: 'max-w-lg',
+  default: 'max-w-2xl',
+  wide: 'max-w-4xl',
+  xlarge: 'max-w-[min(72rem,calc(100vw-2rem))]',
+}
+
+const formDialogScrollShellClass =
+  'w-full min-w-0 max-h-[90vh] overflow-x-hidden overflow-y-auto'
+
+/**
+ * ClassName chuẩn cho `DialogContent` của form (scroll + max-width theo preset).
+ * @param size - `narrow` (ít field), `default`, `wide`, `xlarge` (bảng lương / form rất rộng)
+ */
+export function getFormDialogContentClassName(
+  size: FormDialogSize = 'default',
+  ...extra: (string | undefined | false)[]
+): string {
+  return cn(formDialogScrollShellClass, formDialogMaxWidthClass[size], ...extra)
+}
+
+/** @deprecated Dùng `getFormDialogContentClassName('xlarge')` thay thế. */
+export const formDialogContentClassName = getFormDialogContentClassName('xlarge')
 
 export {
   Dialog,

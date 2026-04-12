@@ -1,6 +1,4 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vitest/config'
-import { loadEnv } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -51,11 +49,6 @@ export default defineConfig(({ mode }) => {
     port: Number(process.env.PORT) || 3000,
     host: true, // Listen on all addresses (0.0.0.0)
     allowedHosts: ["ship-app-sghq.onrender.com"],
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
   },
   }
 })

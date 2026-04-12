@@ -1,8 +1,11 @@
+import type { ReactNode } from 'react';
 import { FormItemProps } from 'antd/es/form';
 import { InputProps } from 'antd/es/input';
 import { TextAreaProps } from 'antd/es/input';
 import { InputNumberProps } from 'antd/es/input-number';
 import { SelectProps } from 'antd/es/select';
+import type { SwitchProps } from 'antd/es/switch';
+import type { UploadProps } from 'antd/es/upload';
 
 /**
  * Select Option interface
@@ -175,4 +178,26 @@ export interface FormItemSelectProps extends BaseFormItemProps {
   }) => React.ReactElement;
   /** Change handler for select value */
   onChange?: SelectProps['onChange'];
+  /** Ant Design Select — có thể truyền thẳng thay vì `selectProps` */
+  prefix?: SelectProps['prefix'];
+  classNames?: SelectProps['classNames'];
+  onPopupScroll?: SelectProps['onPopupScroll'];
+  /** Trường option dùng khi filter (mặc định `label` trong component) */
+  optionFilterProp?: SelectProps['optionFilterProp'];
+}
+
+/** Switch (boolean) bound with `valuePropName="checked"`. */
+export interface FormItemSwitchProps extends BaseFormItemProps {
+  switchProps?: SwitchProps;
+}
+
+/** Upload.Dragger — `name` optional when upload is controlled only via `uploadProps` (no form field). */
+export interface FormItemUploadDraggerProps extends Omit<BaseFormItemProps, 'name'> {
+  name?: BaseFormItemProps['name'];
+  valuePropName?: string;
+  getValueFromEvent?: FormItemProps['getValueFromEvent'];
+  maxCount?: number;
+  accept?: string;
+  uploadProps?: UploadProps;
+  children: ReactNode;
 }

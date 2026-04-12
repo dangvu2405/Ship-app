@@ -10,12 +10,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  getFormDialogContentClassName,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { TripForm } from './TripForm';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
+import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Trip } from '@/types';
@@ -162,7 +164,7 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
     }
   };
 
-  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+  const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
     form,
     isViewMode,
     isSubmitting: isLoading,
@@ -177,20 +179,24 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
 
   if (hasRecordId && isLoadingData) {
     return (
+      <>
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
+        <DialogContent className={getFormDialogContentClassName('wide')}>
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('trips.editTrip')}</DialogTitle>
           </DialogHeader>
           <TableSkeleton rows={8} columns={1} />
         </DialogContent>
       </Dialog>
+        <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+      </>
     );
   }
 
   return (
+    <>
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
+      <DialogContent className={getFormDialogContentClassName('wide', 'p-0 rounded-2xl')}>
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>
             {isViewMode ? t('common.view') : isEdit ? t('trips.editTrip') : t('trips.createTrip')}
@@ -243,5 +249,7 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+    </>
   );
 }

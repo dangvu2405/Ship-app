@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useInvalidate, useList, useNavigation } from '@refinedev/core';
+import { useInvalidate, useNavigation } from '@refinedev/core';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -23,6 +23,7 @@ import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler
 import { useAuth } from '@/hooks/useAuth';
 import { PayrollFormDialog } from './PayrollFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 
 const MONTH_KEYS = [
   'payrolls.month1', 'payrolls.month2', 'payrolls.month3', 'payrolls.month4',
@@ -64,12 +65,10 @@ export function PayrollsList() {
   const [busy, setBusy] = useState<{ id: number; op: 'approve' | 'lock' | 'export' } | null>(null);
   const isAdmin = hasRole('admin');
 
-  const { data, isLoading, isError, refetch } = useList<Payroll>({
+  const { data, isLoading, isError, refetch } = useResourceListQuery<Payroll>({
     resource: 'payrolls',
-    pagination: {
-      current,
-      pageSize: 15,
-    },
+    current,
+    pageSize: 15,
   });
 
   const safeRefetch = useSafeRefetch('payrolls-payrollslist', refetch);
@@ -260,27 +259,34 @@ export function PayrollsList() {
 
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
             onRetry={() => void safeRefetch(true)}
           />
         ) : (
-          <DataTable<Payroll>
-            data={listData}
-            columns={columns}
-            onRowClick={(record) => show('payrolls', record.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{
-              current,
-              total,
-              pageSize,
-              onPageChange: setCurrent,
-            }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Payroll>
+              data={listData}
+              columns={columns}
+              onRowClick={(record) => show('payrolls', record.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('payrolls.title') })}
+              emptyAction={
+                <Button onClick={handleCreate} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('payrolls.createPayroll')}
+                </Button>
+              }
+              pagination={{
+                current,
+                total,
+                pageSize,
+                onPageChange: setCurrent,
+              }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>

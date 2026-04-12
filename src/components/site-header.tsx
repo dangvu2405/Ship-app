@@ -15,7 +15,7 @@ export function SiteHeader() {
   const { t } = useTranslation();
 
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
+    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] duration-300 ease-out">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         {/* Left: sidebar trigger */}
         <SidebarTrigger className="-ml-1" />

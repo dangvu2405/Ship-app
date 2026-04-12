@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import api from "@/services/api"
+import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,8 +12,6 @@ import { useAuthStore } from "@/stores/auth.store"
 import { useTranslation } from "@/hooks/useTranslation"
 import { ROUTES } from "@/routes"
 import { TEST_ACCOUNTS_ENABLED } from "@/utils/constants"
-import { notifyErrorOnce } from "@/utils/errorToast"
-import toast from "react-hot-toast"
 
 const TEST_UI_ACCOUNT = {
   email: 'admin@abctransport.com',
@@ -31,6 +30,7 @@ export function LoginForm({
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [testAccounts, setTestAccounts] = useState<{role: string, role_display: string, email: string}[]>([])
+  const isBusy = isSubmitting
 
   useEffect(() => {
     if (!TEST_ACCOUNTS_ENABLED) {
@@ -53,32 +53,34 @@ export function LoginForm({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (isSubmitting) return
+    if (isBusy) return
 
     try {
       setIsSubmitting(true)
       await login(email.trim(), password)
       navigate(ROUTES.dashboard)
-    } catch (error) {
-      notifyErrorOnce('auth-login', error, { fallbackMessage: t('auth.loginFailed') })
+    } catch {
+      toast.error(t('auth.loginFailed'))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleTestLogin = async (email: string) => {
+    if (isBusy) return
     try {
       setIsSubmitting(true)
       await login(email, 'password')
       navigate(ROUTES.dashboard)
-    } catch (error) {
-      notifyErrorOnce('auth-login-test', error, { fallbackMessage: t('auth.loginFailed') })
+    } catch {
+      toast.error(t('auth.loginFailed'))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleTestUILogin = async () => {
+    if (isBusy) return
     setEmail(TEST_UI_ACCOUNT.email)
     setPassword(TEST_UI_ACCOUNT.password)
 
@@ -86,11 +88,15 @@ export function LoginForm({
       setIsSubmitting(true)
       await login(TEST_UI_ACCOUNT.email, TEST_UI_ACCOUNT.password)
       navigate(ROUTES.dashboard)
-    } catch (error) {
-      notifyErrorOnce('auth-login-test-ui', error, { fallbackMessage: t('auth.loginFailed') })
+    } catch {
+      toast.error(t('auth.loginFailed'))
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleUnavailableAction = () => {
+    toast(t('auth.featureUnavailable'), { icon: 'ℹ️' })
   }
 
   return (
@@ -126,8 +132,8 @@ export function LoginForm({
                     <Label htmlFor="password" className="text-slate-700 dark:text-slate-300">{t('auth.password')}</Label>
                     <button
                       type="button"
+                      onClick={handleUnavailableAction}
                       className="ml-auto text-sm text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline"
-                      onClick={() => toast(t('auth.forgotPasswordUnavailable'))}
                     >
                       {t('auth.forgotPassword')}
                     </button>
@@ -141,14 +147,14 @@ export function LoginForm({
                     className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600"
                   />
                 </div>
-                <Button type="submit" loading={isSubmitting} className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" disabled={isBusy} className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white">
                   {t('auth.login')}
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
-                  loading={isSubmitting}
+                  disabled={isBusy}
                   onClick={handleTestUILogin}
                   className="w-full h-11 text-base border-amber-500 text-amber-700 hover:bg-amber-50 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-950"
                 >
@@ -159,12 +165,11 @@ export function LoginForm({
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {testAccounts.map(acc => (
                       <Button 
-                        key={`${acc.role}-${acc.email}`}
+                        key={acc.role}
                         type="button" 
                         variant="outline"
                         onClick={() => handleTestLogin(acc.email)}
-                        loading={isSubmitting}
-                        disabled={acc.email.startsWith('no-user')}
+                        disabled={isBusy || acc.email.startsWith('no-user')}
                         className="w-full py-2 text-sm border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-950 flex flex-col items-center justify-center whitespace-normal h-auto min-h-12"
                       >
                         <span className="font-semibold block leading-tight">
@@ -231,20 +236,11 @@ export function LoginForm({
         </Card>
         <div className="text-balance text-center text-xs text-slate-500 dark:text-slate-400 mt-6">
           {t('auth.agreeTerms')}{" "}
-          <button
-            type="button"
-            className="text-blue-600 dark:text-blue-400 underline underline-offset-4 hover:text-blue-700 dark:hover:text-blue-300"
-            onClick={() => toast(t('auth.legalNotice'))}
-          >
+          <button type="button" onClick={handleUnavailableAction} className="underline underline-offset-4 hover:text-blue-600 dark:hover:text-blue-400">
             {t('auth.termsOfService')}
-          </button>
-          {" "}
-          {t('common.and')}{" "}
-          <button
-            type="button"
-            className="text-blue-600 dark:text-blue-400 underline underline-offset-4 hover:text-blue-700 dark:hover:text-blue-300"
-            onClick={() => toast(t('auth.legalNotice'))}
-          >
+          </button>{" "}
+          {t('auth.and')}{" "}
+          <button type="button" onClick={handleUnavailableAction} className="underline underline-offset-4 hover:text-blue-600 dark:hover:text-blue-400">
             {t('auth.privacyPolicy')}
           </button>
           .

@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import BellRing from 'lucide-react/dist/esm/icons/bell-ring';
-import CalendarDays from 'lucide-react/dist/esm/icons/calendar-days';
-import Clock3 from 'lucide-react/dist/esm/icons/clock-3';
-import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
-import RefreshCcw from 'lucide-react/dist/esm/icons/refresh-ccw';
+import { BellRing, CalendarDays, Clock3, Loader2, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { Badge } from '@/components/ui/badge';

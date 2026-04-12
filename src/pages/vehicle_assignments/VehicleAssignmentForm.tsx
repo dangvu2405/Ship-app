@@ -1,7 +1,6 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
-import { FormItemText } from '@/components/form/FormItemText';
+import { FormAccordionSections, FormItemSelect, FormItemText } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Driver, Vehicle, VehicleAssignment } from '@/types';
 
@@ -36,29 +35,48 @@ export function VehicleAssignmentForm(props: VehicleAssignmentFormProps) {
   }));
 
   return (
-    <>
-      <FormItemSelect
-        name="vehicle_id"
-        label={t('vehicleAssignments.vehicle')}
-        required
-        options={vehicleOptions}
-        loading={loadingVehicles}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('vehicleAssignments.vehicle') }) }]}
-      />
-      <FormItemSelect
-        name="driver_id"
-        label={t('vehicleAssignments.driver')}
-        required
-        options={driverOptions}
-        loading={loadingDrivers}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('vehicleAssignments.driver') }) }]}
-      />
-      <FormItemText name="from_date" label={t('vehicleAssignments.fromDate')} type="date" required rules={[{ required: true, message: t('validation.required', { field: t('vehicleAssignments.fromDate') }) }]} />
-      <FormItemText name="to_date" label={t('vehicleAssignments.toDate')} type="date" />
-    </>
+    <FormAccordionSections
+      defaultOpen="assignment"
+      sections={[
+        {
+          value: 'assignment',
+          titleKey: 'assignment',
+          children: (
+            <>
+              <FormItemSelect
+                name="vehicle_id"
+                label={t('vehicleAssignments.vehicle')}
+                required
+                options={vehicleOptions}
+                loading={loadingVehicles}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                rules={[{ required: true, message: t('validation.required', { field: t('vehicleAssignments.vehicle') }) }]}
+              />
+              <FormItemSelect
+                name="driver_id"
+                label={t('vehicleAssignments.driver')}
+                required
+                options={driverOptions}
+                loading={loadingDrivers}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                rules={[{ required: true, message: t('validation.required', { field: t('vehicleAssignments.driver') }) }]}
+              />
+            </>
+          ),
+        },
+        {
+          value: 'schedule',
+          titleKey: 'schedule',
+          children: (
+            <>
+              <FormItemText name="from_date" label={t('vehicleAssignments.fromDate')} type="date" required rules={[{ required: true, message: t('validation.required', { field: t('vehicleAssignments.fromDate') }) }]} />
+              <FormItemText name="to_date" label={t('vehicleAssignments.toDate')} type="date" />
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }

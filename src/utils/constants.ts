@@ -5,19 +5,28 @@
 
 import { LEGACY_ROUTES } from '@/routes';
 
-/** Gốc REST versioned (axios baseURL). */
-export const API_PREFIX = '/api/v1' as const;
+function resolveApiPrefix(): string {
+  const p = import.meta.env.VITE_API_PREFIX?.trim();
+  if (p) {
+    return p.startsWith('/') ? p : `/${p}`;
+  }
+  return '/api/v1';
+}
+
+/** Gốc REST versioned (axios baseURL), mặc định `/api/v1` — khớp `VITE_API_PREFIX` trong FRONTEND_API_ENDPOINTS. */
+export const API_PREFIX = resolveApiPrefix();
 
 function trimTrailingSlashes(s: string): string {
   return s.replace(/\/+$/, '');
 }
 
 /**
- * Bỏ `/v1` ở cuối base → `/api` (RouteServiceProvider gắn `api_v2.php` dưới `/api/v2/...`).
+ * Bỏ segment phiên bản (`/v1`, `/v2`, …) ở cuối base → `/api` (gọi `/api/health`, `/api/v2/...`).
  */
 export function resolveApiRootBaseUrl(versionedBase: string): string {
   const t = trimTrailingSlashes(versionedBase);
-  return t.replace(/\/v1\/?$/, '') || '/api';
+  const stripped = t.replace(/\/v\d+\/?$/, '');
+  return stripped || '/api';
 }
 
 /** Origin backend: scheme + host + port, không có path (khớp APP_URL của Laravel). */
@@ -36,7 +45,7 @@ function normalizeExplicitApiBase(url: string): string {
  * Base URL cho axios / Refine simple-rest:
  * 1. `VITE_API_BASE_URL` — …/api/v1 (hoặc …/api → tự thêm /v1).
  * 2. Dev: `/api/v1` → Vite proxy `/api` tới backend.
- * 3. Prod: `VITE_API_ORIGIN` + `/api/v1`.
+ * 3. Prod: `VITE_API_ORIGIN` + `VITE_API_PREFIX` (mặc định `/api/v1`).
  */
 function resolveApiBaseUrl(): string {
   const explicit = import.meta.env.VITE_API_BASE_URL?.trim();

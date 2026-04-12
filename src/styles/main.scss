@@ -16,12 +16,12 @@
 }
 
 .ant-layout-sider {
-  background: #001529;
+  background: hsl(var(--sidebar-background));
 }
 
 // Dark mode support
 .dark {
   .ant-layout-sider {
-    background: #0f172a;
+    background: hsl(var(--sidebar-background));
   }
 }

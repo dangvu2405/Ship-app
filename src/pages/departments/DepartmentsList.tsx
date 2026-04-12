@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useDelete, useList, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
+import { Form } from 'antd';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select } from 'antd';
+import { ShopOutlined } from '@ant-design/icons';
+import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -21,11 +23,19 @@ import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
+import { usePaginatedResourceSelectOptions } from '@/hooks/usePaginatedResourceSelectOptions';
+
+type DepartmentFilterForm = {
+  office_id?: number;
+};
 
 export function DepartmentsList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('departments');
+  const [filterForm] = Form.useForm<DepartmentFilterForm>();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<Department | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -33,19 +43,23 @@ export function DepartmentsList() {
   const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedOfficeId, setSelectedOfficeId] = useState<number | undefined>(undefined);
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedOfficeId, setAppliedOfficeId] = useState<number | undefined>(undefined);
 
-  const { data: officesData } = useList<Office>({
+  const mapOfficeOption = useCallback(
+    (o: Office) => ({ label: o.name ?? `#${o.id}`, value: o.id }),
+    [],
+  );
+  const officesSelect = usePaginatedResourceSelectOptions<Office>({
     resource: 'offices',
-    pagination: { current: 1, pageSize: 200 },
     sorters: [{ field: 'name', order: 'asc' }],
+    mapOption: mapOfficeOption,
   });
 
-  const { data, isLoading, isError, refetch } = useList<Department>({
+  const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Department>({
     resource: 'departments',
-    pagination: { current, pageSize: 15 },
+    current,
+    pageSize: 15,
     filters: [
       ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
       ...(appliedOfficeId ? [{ field: 'office_id', operator: 'eq' as const, value: appliedOfficeId }] : []),
@@ -55,14 +69,15 @@ export function DepartmentsList() {
   const safeRefetch = useSafeRefetch('departments-departmentslist', refetch);
 
   const handleSearchFilters = () => {
+    const { office_id } = filterForm.getFieldsValue();
     setAppliedKeyword(searchKeyword.trim());
-    setAppliedOfficeId(selectedOfficeId);
+    setAppliedOfficeId(office_id);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
     setSearchKeyword('');
-    setSelectedOfficeId(undefined);
+    filterForm.resetFields();
     setAppliedKeyword('');
     setAppliedOfficeId(undefined);
     setCurrent(1);
@@ -83,7 +98,7 @@ export function DepartmentsList() {
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
-      { resource: 'departments', id: selected.id },
+      { id: selected.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('departments.title') }));
@@ -178,51 +193,66 @@ export function DepartmentsList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6 space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <SearchField
-            placeholder={t('common.search')}
-            value={searchKeyword}
-            onChange={setSearchKeyword}
-          />
+          <ListPageFilters variant="grid-4">
+            <ListPageFilters.Search
+              placeholder={t('common.search')}
+              value={searchKeyword}
+              onChange={setSearchKeyword}
+            />
 
-          <Select
-            allowClear
-            showSearch
-            placeholder={t('employees.office')}
-            value={selectedOfficeId}
-            onChange={setSelectedOfficeId}
-            options={(officesData?.data ?? []).map((office) => ({
-              label: office.name,
-              value: office.id,
-            }))}
-            optionFilterProp="label"
-          />
+            <Form
+              form={filterForm}
+              layout="vertical"
+              requiredMark={false}
+              colon={false}
+              className="contents min-w-0 w-full"
+            >
+              <FormItemSelect
+                noStyle
+                name="office_id"
+                label={null}
+                placeholder={t('employees.office')}
+                options={officesSelect.options}
+                showSearch
+                allowClear
+                loading={officesSelect.isLoading || officesSelect.isFetchingNextPage}
+                prefix={<ShopOutlined aria-hidden />}
+                classNames={{ root: 'list-page-filters__select' }}
+                onPopupScroll={officesSelect.onPopupScroll}
+                optionFilterProp="label"
+              />
+            </Form>
 
-          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
-            {t('common.search')}
-          </Button>
+            <ListPageFilters.Actions
+              onSearch={handleSearchFilters}
+              onReset={handleClearFilters}
+              busy={isFetching && !isLoading}
+            />
+          </ListPageFilters>
 
-          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
-            {t('common.reset')}
-          </Button>
-          </div>
-
-          {isLoading ? (
-            <TableSkeleton rows={5} columns={columns.length} />
-          ) : isError ? (
+          {isError ? (
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
               onRetry={() => void safeRefetch(true)}
             />
           ) : (
+            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
             <DataTable<Department>
               data={listData}
               columns={columns}
               onRowClick={(r) => show('departments', r.id)}
               emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('departments.title') })}
+              emptyAction={
+                <Button onClick={() => handleOpenDialog('create')} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('departments.createDepartment')}
+                </Button>
+              }
               pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
             />
+            </PageLoadingOverlay>
           )}
         </CardContent>
       </Card>

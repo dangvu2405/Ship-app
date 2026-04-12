@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { hasAuthToken } from '@/lib/auth-session';
 import chatService from '@/services/chat.service';
+import { useAuthStore } from '@/stores/auth.store';
 import type { ChatTask } from '@/utils/chatPrompt';
 import { getErrorMessage, getErrorStatus, isNetworkError, isTimeoutError } from '@/utils/errorHandler';
+import type { Translate } from '@/hooks/useTranslation';
 
 type ChatSessionView = {
   id: string;
@@ -223,14 +226,15 @@ const shouldRetryChatRequest = (error: unknown): boolean => {
 };
 
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TFunction = (key: any, options?: any) => string;
+type TFunction = Translate;
 
 export function useChatSession(t: TFunction) {
   const tRef = useRef(t);
   useEffect(() => {
     tRef.current = t;
   }, [t]);
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const [sessionId, setSessionId] = useState('');
   const [sessions, setSessions] = useState<ChatSessionView[]>([]);
@@ -268,6 +272,13 @@ export function useChatSession(t: TFunction) {
   );
 
   const loadSessions = useCallback(async (preferredSessionId?: string, options?: { force?: boolean }) => {
+    if (!useAuthStore.getState().isAuthenticated || !hasAuthToken()) {
+      setSessions([]);
+      setSessionId('');
+      setSessionsLoading(false);
+      sessionsInFlightRef.current = false;
+      return;
+    }
     if (sessionsInFlightRef.current && !options?.force) return;
     sessionsInFlightRef.current = true;
     setSessionsLoading(true);
@@ -307,6 +318,14 @@ export function useChatSession(t: TFunction) {
       return;
     }
 
+    if (!useAuthStore.getState().isAuthenticated || !hasAuthToken()) {
+      setChatMessages([]);
+      if (requestId === messagesRequestIdRef.current) {
+        setMessagesLoading(false);
+      }
+      return;
+    }
+
     setMessagesLoading(true);
     try {
       const response = await chatService.getMessages(selectedSessionId, 30);
@@ -331,8 +350,14 @@ export function useChatSession(t: TFunction) {
   }, [showErrorToast]);
 
   useEffect(() => {
+    if (!isAuthenticated || !hasAuthToken()) {
+      setSessions([]);
+      setSessionId('');
+      setChatMessages([]);
+      return;
+    }
     void loadSessions();
-  }, [loadSessions]);
+  }, [loadSessions, isAuthenticated]);
 
   useEffect(() => {
     void loadMessages(sessionId);
@@ -357,6 +382,11 @@ export function useChatSession(t: TFunction) {
 
   const handleSendChat = async (overrideMessage?: string) => {
     if (sendingMessage) return;
+
+    if (!useAuthStore.getState().isAuthenticated || !hasAuthToken()) {
+      toast.error(tRef.current('auth.sessionExpired'));
+      return;
+    }
 
     const effectiveMessage = typeof overrideMessage === 'string' ? overrideMessage : chatMessage;
     const sanitizedMessage = sanitizeUserText(effectiveMessage);
@@ -638,6 +668,10 @@ export function useChatSession(t: TFunction) {
 
   const handleDeleteSessions = async (sessionIds: string[]) => {
     if (deletingSessions || sessionIds.length === 0) return;
+    if (!useAuthStore.getState().isAuthenticated || !hasAuthToken()) {
+      toast.error(tRef.current('auth.sessionExpired'));
+      return;
+    }
 
     setDeletingSessions(true);
     try {

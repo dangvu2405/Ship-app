@@ -14,6 +14,8 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setUser: (user: User | null) => void;
+  /** Lưu token + user khi hoàn tất luồng ngoài form email/password (nếu có). */
+  setSession: (user: User, token?: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -99,6 +101,17 @@ export const useAuthStore = create<AuthState>()(
         set({
           user,
           isAuthenticated: !!user,
+        });
+      },
+
+      setSession: (user: User, token?: string) => {
+        if (token) {
+          setAuthToken(token);
+        }
+        set({
+          user,
+          isAuthenticated: true,
+          isLoading: false,
         });
       },
     }),

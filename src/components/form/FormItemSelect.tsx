@@ -1,5 +1,6 @@
 import { Form, Select } from 'antd';
 import { FormItemSelectProps, SelectOption } from './types';
+import type { SelectProps } from 'antd/es/select';
 
 // Re-export SelectOption for convenience
 export type { SelectOption } from './types';
@@ -77,6 +78,10 @@ export const FormItemSelect = ({
   dropdownRender,
   tagRender,
   onChange,
+  prefix,
+  classNames,
+  onPopupScroll,
+  optionFilterProp: optionFilterPropProp,
   required,
   tooltip,
   help,
@@ -98,36 +103,59 @@ export const FormItemSelect = ({
     ? false
     : filterOption;
 
+  const normalizedFilterOption: SelectProps['filterOption'] =
+    typeof defaultFilterOption === 'function'
+      ? (input, option) => defaultFilterOption(input, (option as SelectOption | undefined) ?? { label: '', value: '' })
+      : defaultFilterOption
+
   // Merge selectProps with individual props (individual props take precedence)
   // Note: options will be passed separately as transformedOptions, so exclude it from merged props
   const selectPropsWithoutOptions = selectProps ? { ...selectProps } : {};
   delete (selectPropsWithoutOptions as { options?: unknown }).options;
   delete (selectPropsWithoutOptions as { maxTagPlaceholder?: unknown }).maxTagPlaceholder;
   
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mergedSelectProps: any = {
+  const mergedSelectProps: SelectProps = {
     ...selectPropsWithoutOptions,
     allowClear: resolvedAllowClear,
     showSearch: resolvedShowSearch,
-    optionFilterProp: selectProps?.optionFilterProp ?? 'label',
+    prefix: prefix ?? selectPropsWithoutOptions.prefix,
+    classNames: classNames ?? selectPropsWithoutOptions.classNames,
+    onPopupScroll: onPopupScroll ?? selectPropsWithoutOptions.onPopupScroll,
+    optionFilterProp: optionFilterPropProp ?? selectProps?.optionFilterProp ?? 'label',
     getPopupContainer:
       selectProps?.getPopupContainer ??
       ((triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body),
     mode: mode || selectProps?.mode,
     size: size || selectProps?.size,
     loading: loading ?? selectProps?.loading,
-    filterOption: defaultFilterOption ?? selectProps?.filterOption,
+    filterOption: normalizedFilterOption ?? selectProps?.filterOption,
     maxTagCount: maxTagCount ?? selectProps?.maxTagCount,
-    showArrow: showArrow ?? selectProps?.showArrow,
-    dropdownRender: dropdownRender || selectProps?.dropdownRender,
     tagRender: tagRender || selectProps?.tagRender,
     onChange: onChange || selectProps?.onChange,
     disabled: disabled ?? selectProps?.disabled,
   };
+
+  const resolvedPopupRender =
+    dropdownRender ||
+    (selectPropsWithoutOptions as SelectProps).popupRender ||
+    // Keep backward compatibility when callers still pass deprecated dropdownRender via selectProps.
+    (selectPropsWithoutOptions as unknown as { dropdownRender?: SelectProps['popupRender'] }).dropdownRender;
+
+  if (resolvedPopupRender) {
+    mergedSelectProps.popupRender = resolvedPopupRender;
+  }
+
+  if (showArrow != null) {
+    // Keep behavior for explicit overrides while avoiding deprecated prop warnings by default.
+    (mergedSelectProps as SelectProps).showArrow = showArrow;
+  }
   
   // Add maxTagPlaceholder separately if provided
   if (maxTagPlaceholder != null) {
-    mergedSelectProps.maxTagPlaceholder = maxTagPlaceholder;
+    mergedSelectProps.maxTagPlaceholder =
+      typeof maxTagPlaceholder === 'function'
+        ? ((omittedValues) => maxTagPlaceholder(omittedValues as unknown as SelectOption[]))
+        : maxTagPlaceholder;
   } else if (selectProps?.maxTagPlaceholder) {
     mergedSelectProps.maxTagPlaceholder = selectProps.maxTagPlaceholder;
   }

@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -18,7 +18,6 @@ import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { RoleFormDialog } from './RoleFormDialog';
-import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function RolesList() {
   const { t } = useTranslation();
@@ -33,15 +32,13 @@ export function RolesList() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
 
-  const { data, isLoading, isError, refetch } = useList<Role>({
+  const { data, isLoading, isFetching, isError, refetch } = useList<Role>({
     resource: 'roles',
     pagination: { current, pageSize: 15 },
     filters: [
       ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
     ],
   });
-
-  const safeRefetch = useSafeRefetch('roles-roleslist', refetch);
 
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
@@ -60,11 +57,11 @@ export function RolesList() {
     setFormOpen(true);
   };
 
-  const handleEdit = useCallback((id: number) => {
+  const handleEdit = (id: number) => {
     setFormMode('edit');
     setEditingId(id);
     setFormOpen(true);
-  }, []);
+  };
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -75,7 +72,7 @@ export function RolesList() {
           toast.success(t('notifications.deleteSuccess', { item: t('roles.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
-          void safeRefetch(true);
+          refetch();
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -85,8 +82,7 @@ export function RolesList() {
     );
   };
 
-  const columns = useMemo<DataTableColumn<Role>[]>(
-    () => [
+  const columns: DataTableColumn<Role>[] = [
     { key: 'name', header: t('roles.name'), dataIndex: 'name' },
     { key: 'description', header: t('roles.description'), dataIndex: 'description' },
     {
@@ -99,49 +95,19 @@ export function RolesList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            aria-label={t('common.view')}
-            onClick={(e) => {
-              e.stopPropagation();
-              show('roles', record.id);
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.view')} onClick={(e) => { e.stopPropagation(); show('roles', record.id); }}>
             <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            aria-label={t('common.edit')}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(record.id);
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.edit')} onClick={(e) => { e.stopPropagation(); handleEdit(record.id); }}>
             <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            aria-label={t('common.delete')}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelected(record);
-              setDeleteDialogOpen(true);
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" aria-label={t('common.delete')} onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
             <Trash2Icon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ],
-    [t, show, handleEdit]
-  );
+  ];
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -162,32 +128,42 @@ export function RolesList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <SearchField
+        <ListPageFilters variant="grid-3">
+          <ListPageFilters.Search
             placeholder={t('common.search')}
             value={searchKeyword}
             onChange={setSearchKeyword}
           />
-          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
-          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
-        </div>
+          <ListPageFilters.Actions
+            onSearch={handleSearchFilters}
+            onReset={handleClearFilters}
+            busy={isFetching && !isLoading}
+          />
+        </ListPageFilters>
 
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => void safeRefetch(true)}
+            onRetry={() => refetch()}
           />
         ) : (
-          <DataTable<Role>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('roles', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Role>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('roles', r.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('roles.title') })}
+              emptyAction={
+                <Button onClick={handleCreate} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('roles.createRole')}
+                </Button>
+              }
+              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>
@@ -202,7 +178,7 @@ export function RolesList() {
             setEditingId(undefined);
           }}
           onSuccess={() => {
-            void safeRefetch(true);
+            refetch();
           }}
         />
       )}

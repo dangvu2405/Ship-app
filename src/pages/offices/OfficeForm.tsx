@@ -1,8 +1,6 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormItemText } from '@/components/form/FormItemText';
-import { FormItemTextArea } from '@/components/form/FormItemTextArea';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
+import { FormAccordionSections, FormItemSelect, FormItemText, FormItemTextArea } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Company, Office } from '@/types';
 
@@ -26,30 +24,47 @@ export function OfficeForm(props: OfficeFormProps) {
   }));
 
   return (
-    <>
-      <FormItemSelect
-        name="company_id"
-        label={t('payrolls.company')}
-        required
-        options={companyOptions}
-        loading={isLoading}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('payrolls.company') }) }]}
-      />
-      <FormItemText
-        name="code"
-        label={t('companies.code')}
-        required
-        rules={[{ required: true, message: t('validation.required', { field: t('companies.code') }) }]}
-      />
-      <FormItemText
-        name="name"
-        label={t('companies.name')}
-        required
-        rules={[{ required: true, message: t('validation.required', { field: t('companies.name') }) }]}
-      />
-      <FormItemTextArea name="address" label={t('companies.address')} rows={2} />
-    </>
+    <FormAccordionSections
+      defaultOpen="relations"
+      sections={[
+        {
+          value: 'relations',
+          titleKey: 'relations',
+          children: (
+            <FormItemSelect
+              name="company_id"
+              label={t('payrolls.company')}
+              required
+              options={companyOptions}
+              loading={isLoading}
+              showSearch
+              selectProps={{ optionFilterProp: 'label' }}
+              rules={[{ required: true, message: t('validation.required', { field: t('payrolls.company') }) }]}
+            />
+          ),
+        },
+        {
+          value: 'basic',
+          titleKey: 'basic',
+          children: (
+            <>
+              <FormItemText
+                name="code"
+                label={t('companies.code')}
+                required
+                rules={[{ required: true, message: t('validation.required', { field: t('companies.code') }) }]}
+              />
+              <FormItemText
+                name="name"
+                label={t('companies.name')}
+                required
+                rules={[{ required: true, message: t('validation.required', { field: t('companies.name') }) }]}
+              />
+              <FormItemTextArea name="address" label={t('companies.address')} rows={2} />
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }

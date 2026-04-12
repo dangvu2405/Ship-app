@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -12,8 +12,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -29,11 +29,13 @@ import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 
 export function VehiclesList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('vehicles');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -45,12 +47,10 @@ export function VehiclesList() {
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<Vehicle>({
+  const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Vehicle>({
     resource: 'vehicles',
-    pagination: {
-      current,
-      pageSize: 15,
-    },
+    current,
+    pageSize: 15,
     filters: [
       ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
       ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
@@ -101,7 +101,6 @@ export function VehiclesList() {
 
     deleteItem(
       {
-        resource: 'vehicles',
         id: selectedVehicle.id,
       },
       {
@@ -211,8 +210,8 @@ export function VehiclesList() {
             </TabsList>
           </Tabs>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <SearchField
+          <ListPageFilters variant="grid-4">
+            <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
               onChange={setSearchKeyword}
@@ -221,7 +220,7 @@ export function VehiclesList() {
               value={selectedStatus ?? 'all'}
               onValueChange={(value) => setSelectedStatus(value === 'all' ? undefined : value)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="list-page-filters__radix-select">
                 <SelectValue placeholder={t('common.status')} />
               </SelectTrigger>
               <SelectContent>
@@ -230,31 +229,41 @@ export function VehiclesList() {
                 <SelectItem value="inactive">{t('common.inactive')}</SelectItem>
               </SelectContent>
             </Select>
-            <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
-            <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
-          </div>
+            <ListPageFilters.Actions
+              onSearch={handleSearchFilters}
+              onReset={handleClearFilters}
+              busy={isFetching && !isLoading}
+            />
+          </ListPageFilters>
 
-          {isLoading ? (
-            <TableSkeleton rows={5} columns={columns.length} />
-          ) : isError ? (
+          {isError ? (
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
               onRetry={() => void safeRefetch(true)}
             />
           ) : (
-            <DataTable<Vehicle>
-              data={listData}
-              columns={columns}
-              onRowClick={(record) => show('vehicles', record.id)}
-              emptyMessage={t('common.noData')}
-              pagination={{
-                current,
-                total,
-                pageSize,
-                onPageChange: setCurrent,
-              }}
-            />
+            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+              <DataTable<Vehicle>
+                data={listData}
+                columns={columns}
+                onRowClick={(record) => show('vehicles', record.id)}
+                emptyMessage={t('common.noData')}
+                emptyDescription={t('emptyState.listDescription', { resource: t('vehicles.title') })}
+                emptyAction={
+                  <Button onClick={() => handleOpenDialog('create')} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    {t('vehicles.createVehicle')}
+                  </Button>
+                }
+                pagination={{
+                  current,
+                  total,
+                  pageSize,
+                  onPageChange: setCurrent,
+                }}
+              />
+            </PageLoadingOverlay>
           )}
         </CardContent>
       </Card>

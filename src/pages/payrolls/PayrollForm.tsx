@@ -1,6 +1,6 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
+import { FormAccordionSections, FormItemSelect } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Company, Payroll } from '@/types';
 
@@ -39,39 +39,55 @@ export function PayrollForm(props: PayrollFormProps) {
   });
 
   return (
-    <>
-      <FormItemSelect
-        name="company_id"
-        label={t('payrolls.company')}
-        required
-        options={companyOptions}
-        loading={companiesLoading}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[
-          { required: true, message: t('validation.required', { field: t('payrolls.company') }) },
-        ]}
-      />
+    <FormAccordionSections
+      defaultOpen="basic"
+      sections={[
+        {
+          value: 'basic',
+          titleKey: 'basic',
+          children: (
+            <FormItemSelect
+              name="company_id"
+              label={t('payrolls.company')}
+              required
+              options={companyOptions}
+              loading={companiesLoading}
+              showSearch
+              selectProps={{ optionFilterProp: 'label' }}
+              rules={[
+                { required: true, message: t('validation.required', { field: t('payrolls.company') }) },
+              ]}
+            />
+          ),
+        },
+        {
+          value: 'schedule',
+          titleKey: 'schedule',
+          children: (
+            <>
+              <FormItemSelect
+                name="month"
+                label={t('payrolls.month')}
+                required
+                options={monthOptions}
+                rules={[
+                  { required: true, message: t('validation.required', { field: t('payrolls.month') }) },
+                ]}
+              />
 
-      <FormItemSelect
-        name="month"
-        label={t('payrolls.month')}
-        required
-        options={monthOptions}
-        rules={[
-          { required: true, message: t('validation.required', { field: t('payrolls.month') }) },
-        ]}
-      />
-
-      <FormItemSelect
-        name="year"
-        label={t('payrolls.year')}
-        required
-        options={yearOptions}
-        rules={[
-          { required: true, message: t('validation.required', { field: t('payrolls.year') }) },
-        ]}
-      />
-    </>
+              <FormItemSelect
+                name="year"
+                label={t('payrolls.year')}
+                required
+                options={yearOptions}
+                rules={[
+                  { required: true, message: t('validation.required', { field: t('payrolls.year') }) },
+                ]}
+              />
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }

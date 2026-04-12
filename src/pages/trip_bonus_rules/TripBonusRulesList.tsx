@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -19,11 +19,13 @@ import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { TripBonusRuleFormDialog } from './TripBonusRuleFormDialog';
 import { formatCurrencyVND } from '@/utils/format';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 
 export function TripBonusRulesList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('trip_bonus_rules');
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -31,9 +33,10 @@ export function TripBonusRulesList() {
   const [selected, setSelected] = useState<TripBonusRule | null>(null);
   const [current, setCurrent] = useState(1);
 
-  const { data, isLoading, isError, refetch } = useList<TripBonusRule>({
+  const { data, isLoading, isError, refetch } = useResourceListQuery<TripBonusRule>({
     resource: 'trip_bonus_rules',
-    pagination: { current, pageSize: 15 },
+    current,
+    pageSize: 15,
   });
 
   const safeRefetch = useSafeRefetch('trip_bonus_rules-tripbonusruleslist', refetch);
@@ -42,7 +45,7 @@ export function TripBonusRulesList() {
     (record: TripBonusRule) => {
       const min = record.min_km;
       const max = record.max_km;
-      if (max === null || max === undefined || max === '') {
+      if (max === null || max === undefined) {
         return `${min} ${t('tripBonusRules.kmUnit')} — ${t('tripBonusRules.unlimitedUpper')}`;
       }
       return `${min} – ${max} ${t('tripBonusRules.kmUnit')}`;
@@ -53,7 +56,7 @@ export function TripBonusRulesList() {
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
-      { resource: 'trip_bonus_rules', id: selected.id },
+      { id: selected.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('tripBonusRules.title') }));
@@ -162,22 +165,29 @@ export function TripBonusRulesList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-          {isLoading ? (
-            <TableSkeleton rows={5} columns={columns.length} />
-          ) : isError ? (
+          {isError ? (
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
               onRetry={() => void safeRefetch(true)}
             />
           ) : (
-            <DataTable<TripBonusRule>
-              data={listData}
-              columns={columns}
-              onRowClick={(r) => show('trip_bonus_rules', r.id)}
-              emptyMessage={t('common.noData')}
-              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-            />
+            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+              <DataTable<TripBonusRule>
+                data={listData}
+                columns={columns}
+                onRowClick={(r) => show('trip_bonus_rules', r.id)}
+                emptyMessage={t('common.noData')}
+                emptyDescription={t('emptyState.listDescription', { resource: t('tripBonusRules.title') })}
+                emptyAction={
+                  <Button onClick={handleCreate} className="gap-2">
+                    <PlusIcon className="h-4 w-4" />
+                    {t('tripBonusRules.createRule')}
+                  </Button>
+                }
+                pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+              />
+            </PageLoadingOverlay>
           )}
         </CardContent>
       </Card>

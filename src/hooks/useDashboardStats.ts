@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import dashboardService from '@/services/dashboard.service';
 import type { DashboardStats } from '@/types';
-import { useGuardedAsync } from '@/hooks/useGuardedAsync';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { translations, type Locale } from '@/locales';
 import { useAppStore } from '@/stores/app.store';
 
 function statsLoadFailedMessage(locale: Locale): string {
-  return translations[locale].dashboard.statsLoadFailed;
+  const candidate = (translations[locale] as Record<string, unknown>)?.dashboard as Record<string, unknown> | undefined;
+  const message = candidate?.statsLoadFailed;
+  return typeof message === 'string' && message.trim() ? message : 'Failed to load dashboard stats';
 }
 
 interface UseDashboardStatsReturn {
@@ -23,57 +25,33 @@ export const useDashboardStats = (options?: {
   companyId?: number;
 }): UseDashboardStatsReturn => {
   const { enablePolling = true, pollingInterval = 60000, companyId } = options || {};
-  const [stats, setStats] = useState<DashboardStats | undefined>(undefined);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsError, setStatsError] = useState<string | null>(null);
-  const { run } = useGuardedAsync(1000);
-
-  const fetchStats = useCallback(async () => {
-    await run('dashboard-stats', async () => {
+  const query = useQuery({
+    queryKey: ['dashboard-stats', companyId ?? null],
+    queryFn: async () => {
       const locale = useAppStore.getState().locale;
       const fallback = statsLoadFailedMessage(locale);
-      try {
-        setStatsLoading(true);
-        setStatsError(null);
-        const response = await dashboardService.getStats(undefined, undefined, companyId);
-        if (response.success && response.data) {
-          setStats(response.data);
-          setStatsError(null);
-        } else {
-          setStats(undefined);
-          setStatsError(response.message || fallback);
-        }
-      } catch (error) {
-        setStats(undefined);
-        setStatsError(getErrorMessage(error) || fallback);
-      } finally {
-        setStatsLoading(false);
+      const response = await dashboardService.getStats(undefined, undefined, companyId);
+      if (response.success && response.data) {
+        return response.data;
       }
-    });
-  }, [run, companyId]);
+      throw new Error(response.message || fallback);
+    },
+    refetchInterval: enablePolling ? pollingInterval : false,
+  });
 
-  useEffect(() => {
-    void fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
-    if (!enablePolling) {
-      return undefined;
-    }
-
-    const intervalId = window.setInterval(() => {
-      void fetchStats();
-    }, pollingInterval);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [enablePolling, pollingInterval, fetchStats]);
+  const statsError = useMemo(() => {
+    if (!query.error) return null;
+    const locale = useAppStore.getState().locale;
+    const fallback = statsLoadFailedMessage(locale);
+    return getErrorMessage(query.error) || fallback;
+  }, [query.error]);
 
   return {
-    stats,
-    statsLoading,
+    stats: query.data as DashboardStats | undefined,
+    statsLoading: query.isLoading || query.isFetching,
     statsError,
-    refetchStats: fetchStats,
+    refetchStats: async () => {
+      await query.refetch();
+    },
   };
 };

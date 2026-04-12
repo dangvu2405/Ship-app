@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useDelete, useList, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -18,7 +18,6 @@ import type { Position } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
-import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 
 export function PositionsList() {
   const { t } = useTranslation();
@@ -33,15 +32,13 @@ export function PositionsList() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
 
-  const { data, isLoading, isError, refetch } = useList<Position>({
+  const { data, isLoading, isFetching, isError, refetch } = useList<Position>({
     resource: 'positions',
     pagination: { current, pageSize: 15 },
     filters: [
       ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
     ],
   });
-
-  const safeRefetch = useSafeRefetch('positions-positionslist', refetch);
 
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
@@ -54,11 +51,11 @@ export function PositionsList() {
     setCurrent(1);
   };
 
-  const handleOpenDialog = useCallback((mode: 'create' | 'edit' | 'show', id?: number) => {
+  const handleOpenDialog = (mode: 'create' | 'edit' | 'show', id?: number) => {
     setDialogMode(mode);
     setActiveId(id);
     setDialogOpen(true);
-  }, []);
+  };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
@@ -66,10 +63,8 @@ export function PositionsList() {
     setActiveId(undefined);
   };
 
-  const formatMoney = useCallback(
-    (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n),
-    []
-  );
+  const formatMoney = (n: number) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -80,7 +75,7 @@ export function PositionsList() {
           toast.success(t('notifications.deleteSuccess', { item: t('positions.title') }));
           setDeleteOpen(false);
           setSelected(null);
-          void safeRefetch(true);
+          refetch();
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -90,8 +85,7 @@ export function PositionsList() {
     );
   };
 
-  const columns = useMemo<DataTableColumn<Position>[]>(
-    () => [
+  const columns: DataTableColumn<Position>[] = [
     { key: 'code', header: t('companies.code'), dataIndex: 'code' },
     { key: 'name', header: t('companies.name'), dataIndex: 'name' },
     {
@@ -146,9 +140,7 @@ export function PositionsList() {
         </div>
       ),
     },
-  ],
-    [t, show, formatMoney, handleOpenDialog]
-  );
+  ];
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -171,38 +163,43 @@ export function PositionsList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <SearchField
+        <ListPageFilters variant="grid-3">
+          <ListPageFilters.Search
             placeholder={t('common.search')}
             value={searchKeyword}
             onChange={setSearchKeyword}
           />
 
-          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
-            {t('common.search')}
-          </Button>
+          <ListPageFilters.Actions
+            onSearch={handleSearchFilters}
+            onReset={handleClearFilters}
+            busy={isFetching && !isLoading}
+          />
+        </ListPageFilters>
 
-          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
-            {t('common.reset')}
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => void safeRefetch(true)}
+            onRetry={() => refetch()}
           />
         ) : (
-          <DataTable<Position>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('positions', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Position>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('positions', r.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('positions.title') })}
+              emptyAction={
+                <Button onClick={() => handleOpenDialog('create')} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('positions.createPosition')}
+                </Button>
+              }
+              pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>
@@ -218,7 +215,7 @@ export function PositionsList() {
         recordId={activeId}
         onClose={handleCloseDialog}
         onSuccess={() => {
-          void safeRefetch(true);
+          refetch();
         }}
       />
     </>

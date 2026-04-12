@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import Search from 'lucide-react/dist/esm/icons/search';
 
 interface SearchFieldProps {
@@ -8,15 +9,16 @@ interface SearchFieldProps {
   className?: string;
 }
 
+/** Wrapper `list-page-filters__search`: grid track rộng + flex icon/input (căn dọc trong toolbar). */
 export function SearchField({ value, onChange, placeholder, className }: SearchFieldProps) {
   return (
-    <div className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="min-w-0 w-full list-page-filters__search">
+      <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <Input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className={`pl-9 ${className ?? ''}`.trim()}
+        className={cn('min-w-0 flex-1', className)}
       />
     </div>
   );

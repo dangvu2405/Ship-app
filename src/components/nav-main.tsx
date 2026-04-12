@@ -85,10 +85,10 @@ export function NavMain({
                     <SidebarMenuButton tooltip={item.title} isActive={hasActiveChild}>
                       {item.icon && <item.icon />}
                       <span>{item.title}</span>
-                      <ChevronRightIcon className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                      <ChevronRightIcon className="ml-auto shrink-0 transition-transform duration-300 ease-out group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
-                  <CollapsibleContent>
+                  <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-300">
                     <SidebarMenuSub>
                       {item.items.map((child) => {
                         const isChildActive = isRouteActive(child.url)

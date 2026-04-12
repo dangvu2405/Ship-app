@@ -2,14 +2,7 @@ import { DataProvider, BaseRecord, GetListParams, GetOneParams, CreateParams, Up
 import simpleRestDataProvider from '@refinedev/simple-rest';
 import { API_BASE_URL } from '@/utils/constants';
 import api from '@/services/api';
-
-function throwIfEnvelopeFailed(body: { success?: boolean; message?: string } | undefined): void {
-  if (body && 'success' in body && body.success === false) {
-    const err = new Error(body.message || 'Request failed') as Error & { response?: { data: unknown } };
-    err.response = { data: body };
-    throw err;
-  }
-}
+import { throwIfEnvelopeFailed, unwrapEnvelope } from '@/services/http';
 
 // Custom data provider that uses our axios instance
 export const dataProvider: DataProvider = {
@@ -72,7 +65,7 @@ export const dataProvider: DataProvider = {
     const body = response.data as { success?: boolean; data?: unknown };
     throwIfEnvelopeFailed(body);
     return {
-      data: (body?.data ?? response.data) as TData,
+      data: unwrapEnvelope<TData>(response.data),
     };
   },
 
@@ -82,7 +75,7 @@ export const dataProvider: DataProvider = {
     const body = response.data as { success?: boolean; data?: unknown };
     throwIfEnvelopeFailed(body);
     return {
-      data: (body?.data ?? response.data) as TData,
+      data: unwrapEnvelope<TData>(response.data),
     };
   },
 
@@ -92,7 +85,7 @@ export const dataProvider: DataProvider = {
     const body = response.data as { success?: boolean; data?: unknown };
     throwIfEnvelopeFailed(body);
     return {
-      data: (body?.data ?? response.data) as TData,
+      data: unwrapEnvelope<TData>(response.data),
     };
   },
   

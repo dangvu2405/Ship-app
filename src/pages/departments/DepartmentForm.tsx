@@ -1,7 +1,6 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormItemText } from '@/components/form/FormItemText';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
+import { FormAccordionSections, FormItemSelect, FormItemText } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Department, Office } from '@/types';
 
@@ -34,38 +33,57 @@ export function DepartmentForm(props: DepartmentFormProps) {
   }));
 
   return (
-    <>
-      <FormItemSelect
-        name="office_id"
-        label={t('employees.office')}
-        required
-        options={officeOptions}
-        loading={officesLoading}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('employees.office') }) }]}
-      />
-      <FormItemSelect
-        name="parent_id"
-        label={t('departments.parentDepartment')}
-        options={parentOptions}
-        loading={deptLoading}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        allowClear
-      />
-      <FormItemText
-        name="code"
-        label={t('companies.code')}
-        required
-        rules={[{ required: true, message: t('validation.required', { field: t('companies.code') }) }]}
-      />
-      <FormItemText
-        name="name"
-        label={t('companies.name')}
-        required
-        rules={[{ required: true, message: t('validation.required', { field: t('companies.name') }) }]}
-      />
-    </>
+    <FormAccordionSections
+      defaultOpen="relations"
+      sections={[
+        {
+          value: 'relations',
+          titleKey: 'relations',
+          children: (
+            <>
+              <FormItemSelect
+                name="office_id"
+                label={t('employees.office')}
+                required
+                options={officeOptions}
+                loading={officesLoading}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                rules={[{ required: true, message: t('validation.required', { field: t('employees.office') }) }]}
+              />
+              <FormItemSelect
+                name="parent_id"
+                label={t('departments.parentDepartment')}
+                options={parentOptions}
+                loading={deptLoading}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                allowClear
+              />
+            </>
+          ),
+        },
+        {
+          value: 'basic',
+          titleKey: 'basic',
+          children: (
+            <>
+              <FormItemText
+                name="code"
+                label={t('companies.code')}
+                required
+                rules={[{ required: true, message: t('validation.required', { field: t('companies.code') }) }]}
+              />
+              <FormItemText
+                name="name"
+                label={t('companies.name')}
+                required
+                rules={[{ required: true, message: t('validation.required', { field: t('companies.name') }) }]}
+              />
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }

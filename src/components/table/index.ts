@@ -13,3 +13,7 @@ export type {
 export { DataTable } from './DataTable';
 export type { DataTableColumn, DataTablePagination, DataTableProps } from './DataTable';
 export { Pagination } from './Pagination';
+
+export { ProfessionalAntTable } from './ProfessionalAntTable';
+export { PROFESSIONAL_TABLE_SAMPLE_DATA } from './professionalAntTableData';
+export type { DemoOrderStatus, ProfessionalAntTableProps, ProfessionalOrderRow } from './professionalAntTableTypes';

@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Form } from 'antd';
+import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useUpdate, useOne, useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
@@ -10,16 +11,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  getFormDialogContentClassName,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { CompanyForm } from './CompanyForm';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
-import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
+import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
+import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Company } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { usePermission } from '@/hooks/usePermission';
+import { getCompanyCreateFeatureFlags } from '@/utils/companyCreateFeatures';
 
 interface CompanyFormDialogProps {
   open?: boolean;
@@ -31,6 +36,9 @@ interface CompanyFormDialogProps {
 
 export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: CompanyFormDialogProps = {}) {
   const { t } = useTranslation();
+  const permission = usePermission();
+  const companyFeatures = getCompanyCreateFeatureFlags(permission);
+  const [importFiles, setImportFiles] = useState<UploadFile[]>([]);
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const { list } = useNavigation();
@@ -87,6 +95,10 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('companies.title') }));
+            if (importFiles.length > 0 && importFiles[0].originFileObj) {
+              toast(t('companies.excelImportQueued'), { icon: 'ℹ️' });
+            }
+            setImportFiles([]);
             onSuccess?.();
             handleClose();
           },
@@ -105,13 +117,18 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
   };
 
   const handleClose = () => {
+    setImportFiles([]);
     onClose?.();
     if (!isControlled) {
       list('companies');
     }
   };
 
-  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+  const handleImportChange: UploadProps['onChange'] = ({ fileList }) => {
+    setImportFiles(fileList.slice(-1));
+  };
+
+  const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
     form,
     isViewMode,
     isSubmitting: isLoading,
@@ -126,20 +143,24 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
 
   if (hasRecordId && isLoadingData) {
     return (
+      <>
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
+        <DialogContent className={getFormDialogContentClassName('default')}>
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('companies.editCompany')}</DialogTitle>
           </DialogHeader>
           <TableSkeleton rows={8} columns={1} />
         </DialogContent>
       </Dialog>
+        <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+      </>
     );
   }
 
   return (
+    <>
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
+      <DialogContent className={getFormDialogContentClassName('wide', 'p-0 rounded-2xl')}>
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>
             {isViewMode ? t('common.view') : isEdit ? t('companies.editCompany') : t('companies.createCompany')}
@@ -162,7 +183,15 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
             validateTrigger={["onBlur", "onSubmit"]}
             disabled={isViewMode}
           >
-            <CompanyForm form={form} initialValues={data?.data} />
+            <CompanyForm
+              form={form}
+              initialValues={data?.data}
+              isCreate={!isEdit && !isViewMode}
+              showBulkImport={companyFeatures.showBulkImport}
+              showDriverScheduleHint={companyFeatures.showDriverScheduleHint}
+              importFileList={importFiles}
+              onImportChange={handleImportChange}
+            />
           </Form>
         </div>
 
@@ -187,5 +216,7 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+    </>
   );
 }

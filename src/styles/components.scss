@@ -167,3 +167,163 @@
     @apply p-0;
   }
 }
+
+// --- List filters: kích thước & typography (Select 180–240px / nút Tìm 140–160px / Đặt lại 100–120px, 14px) ---
+.list-page-filters {
+  align-items: center;
+
+  .list-page-filters__search [data-slot='input'],
+  .list-page-filters__search input {
+    height: 40px !important;
+    min-height: 40px !important;
+    font-size: 14px !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1.25;
+  }
+
+  // Ant Design Select trong toolbar (Công ty / Văn phòng / filter chung)
+  .list-page-filters__select.ant-select {
+    min-width: 180px;
+    max-width: 240px;
+    width: clamp(180px, 100%, 240px);
+  }
+
+  .list-page-filters__select.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+    min-height: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 14px !important;
+    padding-inline: 11px !important;
+  }
+
+  .list-page-filters__select .ant-select-selection-item,
+  .list-page-filters__select .ant-select-selection-placeholder {
+    line-height: normal !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 14px !important;
+  }
+
+  .list-page-filters__select .ant-select-prefix {
+    margin-inline-end: 6px;
+    font-size: 14px;
+    color: hsl(var(--muted-foreground));
+    display: flex;
+    align-items: center;
+  }
+
+  // Radix Select (Employees / Vehicles)
+  [data-slot='select-trigger'].list-page-filters__radix-select {
+    min-width: 180px;
+    max-width: 240px;
+    width: clamp(180px, 100%, 240px);
+    height: 40px !important;
+    min-height: 40px !important;
+    font-size: 14px !important;
+    box-sizing: border-box;
+  }
+
+  .list-page-filters__btn-search {
+    min-width: 140px;
+    max-width: 160px;
+    width: clamp(140px, 100%, 160px);
+    height: 40px !important;
+    min-height: 40px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    font-size: 14px !important;
+    font-weight: 500;
+  }
+
+  .list-page-filters__btn-reset {
+    min-width: 100px;
+    max-width: 120px;
+    width: clamp(100px, 100%, 120px);
+    height: 40px !important;
+    min-height: 40px !important;
+    font-size: 14px !important;
+  }
+
+  .list-page-filters__search {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  // === Modifier: grid 4 cột (Search + control + Tìm + Đặt lại) ===
+  &--grid-4 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+
+    @media (min-width: 768px) {
+      &:has(> .list-page-filters__search):has(> :nth-child(4):last-child) {
+        grid-template-columns:
+          minmax(300px, 3fr) minmax(200px, 240px) minmax(140px, max-content) minmax(100px, max-content);
+      }
+
+      &:not(:has(> .list-page-filters__search)):has(> :nth-child(4):last-child) {
+        grid-template-columns:
+          minmax(200px, 1.15fr) minmax(200px, 1.15fr) minmax(140px, max-content) minmax(100px, max-content);
+      }
+    }
+  }
+
+  // === Modifier: grid 3 cột (Search + Tìm + Đặt lại, không select) ===
+  &--grid-3 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+
+    @media (min-width: 768px) {
+      grid-template-columns: minmax(320px, 1fr) minmax(140px, max-content) minmax(100px, max-content);
+    }
+  }
+
+  // === Modifier: Trips — 2 select trái + nút phải ===
+  &--dual-entity {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+
+    @media (min-width: 640px) {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .list-page-filters__select.ant-select {
+      min-width: 120px;
+      max-width: none;
+      width: 100%;
+    }
+  }
+
+  &__select-row {
+    display: grid;
+    min-width: 0;
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 12px;
+
+    @media (min-width: 640px) {
+      min-width: 0;
+      flex: 1;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+  }
+
+  &__btn-row {
+    display: flex;
+    min-width: 0;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}

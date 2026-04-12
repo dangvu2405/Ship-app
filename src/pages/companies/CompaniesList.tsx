@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { Form } from 'antd';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -10,30 +11,30 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { CompanyFormDialog } from './CompanyFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import Plus from 'lucide-react/dist/esm/icons/plus';
-import Eye from 'lucide-react/dist/esm/icons/eye';
-import Edit from 'lucide-react/dist/esm/icons/edit';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
+import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import type { Company } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
-import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+
+type CompanyFilterForm = {
+  status?: string;
+};
 
 export function CompaniesList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [filterForm] = Form.useForm<CompanyFilterForm>();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -41,11 +42,18 @@ export function CompaniesList() {
   const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<Company>({
+  const statusFilterOptions = useMemo(
+    () => [
+      { label: t('common.active'), value: 'active' },
+      { label: t('common.inactive'), value: 'inactive' },
+    ],
+    [t],
+  );
+
+  const { data, isLoading, isFetching, isError, refetch } = useList<Company>({
     resource: 'companies',
     pagination: {
       current,
@@ -57,17 +65,16 @@ export function CompaniesList() {
     ],
   });
 
-  const safeRefetch = useSafeRefetch('companies-companieslist', refetch);
-
   const handleSearchFilters = () => {
+    const { status } = filterForm.getFieldsValue();
     setAppliedKeyword(searchKeyword.trim());
-    setAppliedStatus(selectedStatus);
+    setAppliedStatus(status);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
     setSearchKeyword('');
-    setSelectedStatus(undefined);
+    filterForm.resetFields();
     setAppliedKeyword('');
     setAppliedStatus(undefined);
     setCurrent(1);
@@ -75,21 +82,21 @@ export function CompaniesList() {
 
   const handleStatusTabChange = (value: string) => {
     const nextStatus = value === 'all' ? undefined : value;
-    setSelectedStatus(nextStatus);
+    filterForm.setFieldsValue({ status: nextStatus });
     setAppliedStatus(nextStatus);
     setCurrent(1);
   };
 
-  const handleDelete = useCallback((company: Company) => {
+  const handleDelete = (company: Company) => {
     setSelectedCompany(company);
     setDeleteDialogOpen(true);
-  }, []);
+  };
 
-  const handleOpenDialog = useCallback((mode: 'create' | 'edit' | 'show', id?: number) => {
+  const handleOpenDialog = (mode: 'create' | 'edit' | 'show', id?: number) => {
     setDialogMode(mode);
     setActiveId(id);
     setDialogOpen(true);
-  }, []);
+  };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
@@ -110,7 +117,7 @@ export function CompaniesList() {
           toast.success(t('notifications.deleteSuccess', { item: t('companies.title') }));
           setDeleteDialogOpen(false);
           setSelectedCompany(null);
-          void safeRefetch(true);
+          refetch();
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) {
@@ -123,8 +130,7 @@ export function CompaniesList() {
     );
   };
 
-  const columns = useMemo<DataTableColumn<Company>[]>(
-    () => [
+  const columns: DataTableColumn<Company>[] = [
     { key: 'code', header: t('companies.code'), dataIndex: 'code' },
     { key: 'name', header: t('companies.name'), dataIndex: 'name' },
     { key: 'tax_code', header: t('companies.taxCode'), dataIndex: 'tax_code' },
@@ -170,9 +176,7 @@ export function CompaniesList() {
         </div>
       ),
     },
-  ],
-    [t, show, handleDelete, handleOpenDialog]
-  );
+  ];
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
@@ -207,57 +211,68 @@ export function CompaniesList() {
             </TabsList>
           </Tabs>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <SearchField
+          <ListPageFilters variant="grid-4">
+            <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
               onChange={setSearchKeyword}
             />
 
-            <Select
-              value={selectedStatus ?? 'all'}
-              onValueChange={(value) => setSelectedStatus(value === 'all' ? undefined : value)}
+            <Form
+              form={filterForm}
+              layout="vertical"
+              requiredMark={false}
+              colon={false}
+              className="contents min-w-0 w-full"
             >
-              <SelectTrigger>
-                <SelectValue placeholder={t('common.status')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('common.all')}</SelectItem>
-                <SelectItem value="active">{t('common.active')}</SelectItem>
-                <SelectItem value="inactive">{t('common.inactive')}</SelectItem>
-              </SelectContent>
-            </Select>
+              <FormItemSelect
+                noStyle
+                name="status"
+                label={null}
+                placeholder={t('common.status')}
+                options={statusFilterOptions}
+                allowClear
+                selectProps={{
+                  classNames: { root: 'list-page-filters__select' },
+                }}
+              />
+            </Form>
 
-            <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
-              {t('common.search')}
-            </Button>
+            <ListPageFilters.Actions
+              onSearch={handleSearchFilters}
+              onReset={handleClearFilters}
+              busy={isFetching && !isLoading}
+            />
+          </ListPageFilters>
 
-            <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
-              {t('common.reset')}
-            </Button>
-          </div>
-
-          {isLoading ? (
-            <TableSkeleton rows={5} columns={columns.length} />
-          ) : isError ? (
+          {isError ? (
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
-              onRetry={() => void safeRefetch(true)}
+              onRetry={() => refetch()}
             />
           ) : (
-            <DataTable<Company>
-              data={listData}
-              columns={columns}
-              onRowClick={(record) => show('companies', record.id)}
-              emptyMessage={t('common.noData')}
-              pagination={{
-                current,
-                total,
-                pageSize,
-                onPageChange: setCurrent,
-              }}
-            />
+            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+              <DataTable<Company>
+                data={listData}
+                columns={columns}
+                onRowClick={(record) => show('companies', record.id)}
+                emptyMessage={t('common.noData')}
+                emptyDescription={t('emptyState.listDescription', { resource: t('companies.title') })}
+                emptyAction={
+                  <Button onClick={() => handleOpenDialog('create')} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    {t('companies.createCompany')}
+                  </Button>
+                }
+                pagination={{
+                  current,
+                  total,
+                  pageSize,
+                  onPageChange: setCurrent,
+                }}
+              />
+            </PageLoadingOverlay>
           )}
         </CardContent>
       </Card>
@@ -274,7 +289,7 @@ export function CompaniesList() {
         recordId={activeId}
         onClose={handleCloseDialog}
         onSuccess={() => {
-          void safeRefetch(true);
+          refetch();
         }}
       />
     </>

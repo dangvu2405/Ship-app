@@ -1,4 +1,6 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { Inbox } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { Pagination } from './Pagination';
 
@@ -29,8 +31,42 @@ export interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   loading?: boolean;
   onRowClick?: (item: T) => void;
+  /** Short title when the list is empty (fallback if no richer copy is needed). */
   emptyMessage?: string;
+  /** Optional longer hint below the title (e.g. i18n with `{resource}`). */
+  emptyDescription?: string;
+  /** Primary action when empty (e.g. create button). */
+  emptyAction?: ReactNode;
   pagination?: DataTablePagination;
+}
+
+function DataTableEmptyInner({
+  emptyMessage,
+  emptyDescription,
+  emptyAction,
+  className,
+}: {
+  emptyMessage: string;
+  emptyDescription?: string;
+  emptyAction?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('mx-auto flex max-w-md flex-col items-center px-6 py-12 text-center', className)}>
+      <Inbox className="mb-3 h-9 w-9 text-muted-foreground/80" aria-hidden />
+      <p className="text-base font-medium text-foreground">{emptyMessage}</p>
+      {emptyDescription ? <p className="mt-2 text-sm text-muted-foreground">{emptyDescription}</p> : null}
+      {emptyAction ? <div className="mt-6">{emptyAction}</div> : null}
+    </div>
+  );
+}
+
+function DataTableEmptyStandalone(props: { emptyMessage: string; emptyDescription?: string; emptyAction?: ReactNode }) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card shadow-sm">
+      <DataTableEmptyInner {...props} />
+    </div>
+  );
 }
 
 export function DataTable<T extends { id: number }>({
@@ -39,22 +75,20 @@ export function DataTable<T extends { id: number }>({
   loading,
   onRowClick,
   emptyMessage = 'No data available',
+  emptyDescription,
+  emptyAction,
   pagination,
 }: DataTableProps<T>) {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" aria-hidden />
       </div>
     );
   }
 
   if (data.length === 0 && !pagination?.total) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">{emptyMessage}</p>
-      </div>
-    );
+    return <DataTableEmptyStandalone emptyMessage={emptyMessage} emptyDescription={emptyDescription} emptyAction={emptyAction} />;
   }
 
   const lastPage = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.pageSize)) : 1;
@@ -69,7 +103,7 @@ export function DataTable<T extends { id: number }>({
                 <th
                   key={column.key}
                   scope="col"
-                  className="px-6 py-3.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider"
+                  className="align-middle px-6 py-3.5 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wider"
                 >
                   {column.header}
                 </th>
@@ -79,8 +113,12 @@ export function DataTable<T extends { id: number }>({
           <tbody className="divide-y divide-border bg-card">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-sm text-muted-foreground">
-                  {emptyMessage}
+                <td colSpan={columns.length} className="align-middle">
+                  {emptyDescription || emptyAction ? (
+                    <DataTableEmptyInner emptyMessage={emptyMessage} emptyDescription={emptyDescription} emptyAction={emptyAction} />
+                  ) : (
+                    <div className="px-6 py-12 text-center text-sm text-muted-foreground">{emptyMessage}</div>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -98,12 +136,14 @@ export function DataTable<T extends { id: number }>({
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-foreground"
+                      className="align-middle px-6 py-4 whitespace-nowrap text-center text-sm text-foreground"
                       onClick={column.key === 'actions' ? (e) => e.stopPropagation() : undefined}
                     >
-                      {column.render
-                        ? column.render(item)
-                        : String(getValue(item, column.dataIndex, column.key) ?? '')}
+                      <div className="flex min-h-6 items-center justify-center gap-1">
+                        {column.render
+                          ? column.render(item)
+                          : String(getValue(item, column.dataIndex, column.key) ?? '')}
+                      </div>
                     </td>
                   ))}
                 </tr>

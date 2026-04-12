@@ -57,7 +57,6 @@ class ChatService {
   async getSessions(limit = 20): Promise<ApiResponse<ChatSession[]>> {
     const response = await api.get(ENDPOINTS.chat.sessions, {
       params: { limit },
-      signal: AbortSignal.timeout(15000),
     });
     return {
       ...response.data,
@@ -68,7 +67,6 @@ class ChatService {
   async getMessages(sessionId: string, limit = 30): Promise<ApiResponse<ChatMessage[]>> {
     const response = await api.get(ENDPOINTS.chat.messages, {
       params: { session_id: sessionId, limit },
-      signal: AbortSignal.timeout(15000),
     });
     return {
       ...response.data,
@@ -84,7 +82,7 @@ class ChatService {
     };
   }
 
-  async sendMessageStream(payload: SendChatMessagePayload, handlers: StreamHandlers = {}, options?: { signal?: AbortSignal }): Promise<StreamDoneEvent | undefined> {
+  async sendMessageStream(payload: SendChatMessagePayload, handlers: StreamHandlers = {}): Promise<StreamDoneEvent | undefined> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     const response = await fetch(`${API_BASE_URL}${ENDPOINTS.chat.messagesStream}`, {
       method: 'POST',
@@ -94,7 +92,6 @@ class ChatService {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
-      signal: options?.signal,
     });
 
     if (!response.ok || !response.body) {
@@ -146,8 +143,7 @@ class ChatService {
       }
     };
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
 

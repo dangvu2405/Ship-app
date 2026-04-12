@@ -1,9 +1,6 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
-import { FormItemText } from '@/components/form/FormItemText';
-import { FormItemTextArea } from '@/components/form/FormItemTextArea';
-import { FormItemNumber } from '@/components/form/FormItemNumber';
+import { FormAccordionSections, FormItemNumber, FormItemSelect, FormItemText, FormItemTextArea } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Driver, Vehicle, VehicleExpense } from '@/types';
 
@@ -47,45 +44,64 @@ export function VehicleExpenseForm(props: VehicleExpenseFormProps) {
   ];
 
   return (
-    <>
-      <FormItemSelect
-        name="vehicle_id"
-        label={t('vehicleExpenses.vehicle')}
-        required
-        options={vehicleOptions}
-        loading={loadingVehicles}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.vehicle') }) }]}
-      />
-      <FormItemSelect
-        name="driver_id"
-        label={t('vehicleExpenses.driver')}
-        options={driverOptions}
-        loading={loadingDrivers}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        allowClear
-      />
-      <FormItemSelect
-        name="type"
-        label={t('vehicleExpenses.type')}
-        required
-        options={typeOptions}
-        rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.type') }) }]}
-      />
-      <FormItemNumber
-        name="amount"
-        label={t('vehicleExpenses.amount')}
-        required
-        min={1}
-        rules={[
-          { required: true, message: t('validation.required', { field: t('vehicleExpenses.amount') }) },
-          { type: 'number', min: 1, message: t('validation.min', { min: 1 }) }
-        ]}
-      />
-      <FormItemText name="expense_date" label={t('vehicleExpenses.expenseDate')} type="date" required rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.expenseDate') }) }]} />
-      <FormItemTextArea name="note" label={t('vehicleExpenses.note')} rows={2} />
-    </>
+    <FormAccordionSections
+      defaultOpen="relations"
+      sections={[
+        {
+          value: 'relations',
+          titleKey: 'relations',
+          children: (
+            <>
+              <FormItemSelect
+                name="vehicle_id"
+                label={t('vehicleExpenses.vehicle')}
+                required
+                options={vehicleOptions}
+                loading={loadingVehicles}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.vehicle') }) }]}
+              />
+              <FormItemSelect
+                name="driver_id"
+                label={t('vehicleExpenses.driver')}
+                options={driverOptions}
+                loading={loadingDrivers}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                allowClear
+              />
+            </>
+          ),
+        },
+        {
+          value: 'operational',
+          titleKey: 'operational',
+          children: (
+            <>
+              <FormItemSelect
+                name="type"
+                label={t('vehicleExpenses.type')}
+                required
+                options={typeOptions}
+                rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.type') }) }]}
+              />
+              <FormItemNumber
+                name="amount"
+                label={t('vehicleExpenses.amount')}
+                required
+                min={1}
+                rules={[
+                  { required: true, message: t('validation.required', { field: t('vehicleExpenses.amount') }) },
+                  { type: 'number', min: 1, message: t('validation.min', { min: 1 }) }
+                ]}
+              />
+              <FormItemText name="expense_date" label={t('vehicleExpenses.expenseDate')} type="date" required rules={[{ required: true, message: t('validation.required', { field: t('vehicleExpenses.expenseDate') }) }]} />
+              <FormItemTextArea name="note" label={t('vehicleExpenses.note')} rows={2} />
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }

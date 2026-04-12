@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { Form } from 'antd';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select } from 'antd';
+import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -19,12 +20,16 @@ import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { CustomerFormDialog } from './CustomerFormDialog';
-import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+
+type CustomerFilterForm = {
+  type?: string;
+};
 
 export function CustomersList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const [filterForm] = Form.useForm<CustomerFilterForm>();
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -32,11 +37,18 @@ export function CustomersList() {
   const [selected, setSelected] = useState<Customer | null>(null);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedType, setAppliedType] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<Customer>({
+  const customerTypeOptions = useMemo(
+    () => [
+      { label: t('customers.typeCompany'), value: 'company' },
+      { label: t('customers.typeIndividual'), value: 'individual' },
+    ],
+    [t],
+  );
+
+  const { data, isLoading, isFetching, isError, refetch } = useList<Customer>({
     resource: 'customers',
     pagination: { current, pageSize: 15 },
     filters: [
@@ -45,17 +57,16 @@ export function CustomersList() {
     ],
   });
 
-  const safeRefetch = useSafeRefetch('customers-customerslist', refetch);
-
   const handleSearchFilters = () => {
+    const { type } = filterForm.getFieldsValue();
     setAppliedKeyword(searchKeyword.trim());
-    setAppliedType(selectedType);
+    setAppliedType(type);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
     setSearchKeyword('');
-    setSelectedType(undefined);
+    filterForm.resetFields();
     setAppliedKeyword('');
     setAppliedType(undefined);
     setCurrent(1);
@@ -67,11 +78,11 @@ export function CustomersList() {
     setFormOpen(true);
   };
 
-  const handleEdit = useCallback((id: number) => {
+  const handleEdit = (id: number) => {
     setFormMode('edit');
     setEditingId(id);
     setFormOpen(true);
-  }, []);
+  };
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -82,7 +93,7 @@ export function CustomersList() {
           toast.success(t('notifications.deleteSuccess', { item: t('customers.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
-          void safeRefetch(true);
+          refetch();
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
@@ -92,8 +103,7 @@ export function CustomersList() {
     );
   };
 
-  const columns = useMemo<DataTableColumn<Customer>[]>(
-    () => [
+  const columns: DataTableColumn<Customer>[] = [
     { key: 'name', header: t('customers.name'), dataIndex: 'name' },
     {
       key: 'type',
@@ -108,49 +118,19 @@ export function CustomersList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            aria-label={t('common.view')}
-            onClick={(e) => {
-              e.stopPropagation();
-              show('customers', record.id);
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.view')} onClick={(e) => { e.stopPropagation(); show('customers', record.id); }}>
             <EyeIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            aria-label={t('common.edit')}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(record.id);
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.edit')} onClick={(e) => { e.stopPropagation(); handleEdit(record.id); }}>
             <PencilIcon className="h-4 w-4" aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            aria-label={t('common.delete')}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelected(record);
-              setDeleteDialogOpen(true);
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" aria-label={t('common.delete')} onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
             <Trash2Icon className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
     },
-  ],
-    [t, show, handleEdit]
-  );
+  ];
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -171,44 +151,63 @@ export function CustomersList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <SearchField
+        <ListPageFilters variant="grid-4">
+          <ListPageFilters.Search
             placeholder={t('common.search')}
             value={searchKeyword}
             onChange={setSearchKeyword}
           />
 
-          <Select
-            allowClear
-            placeholder={t('customers.type')}
-            value={selectedType}
-            onChange={setSelectedType}
-            options={[
-              { label: t('customers.typeCompany'), value: 'company' },
-              { label: t('customers.typeIndividual'), value: 'individual' },
-            ]}
+          <Form
+            form={filterForm}
+            layout="vertical"
+            requiredMark={false}
+            colon={false}
+            className="contents min-w-0 w-full"
+          >
+            <FormItemSelect
+              noStyle
+              name="type"
+              label={null}
+              placeholder={t('customers.type')}
+              options={customerTypeOptions}
+              allowClear
+              selectProps={{
+                classNames: { root: 'list-page-filters__select' },
+              }}
+            />
+          </Form>
+
+          <ListPageFilters.Actions
+            onSearch={handleSearchFilters}
+            onReset={handleClearFilters}
+            busy={isFetching && !isLoading}
           />
+        </ListPageFilters>
 
-          <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
-          <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
-        </div>
-
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => void safeRefetch(true)}
+            onRetry={() => refetch()}
           />
         ) : (
-          <DataTable<Customer>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('customers', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Customer>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('customers', r.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('customers.title') })}
+              emptyAction={
+                <Button onClick={handleCreate} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('customers.createCustomer')}
+                </Button>
+              }
+              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>
@@ -223,7 +222,7 @@ export function CustomersList() {
             setEditingId(undefined);
           }}
           onSuccess={() => {
-            void safeRefetch(true);
+            refetch();
           }}
         />
       )}

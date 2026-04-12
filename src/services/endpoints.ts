@@ -7,10 +7,8 @@ const crud = (base: string) => ({
 
 export const ENDPOINTS = {
   public: {
-    /** Trong `/api/v1` */
     root: '/',
     health: '/health',
-    /** Swagger: `/api/documentation` — gọi với axios `{ useApiRoot: true }`. */
     docs: '/documentation',
   },
   auth: {
@@ -18,8 +16,7 @@ export const ENDPOINTS = {
     logout: '/auth/logout',
     refresh: '/auth/refresh',
     register: '/auth/register',
-    /** Chuẩn REST; `/user` vẫn có trên BE để tương thích. */
-    me: '/auth/me',
+    me: '/user',
   },
   companies: crud('/companies'),
   offices: crud('/offices'),
@@ -69,34 +66,6 @@ export const ENDPOINTS = {
     employees: {
       base: '/v2/employees',
       byId: (id: Id) => `/v2/employees/${id}`,
-    },
-  },
-  /**
-   * Contract paths from FRONTEND_MUST_HAVE_SCHEMA_HANDOFF — enable when backend exposes routes.
-   */
-  planned: {
-    leaveTypes: crud('/leave-types'),
-    leaveRequests: {
-      ...crud('/leave-requests'),
-      submit: (id: Id) => `/leave-requests/${id}/submit`,
-      approve: (id: Id) => `/leave-requests/${id}/approve`,
-      reject: (id: Id) => `/leave-requests/${id}/reject`,
-      cancel: (id: Id) => `/leave-requests/${id}/cancel`,
-    },
-    leaveBalanceByEmployee: (employeeId: Id, balanceId: Id) => `/employees/${employeeId}/leave-balances/${balanceId}`,
-    taxBrackets: crud('/tax-brackets'),
-    insuranceRates: crud('/insurance-rates'),
-    payrollDetailEarnings: (payrollDetailId: Id) => `/payroll-details/${payrollDetailId}/earnings`,
-    payrollEarningById: (id: Id) => `/payroll-earnings/${id}`,
-    payrollDetailDeductions: (payrollDetailId: Id) => `/payroll-details/${payrollDetailId}/deductions`,
-    payslips: {
-      ...crud('/payslips'),
-      issue: (id: Id) => `/payslips/${id}/issue`,
-    },
-    chartOfAccounts: crud('/chart-of-accounts'),
-    journalEntries: {
-      ...crud('/journal-entries'),
-      post: (id: Id) => `/journal-entries/${id}/post`,
     },
   },
 } as const;

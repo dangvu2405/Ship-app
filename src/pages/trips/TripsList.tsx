@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { Form } from 'antd';
+import { useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -10,13 +11,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Select } from 'antd';
+import { ApartmentOutlined, ShopOutlined } from '@ant-design/icons';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
+import { FormItemSelect } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Eye from 'lucide-react/dist/esm/icons/eye';
@@ -35,6 +38,18 @@ import { formatCurrencyVND } from '@/utils/format';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 import { notifyErrorOnce } from '@/utils/errorToast';
 import { getTripStatusLabel } from '@/utils/tripStatus';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
+import { usePaginatedResourceSelectOptions } from '@/hooks/usePaginatedResourceSelectOptions';
+
+/** Tab lọc nhanh theo trạng thái chuyến (đồng bộ filter API `status`). */
+const TRIP_STATUS_TABS: { value: string; labelKey: string }[] = [
+  { value: 'all', labelKey: 'common.all' },
+  { value: 'pending', labelKey: 'trips.statusPending' },
+  { value: 'in_progress', labelKey: 'trips.statusInProgress' },
+  { value: 'completed', labelKey: 'trips.statusCompleted' },
+  { value: 'cancelled', labelKey: 'trips.statusCancelled' },
+];
 
 const getTripStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (status) {
@@ -49,57 +64,69 @@ const getTripStatusVariant = (status: string): 'default' | 'secondary' | 'destru
   }
 };
 
+type TripFilterForm = {
+  company_id?: number;
+  office_id?: number;
+};
+
 export function TripsList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('trips');
+  const [filterForm] = Form.useForm<TripFilterForm>();
+  const companyWatch = Form.useWatch('company_id', filterForm);
+
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [current, setCurrent] = useState(1);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<number | undefined>(undefined);
-  const [selectedOfficeId, setSelectedOfficeId] = useState<number | undefined>(undefined);
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [appliedCompanyId, setAppliedCompanyId] = useState<number | undefined>(undefined);
   const [appliedOfficeId, setAppliedOfficeId] = useState<number | undefined>(undefined);
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
   const [busyTripId, setBusyTripId] = useState<number | null>(null);
 
-  const { data: companiesData } = useList<Company>({
+  const companyFilters = useMemo(
+    () => [{ field: 'status', operator: 'eq' as const, value: 'active' }],
+    [],
+  );
+
+  const officeFilters = useMemo(
+    () =>
+      companyWatch != null
+        ? [{ field: 'company_id', operator: 'eq' as const, value: companyWatch }]
+        : [],
+    [companyWatch],
+  );
+
+  const mapCompanyOption = useCallback(
+    (c: Company) => ({ label: c.name ?? `#${c.id}`, value: c.id }),
+    [],
+  );
+  const mapOfficeOption = useCallback(
+    (o: Office) => ({ label: o.name ?? `#${o.id}`, value: o.id }),
+    [],
+  );
+
+  const companiesSelect = usePaginatedResourceSelectOptions<Company>({
     resource: 'companies',
-    pagination: {
-      current: 1,
-      pageSize: 100,
-    },
-    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    filters: companyFilters,
     sorters: [{ field: 'name', order: 'asc' }],
+    mapOption: mapCompanyOption,
   });
 
-  const { data: officesData } = useList<Office>({
+  const officesSelect = usePaginatedResourceSelectOptions<Office>({
     resource: 'offices',
-    pagination: {
-      current: 1,
-      pageSize: 200,
-    },
+    filters: officeFilters,
     sorters: [{ field: 'name', order: 'asc' }],
+    mapOption: mapOfficeOption,
   });
 
-  const filteredOffices = (officesData?.data ?? []).filter((office) => {
-    if (!selectedCompanyId) {
-      return true;
-    }
-
-    return office.company_id === selectedCompanyId;
-  });
-
-  const { data, isLoading, isError, refetch } = useList<Trip>({
+  const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Trip>({
     resource: 'trips',
-    pagination: {
-      current,
-      pageSize: 15,
-    },
+    current,
+    pageSize: 15,
     filters: [
       ...(appliedCompanyId ? [{ field: 'company_id', operator: 'eq' as const, value: appliedCompanyId }] : []),
       ...(appliedOfficeId ? [{ field: 'office_id', operator: 'eq' as const, value: appliedOfficeId }] : []),
@@ -108,26 +135,15 @@ export function TripsList() {
   });
   const safeRefetch = useSafeRefetch('trips-list', refetch);
 
-  const handleCompanyChange = (value: number | undefined) => {
-    setSelectedCompanyId(value);
-    setSelectedOfficeId(undefined);
-  };
-
-  const handleOfficeChange = (value: number | undefined) => {
-    setSelectedOfficeId(value);
-  };
-
   const handleSearchFilters = () => {
-    setAppliedCompanyId(selectedCompanyId);
-    setAppliedOfficeId(selectedOfficeId);
-    setAppliedStatus(selectedStatus);
+    const { company_id, office_id } = filterForm.getFieldsValue();
+    setAppliedCompanyId(company_id);
+    setAppliedOfficeId(office_id);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
-    setSelectedCompanyId(undefined);
-    setSelectedOfficeId(undefined);
-    setSelectedStatus(undefined);
+    filterForm.resetFields();
     setAppliedCompanyId(undefined);
     setAppliedOfficeId(undefined);
     setAppliedStatus(undefined);
@@ -135,9 +151,7 @@ export function TripsList() {
   };
 
   const handleStatusTabChange = (value: string) => {
-    const status = value === 'all' ? undefined : value;
-    setSelectedStatus(status);
-    setAppliedStatus(status);
+    setAppliedStatus(value === 'all' ? undefined : value);
     setCurrent(1);
   };
 
@@ -163,7 +177,6 @@ export function TripsList() {
 
     deleteItem(
       {
-        resource: 'trips',
         id: selectedTrip.id,
       },
       {
@@ -318,73 +331,81 @@ export function TripsList() {
 
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6 space-y-4">
-          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
-            <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
-              <TabsTrigger value="pending">{t('trips.statusPending')}</TabsTrigger>
-              <TabsTrigger value="in_progress">{t('trips.statusInProgress')}</TabsTrigger>
-              <TabsTrigger value="completed">{t('trips.statusCompleted')}</TabsTrigger>
-              <TabsTrigger value="cancelled">{t('trips.statusCancelled')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+              <Form 
+                form={filterForm}
+                layout="vertical"
+                onValuesChange={(changed) => {
+                  if ('company_id' in changed) {
+                    filterForm.setFieldsValue({ office_id: undefined });
+                  }
+                }}
+              >
+                <FormItemSelect
+                  name="company_id"
+                  label={null}
+                  placeholder={t('companies.title')}
+                  options={companiesSelect.options}
+                  showSearch
+                  allowClear
+                  loading={companiesSelect.isLoading || companiesSelect.isFetchingNextPage}
+                  prefix={<ApartmentOutlined aria-hidden />}
+                  classNames={{ root: 'list-page-filters__select' }}
+                  onPopupScroll={companiesSelect.onPopupScroll}
+                  optionFilterProp="label"
+                  style={{ width: 180, }}
+                />
+                <FormItemSelect
+                  name="office_id"
+                  label={null}
+                  placeholder={t('employees.office')}
+                  options={officesSelect.options}
+                  showSearch
+                  allowClear
+                  loading={officesSelect.isLoading || officesSelect.isFetchingNextPage}
+                  prefix={<ShopOutlined aria-hidden />}
+                  classNames={{ root: 'list-page-filters__select' }}
+                  onPopupScroll={officesSelect.onPopupScroll}
+                  optionFilterProp="label"
+                  style={{ width: 180}}
+                />
+              </Form>
+            
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <Select
-              allowClear
-              showSearch
-              placeholder={t('companies.title')}
-              value={selectedCompanyId}
-              onChange={handleCompanyChange}
-              options={(companiesData?.data ?? []).map((company) => ({
-                label: company.name,
-                value: company.id,
-              }))}
-              optionFilterProp="label"
-            />
-
-            <Select
-              allowClear
-              showSearch
-              placeholder={t('employees.office')}
-              value={selectedOfficeId}
-              onChange={handleOfficeChange}
-              options={filteredOffices.map((office) => ({
-                label: office.name,
-                value: office.id,
-              }))}
-              optionFilterProp="label"
-            />
-
-            <Button type="button" onClick={handleSearchFilters} loading={isLoading}>
-              {t('common.search')}
-            </Button>
-
-            <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>
-              {t('common.reset')}
-            </Button>
-          </div>
-
-          {isLoading ? (
-            <TableSkeleton rows={5} columns={columns.length} />
-          ) : isError ? (
+            <div className="list-page-filters__btn-row">
+              <ListPageFilters.Actions
+                onSearch={handleSearchFilters}
+                onReset={handleClearFilters}
+                busy={isFetching && !isLoading}
+              />
+            </div>
+          {isError ? (
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
               onRetry={() => void safeRefetch(true)}
             />
           ) : (
-            <DataTable<Trip>
-              data={listData}
-              columns={columns}
-              onRowClick={(record) => show('trips', record.id)}
-              emptyMessage={t('common.noData')}
-              pagination={{
-                current,
-                total,
-                pageSize,
-                onPageChange: setCurrent,
-              }}
-            />
+            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+              <DataTable<Trip>
+                data={listData}
+                columns={columns}
+                onRowClick={(record) => show('trips', record.id)}
+                emptyMessage={t('common.noData')}
+                emptyDescription={t('emptyState.listDescription', { resource: t('trips.title') })}
+                emptyAction={
+                  <Button onClick={handleCreate} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    {t('trips.createTrip')}
+                  </Button>
+                }
+                pagination={{
+                  current,
+                  total,
+                  pageSize,
+                  onPageChange: setCurrent,
+                }}
+              />
+            </PageLoadingOverlay>
           )}
         </CardContent>
       </Card>

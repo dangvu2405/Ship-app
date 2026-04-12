@@ -28,6 +28,8 @@ export const ROUTES = {
     trip_bonus_rules: createCrudRoutes('trip_bonus_rules'),
     customers: createCrudRoutes('customers'),
     drivers: createCrudRoutes('drivers'),
+    /** Lịch làm việc tài xế (matrix tuần) — không thuộc CRUD drivers. */
+    driversSchedule: `${ADMIN_PREFIX}/drivers/schedule`,
     invoices: createCrudRoutes('invoices'),
     vehicle_assignments: createCrudRoutes('vehicle_assignments'),
     vehicle_expenses: createCrudRoutes('vehicle_expenses'),

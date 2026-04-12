@@ -1,19 +1,22 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { Link } from 'react-router-dom';
+import { useNavigation } from '@refinedev/core';
+import { Form } from 'antd';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Select } from 'antd';
+import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import PlusIcon from 'lucide-react/dist/esm/icons/plus';
+import CalendarDaysIcon from 'lucide-react/dist/esm/icons/calendar-days';
 import EyeIcon from 'lucide-react/dist/esm/icons/eye';
 import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
 import Trash2Icon from 'lucide-react/dist/esm/icons/trash-2';
@@ -23,11 +26,18 @@ import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { DriverFormDialog } from './DriverFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
+
+type DriverFilterForm = {
+  available_status?: string;
+};
 
 export function DriversList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('drivers');
+  const [filterForm] = Form.useForm<DriverFilterForm>();
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -35,13 +45,22 @@ export function DriversList() {
   const [selected, setSelected] = useState<Driver | null>(null);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<Driver>({
+  const availableStatusOptions = useMemo(
+    () => [
+      { label: t('drivers.statusAvailable'), value: 'available' },
+      { label: t('drivers.statusOnTrip'), value: 'on_trip' },
+      { label: t('drivers.statusOff'), value: 'off' },
+    ],
+    [t],
+  );
+
+  const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Driver>({
     resource: 'drivers',
-    pagination: { current, pageSize: 15 },
+    current,
+    pageSize: 15,
     filters: [
       ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
       ...(appliedStatus
@@ -53,22 +72,24 @@ export function DriversList() {
   const safeRefetch = useSafeRefetch('drivers-driverslist', refetch);
 
   const handleSearchFilters = () => {
+    const { available_status } = filterForm.getFieldsValue();
     setAppliedKeyword(searchKeyword.trim());
-    setAppliedStatus(selectedStatus);
+    setAppliedStatus(available_status);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
     setSearchKeyword('');
-    setSelectedStatus(undefined);
+    filterForm.resetFields();
     setAppliedKeyword('');
     setAppliedStatus(undefined);
     setCurrent(1);
   };
 
   const handleStatusTabChange = (value: string) => {
-    setSelectedStatus(value === 'all' ? undefined : value);
-    setAppliedStatus(value === 'all' ? undefined : value);
+    const next = value === 'all' ? undefined : value;
+    filterForm.setFieldsValue({ available_status: next });
+    setAppliedStatus(next);
     setCurrent(1);
   };
 
@@ -87,7 +108,7 @@ export function DriversList() {
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
-      { resource: 'drivers', id: selected.id },
+      { id: selected.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('drivers.title') }));
@@ -192,10 +213,18 @@ export function DriversList() {
         description={t('drivers.description')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('drivers.title') }]}
         actions={
-          <Button onClick={handleCreate} className="gap-2">
-            <PlusIcon className="h-4 w-4" />
-            {t('drivers.createDriver')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild className="gap-2">
+              <Link to={ROUTES.admin.driversSchedule}>
+                <CalendarDaysIcon className="h-4 w-4" aria-hidden />
+                {t('drivers.openScheduleButton')}
+              </Link>
+            </Button>
+            <Button onClick={handleCreate} className="gap-2">
+              <PlusIcon className="h-4 w-4" />
+              {t('drivers.createDriver')}
+            </Button>
+          </div>
         }
       />
       <Card className="rounded-xl shadow-sm border">
@@ -209,43 +238,61 @@ export function DriversList() {
             </TabsList>
           </Tabs>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <SearchField
+          <ListPageFilters variant="grid-4">
+            <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
               onChange={setSearchKeyword}
             />
-            <Select
-              allowClear
-              placeholder={t('drivers.availableStatus')}
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              options={[
-                { label: t('drivers.statusAvailable'), value: 'available' },
-                { label: t('drivers.statusOnTrip'), value: 'on_trip' },
-                { label: t('drivers.statusOff'), value: 'off' },
-              ]}
+            <Form
+              form={filterForm}
+              layout="vertical"
+              requiredMark={false}
+              colon={false}
+              className="contents min-w-0 w-full"
+            >
+              <FormItemSelect
+                noStyle
+                name="available_status"
+                label={null}
+                placeholder={t('drivers.availableStatus')}
+                options={availableStatusOptions}
+                allowClear
+                selectProps={{
+                  classNames: { root: 'list-page-filters__select' },
+                }}
+              />
+            </Form>
+            <ListPageFilters.Actions
+              onSearch={handleSearchFilters}
+              onReset={handleClearFilters}
+              busy={isFetching && !isLoading}
             />
-            <Button type="button" onClick={handleSearchFilters} loading={isLoading}>{t('common.search')}</Button>
-            <Button type="button" variant="outline" onClick={handleClearFilters} loading={isLoading}>{t('common.reset')}</Button>
-          </div>
+          </ListPageFilters>
 
-          {isLoading ? (
-            <TableSkeleton rows={5} columns={columns.length} />
-          ) : isError ? (
+          {isError ? (
             <ErrorState
               title={t('common.loadError')}
               description={t('common.tryAgainDescription')}
               onRetry={() => void safeRefetch(true)}
             />
           ) : (
-            <DataTable<Driver>
-              data={listData}
-              columns={columns}
-              onRowClick={(r) => show('drivers', r.id)}
-              emptyMessage={t('common.noData')}
-              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-            />
+            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+              <DataTable<Driver>
+                data={listData}
+                columns={columns}
+                onRowClick={(r) => show('drivers', r.id)}
+                emptyMessage={t('common.noData')}
+                emptyDescription={t('emptyState.listDescription', { resource: t('drivers.title') })}
+                emptyAction={
+                  <Button onClick={handleCreate} className="gap-2">
+                    <PlusIcon className="h-4 w-4" />
+                    {t('drivers.createDriver')}
+                  </Button>
+                }
+                pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+              />
+            </PageLoadingOverlay>
           )}
         </CardContent>
       </Card>

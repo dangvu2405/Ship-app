@@ -3,12 +3,21 @@ import { Form } from 'antd';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  getFormDialogContentClassName,
+} from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { AttendanceForm } from './AttendanceForm';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
+import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
 import ArrowLeftIcon from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Attendance } from '@/types';
@@ -72,7 +81,7 @@ export function AttendanceFormDialog({ open, mode, recordId, onClose, onSuccess 
     }
   };
 
-  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
+  const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
     form,
     isViewMode,
     isSubmitting: isLoading,
@@ -148,20 +157,24 @@ export function AttendanceFormDialog({ open, mode, recordId, onClose, onSuccess 
 
   if (hasRecordId && isLoadingData) {
     return (
+      <>
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto">
+        <DialogContent className={getFormDialogContentClassName('wide')}>
           <DialogHeader>
             <DialogTitle>{isViewMode ? t('common.view') : t('attendances.editAttendance')}</DialogTitle>
           </DialogHeader>
           <TableSkeleton rows={6} columns={1} />
         </DialogContent>
       </Dialog>
+        <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+      </>
     );
   }
 
   return (
+    <>
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="w-full min-w-0 max-h-[90vh] max-w-[min(88rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto p-0 rounded-2xl">
+      <DialogContent className={getFormDialogContentClassName('wide', 'p-0 rounded-2xl')}>
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('attendances.editAttendance') : t('attendances.createAttendance')}</DialogTitle>
           <DialogDescription>{isViewMode ? t('attendances.editDescription') : isEdit ? t('attendances.editDescription') : t('attendances.createDescription')}</DialogDescription>
@@ -196,5 +209,7 @@ export function AttendanceFormDialog({ open, mode, recordId, onClose, onSuccess 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+    </>
   );
 }

@@ -1,9 +1,7 @@
 import { Form } from 'antd';
 import { useEffect } from 'react';
 import { useList } from '@refinedev/core';
-import { FormItemText } from '@/components/form/FormItemText';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
-import { FormItemNumber } from '@/components/form/FormItemNumber';
+import { FormAccordionSections, FormItemNumber, FormItemSelect, FormItemText } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Customer, Invoice, Trip } from '@/types';
 
@@ -51,51 +49,76 @@ export function InvoiceForm(props: InvoiceFormProps) {
   ];
 
   return (
-    <>
-      <FormItemText name="code" label={t('invoices.code')} required rules={[{ required: true, message: t('validation.required', { field: t('invoices.code') }) }]} />
-      <FormItemSelect
-        name="customer_id"
-        label={t('invoices.customer')}
-        required
-        options={customerOptions}
-        loading={loadingCustomers}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('invoices.customer') }) }]}
-      />
-      <FormItemSelect
-        name="trip_id"
-        label={t('invoices.trip')}
-        required
-        options={tripOptions}
-        loading={loadingTrips}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        rules={[{ required: true, message: t('validation.required', { field: t('invoices.trip') }) }]}
-      />
-      <FormItemNumber
-        name="total_amount"
-        label={t('invoices.totalAmount')}
-        required
-        min={1}
-        disabled={true}
-        rules={[
-          { required: true, message: t('validation.required', { field: t('invoices.totalAmount') }) },
-          { type: 'number', min: 1, message: t('validation.min', { min: 1 }) },
-          {
-            validator: (_, value) => {
-              if (typeof expectedTotalAmount !== 'number' || typeof value !== 'number' || value === expectedTotalAmount) {
-                return Promise.resolve();
-              }
-              return Promise.reject(new Error(t('validation.invoiceTotalMustMatchTrip')));
-            },
-          },
-        ]}
-      />
-      <FormItemNumber name="tax_amount" label={t('invoices.taxAmount')} min={0} rules={[{ type: 'number', min: 0, message: t('validation.min', { min: 0 }) }]} />
-      <FormItemText name="issued_at" label={t('invoices.issuedAt')} type="date" />
-      <FormItemText name="due_date" label={t('invoices.dueDate')} type="date" />
-      <FormItemSelect name="status" label={t('common.status')} options={statusOptions} />
-    </>
+    <FormAccordionSections
+      defaultOpen="basic"
+      sections={[
+        {
+          value: 'basic',
+          titleKey: 'basic',
+          children: (
+            <>
+              <FormItemText name="code" label={t('invoices.code')} required rules={[{ required: true, message: t('validation.required', { field: t('invoices.code') }) }]} />
+              <FormItemSelect
+                name="customer_id"
+                label={t('invoices.customer')}
+                required
+                options={customerOptions}
+                loading={loadingCustomers}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                rules={[{ required: true, message: t('validation.required', { field: t('invoices.customer') }) }]}
+              />
+              <FormItemSelect
+                name="trip_id"
+                label={t('invoices.trip')}
+                required
+                options={tripOptions}
+                loading={loadingTrips}
+                showSearch
+                selectProps={{ optionFilterProp: 'label' }}
+                rules={[{ required: true, message: t('validation.required', { field: t('invoices.trip') }) }]}
+              />
+            </>
+          ),
+        },
+        {
+          value: 'financial',
+          titleKey: 'financial',
+          children: (
+            <>
+              <FormItemNumber
+                name="total_amount"
+                label={t('invoices.totalAmount')}
+                required
+                min={1}
+                disabled={true}
+                rules={[
+                  { required: true, message: t('validation.required', { field: t('invoices.totalAmount') }) },
+                  { type: 'number', min: 1, message: t('validation.min', { min: 1 }) },
+                  {
+                    validator: (_, value) => {
+                      if (typeof expectedTotalAmount !== 'number' || typeof value !== 'number' || value === expectedTotalAmount) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t('validation.invoiceTotalMustMatchTrip')));
+                    },
+                  },
+                ]}
+              />
+              <FormItemNumber name="tax_amount" label={t('invoices.taxAmount')} min={0} rules={[{ type: 'number', min: 0, message: t('validation.min', { min: 0 }) }]} />
+              <FormItemText name="issued_at" label={t('invoices.issuedAt')} type="date" />
+              <FormItemText name="due_date" label={t('invoices.dueDate')} type="date" />
+            </>
+          ),
+        },
+        {
+          value: 'status',
+          titleKey: 'status',
+          children: (
+            <FormItemSelect name="status" label={t('common.status')} options={statusOptions} />
+          ),
+        },
+      ]}
+    />
   );
 }

@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
@@ -19,11 +19,13 @@ import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { AllowanceFormDialog } from './AllowanceFormDialog';
 import { formatCurrencyVND } from '@/utils/format';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
+import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 
 export function AllowancesList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
+  const { mutate: deleteItem } = useResourceDeleteMutation('allowances');
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -31,9 +33,10 @@ export function AllowancesList() {
   const [selected, setSelected] = useState<Allowance | null>(null);
   const [current, setCurrent] = useState(1);
 
-  const { data, isLoading, isError, refetch } = useList<Allowance>({
+  const { data, isLoading, isError, refetch } = useResourceListQuery<Allowance>({
     resource: 'allowances',
-    pagination: { current, pageSize: 15 },
+    current,
+    pageSize: 15,
   });
 
   const safeRefetch = useSafeRefetch('allowances-allowanceslist', refetch);
@@ -41,7 +44,7 @@ export function AllowancesList() {
   const confirmDelete = () => {
     if (!selected) return;
     deleteItem(
-      { resource: 'allowances', id: selected.id },
+      { id: selected.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('allowances.title') }));
@@ -152,22 +155,29 @@ export function AllowancesList() {
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6">
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        {isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
             onRetry={() => void safeRefetch(true)}
           />
         ) : (
-          <DataTable<Allowance>
-            data={listData}
-            columns={columns}
-            onRowClick={(r) => show('allowances', r.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{ current, total, pageSize, onPageChange: setCurrent }}
-          />
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Allowance>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('allowances', r.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('allowances.title') })}
+              emptyAction={
+                <Button onClick={handleCreate} className="gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t('allowances.createAllowance')}
+                </Button>
+              }
+              pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+            />
+          </PageLoadingOverlay>
         )}
         </CardContent>
       </Card>

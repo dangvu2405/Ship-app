@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormItemText } from '@/components/form/FormItemText';
-import { FormItemSelect } from '@/components/form/FormItemSelect';
+import { FormAccordionSections, FormItemSelect, FormItemText } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Employee, Role, User } from '@/types';
 
@@ -52,74 +51,94 @@ export function UserForm(props: UserFormProps) {
     { label: t('common.inactive'), value: 'inactive' },
   ];
 
-  return (
-    <>
-      <FormItemText
-        name="username"
-        label={t('users.username')}
-        required
-        rules={[
-          { required: true, message: t('validation.required', { field: t('users.username') }) },
-        ]}
-        placeholder={t('users.usernamePlaceholder')}
-      />
+  const sections = [
+    {
+      value: 'basic',
+      titleKey: 'basic' as const,
+      children: (
+        <>
+          <FormItemText
+            name="username"
+            label={t('users.username')}
+            required
+            rules={[
+              { required: true, message: t('validation.required', { field: t('users.username') }) },
+            ]}
+            placeholder={t('users.usernamePlaceholder')}
+          />
 
-      <FormItemText
-        name="email"
-        label={t('users.email')}
-        required
-        type="email"
-        rules={[
-          { required: true, message: t('validation.required', { field: t('users.email') }) },
-          { type: 'email', message: t('validation.email') },
-        ]}
-        placeholder={t('users.emailPlaceholder')}
-      />
+          <FormItemText
+            name="email"
+            label={t('users.email')}
+            required
+            type="email"
+            rules={[
+              { required: true, message: t('validation.required', { field: t('users.email') }) },
+              { type: 'email', message: t('validation.email') },
+            ]}
+            placeholder={t('users.emailPlaceholder')}
+          />
+        </>
+      ),
+    },
+    {
+      value: 'relations',
+      titleKey: 'relations' as const,
+      children: (
+        <>
+          <FormItemSelect
+            name="employee_id"
+            label={t('users.employee')}
+            options={employeeOptions}
+            loading={employeesLoading}
+            showSearch
+            selectProps={{ optionFilterProp: 'label' }}
+            allowClear
+          />
 
-      <FormItemSelect
-        name="employee_id"
-        label={t('users.employee')}
-        options={employeeOptions}
-        loading={employeesLoading}
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        allowClear
-      />
+          <FormItemSelect
+            name="role_ids"
+            label={t('users.roles')}
+            options={roleOptions}
+            loading={rolesLoading}
+            mode="multiple"
+            showSearch
+            selectProps={{ optionFilterProp: 'label' }}
+            allowClear
+          />
 
-      <FormItemSelect
-        name="role_ids"
-        label={t('users.roles')}
-        options={roleOptions}
-        loading={rolesLoading}
-        mode="multiple"
-        showSearch
-        selectProps={{ optionFilterProp: 'label' }}
-        allowClear
-      />
-
-      {!isEdit && (
-        <FormItemText
-          name="password"
-          label={t('users.password')}
+          {!isEdit ? (
+            <FormItemText
+              name="password"
+              label={t('users.password')}
+              required
+              type="password"
+              rules={[
+                { required: true, message: t('validation.required', { field: t('users.password') }) },
+                { min: 6, message: t('validation.minLength', { min: 6 }) },
+              ]}
+              placeholder={t('users.passwordPlaceholder')}
+            />
+          ) : null}
+        </>
+      ),
+    },
+    {
+      value: 'status',
+      titleKey: 'status' as const,
+      children: (
+        <FormItemSelect
+          name="status"
+          label={t('common.status')}
           required
-          type="password"
+          options={statusOptions}
           rules={[
-            { required: true, message: t('validation.required', { field: t('users.password') }) },
-            { min: 6, message: t('validation.minLength', { min: 6 }) },
+            { required: true, message: t('validation.required', { field: t('common.status') }) },
           ]}
-          placeholder={t('users.passwordPlaceholder')}
         />
-      )}
+      ),
+    },
+  ];
 
-      <FormItemSelect
-        name="status"
-        label={t('common.status')}
-        required
-        options={statusOptions}
-        rules={[
-          { required: true, message: t('validation.required', { field: t('common.status') }) },
-        ]}
-      />
-    </>
-  );
+  return <FormAccordionSections defaultOpen="basic" sections={sections} />;
 }

@@ -3,9 +3,9 @@ import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@r
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, theme as antdTheme } from 'antd';
 import { Toaster } from 'react-hot-toast';
-import { Fragment, Suspense, useEffect } from 'react';
+import { Fragment, Suspense, useEffect, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
-import { FloatingChatAssistant } from '@/components/common/FloatingChatAssistant';
 import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
@@ -20,6 +20,21 @@ import {
   renderSingleElement,
   singleRoutes,
 } from './routes/appRouteConfig';
+import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
+
+const suspensePage = (node: ReactNode) => (
+  <Suspense fallback={<AppLoadingSpin variant="page" />}>{node}</Suspense>
+);
+
+/** TanStack Query v5 — dùng bởi `useDashboardStats`, `useResourceListQuery`, v.v. (khác instance nội bộ của Refine). */
+const appQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   const { theme } = useAppStore();
@@ -31,7 +46,8 @@ function App() {
   const { defaultAlgorithm, darkAlgorithm } = antdTheme;
 
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter>
+      <QueryClientProvider client={appQueryClient}>
       <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
       <Refine
         dataProvider={dataProvider}
@@ -46,10 +62,9 @@ function App() {
           projectId: 'ship-erp-system',
         }}
       >
-        <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading...</div>}>
           <Routes>
-            <Route path={ROUTES.login} element={<AppPages.LoginForm />} />
-            <Route path={ROUTES.register} element={<AppPages.RegisterForm />} />
+            <Route path={ROUTES.login} element={suspensePage(<AppPages.LoginForm />)} />
+            <Route path={ROUTES.register} element={suspensePage(<AppPages.RegisterForm />)} />
             <Route
               element={
                 <Authenticated key="authenticated-layout" fallback={<Navigate to={ROUTES.login} replace />}>
@@ -58,7 +73,7 @@ function App() {
               }
             >
               <Route index element={<Navigate to={ROUTES.dashboard} replace />} />
-              <Route path={ROUTES.dashboard} element={<AppPages.Dashboard />} />
+              <Route path={ROUTES.dashboard} element={suspensePage(<AppPages.Dashboard />)} />
 
               {crudRoutes.map((config) => (
                 <Fragment key={config.key}>
@@ -73,16 +88,15 @@ function App() {
                 <Route key={config.key} path={config.path} element={renderSingleElement(config)} />
               ))}
             </Route>
-            <Route path={ROUTES.notFound} element={<AppPages.NotFound />} />
+            <Route path={ROUTES.notFound} element={suspensePage(<AppPages.NotFound />)} />
           </Routes>
-        </Suspense>
         <UnsavedChangesNotifier />
         <DocumentTitleHandler />
         <Toaster position="top-right" />
         <ShadcnToaster />
-        <FloatingChatAssistant />
       </Refine>
       </ConfigProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   );
 }

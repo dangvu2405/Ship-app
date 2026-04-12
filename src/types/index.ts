@@ -29,9 +29,6 @@ export interface Employee {
   phone?: string;
   type: 'office' | 'driver';
   status: string;
-  office_id?: number;
-  department_id?: number;
-  position_id?: number;
   office?: Office;
   department?: Department;
   position?: Position;
@@ -102,22 +99,6 @@ export interface Trip {
   start_time?: string;
   end_time?: string;
   customer?: Customer;
-  /** API list/show có thể trả thêm — dùng lọc nhóm doanh thu */
-  office_id?: number;
-  company_id?: number;
-  vehicle?: Pick<Vehicle, 'id' | 'office_id'> & {
-    office?: Pick<Office, 'id' | 'name' | 'company_id'>;
-  };
-}
-
-/** Distance-tier bonus per km — matches `trip_bonus_rules` API */
-export interface TripBonusRule {
-  id: number;
-  min_km: number | string;
-  max_km?: number | string | null;
-  bonus_per_km: number | string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export interface Customer {
@@ -139,6 +120,18 @@ export interface Driver {
   expired_date?: string;
   available_status?: string;
   employee?: Employee;
+  /** Số CCCD / CMND */
+  id_card_no?: string;
+  id_card_issue_date?: string;
+  permanent_address?: string;
+  id_card_front_url?: string;
+  id_card_back_url?: string;
+  insurance_provider?: string;
+  insurance_policy_no?: string;
+  insurance_expiry_date?: string;
+  insurance_doc_url?: string;
+  /** Ghi chú / thông tin chi tiết bổ sung */
+  profile_notes?: string;
 }
 
 export interface Invoice {
@@ -263,8 +256,16 @@ export interface DashboardStats {
   vehicles: { total: number; active: number };
   trips: { total: number; pending: number; completed: number };
   payrolls: { total: number; pending: number; completed: number };
-  /** Tùy chọn: backend có thể trả tổng doanh thu khi lọc theo công ty / kỳ */
   revenue?: { total: number };
+}
+
+export interface TripBonusRule {
+  id: number;
+  min_km: number;
+  max_km?: number | null;
+  bonus_per_km: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ChatSession {
@@ -309,16 +310,3 @@ export interface LateAttendanceNotification {
   notified?: boolean;
   note?: string;
 }
-
-export type {
-  LeaveType,
-  LeaveRequest,
-  LeaveBalance,
-  PayrollEarningLine,
-  PayrollDeductionLine,
-  Payslip,
-  ChartOfAccount,
-  JournalEntry,
-  JournalEntryLine,
-  StatusHistoryRecord,
-} from './schema-handoff';

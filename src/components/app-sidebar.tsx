@@ -1,7 +1,6 @@
 import * as React from "react"
 import { Link } from "react-router-dom"
 import LayoutDashboardIcon from "lucide-react/dist/esm/icons/layout-dashboard"
-import SettingsIcon from "lucide-react/dist/esm/icons/settings"
 import RouteIcon from "lucide-react/dist/esm/icons/route"
 import PercentIcon from "lucide-react/dist/esm/icons/percent"
 import DollarSignIcon from "lucide-react/dist/esm/icons/dollar-sign"
@@ -11,11 +10,7 @@ import ShieldIcon from "lucide-react/dist/esm/icons/shield"
 import LayersIcon from "lucide-react/dist/esm/icons/layers"
 import UserRoundCogIcon from "lucide-react/dist/esm/icons/user-round-cog"
 import CarFrontIcon from "lucide-react/dist/esm/icons/car-front"
-import BellIcon from "lucide-react/dist/esm/icons/bell"
-import CircleUserIcon from "lucide-react/dist/esm/icons/circle-user"
-
 import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -79,6 +74,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         { title: t('employees.title'), url: ROUTES.admin.employees.list },
         { title: t('attendances.title'), url: ROUTES.admin.attendances.list },
         { title: t('drivers.title'), url: ROUTES.admin.drivers.list },
+        { title: t('drivers.scheduleTitle'), url: ROUTES.admin.driversSchedule },
         { title: t('customers.title'), url: ROUTES.admin.customers.list },
         { title: t('allowances.title'), url: ROUTES.admin.allowances.list },
         { title: t('deductions.title'), url: ROUTES.admin.deductions.list },
@@ -146,24 +142,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return isAdmin
   })
 
-  const navSecondary = [
-    {
-      title: t('header.notifications'),
-      url: ROUTES.admin.notifications,
-      icon: BellIcon,
-    },
-    {
-      title: t('header.profile'),
-      url: ROUTES.admin.profile,
-      icon: CircleUserIcon,
-    },
-    {
-      title: t('header.settings'),
-      url: ROUTES.admin.settings,
-      icon: SettingsIcon,
-    },
-  ]
-
   const userData = {
     name: user?.username || "User",
     email: user?.email || "user@example.com",
@@ -189,7 +167,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={filteredNavMain} />
-        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
