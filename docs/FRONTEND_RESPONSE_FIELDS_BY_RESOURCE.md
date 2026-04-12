@@ -2,6 +2,24 @@
 
 Tài liệu mô tả **từng trường** FE kỳ vọng trong JSON **trả về** từ backend (sau envelope), để đối chiếu serializer Laravel / Resource class. Nguồn chính: `src/types/index.ts`, `src/providers/dataProvider.tsx`, `src/services/dashboard.service.ts`, `src/services/auth.service.ts`.
 
+### Nguồn chân lý backend (DB / BA / QA)
+
+- **Từ điển dữ liệu API/DB (ship-app-api):** [`DATABASE_DATA_DICTIONARY.md`](../../ship-app-api/docs/DATABASE_DATA_DICTIONARY.md) — bảng `users`, `employees`, `drivers`, `trips`, `invoices`, payroll, v.v.
+- **Cách dùng:** serializer Laravel nên map cột DB → JSON **snake_case** khớp dictionary; FE (`src/types`) có thể là **tập con** hoặc **alias** — khi lệch, ưu tiên cập nhật API + type TS + hai tài liệu này cùng lúc.
+
+**Đối chiếu nhanh (dictionary vs type FE hiện tại — cần thống nhất theo Resource API):**
+
+| Vùng | Backend (dictionary) | Frontend (`src/types`) / ghi chú |
+|------|------------------------|-----------------------------------|
+| **User** | `avatar_url`, `last_login_at`, `emergency_contact_*`, `residential_address` | `User` chưa khai báo — BE có thể trả thêm; bổ sung optional khi UI dùng. |
+| **Employee** | Nhiều cột: `office_id`, `department_id`, `position_id`, `dob`, `gender`, `national_id_*`, ngân hàng, BHXH… | `Employee` chủ yếu nested `office` / `department` / `position`; thiếu FK phẳng và profile mở rộng — bổ sung khi form/hiển thị cần. |
+| **Driver** | `license_image_url`, `identity_image_url`, `driver_insurance_*`, `health_certificate_*`, `available_status`: `available` \| `busy` \| `offline` | FE dùng tên kiểu `id_card_*`, `insurance_*`, URL `*_url` — **cần map rõ** trong API (alias hoặc đổi FE theo DB). Enum sẵn sàng: BE `busy`/`offline` vs UI cũ `on_trip`/`off` — thống nhất một bộ giá trị. |
+| **Invoice** | `subtotal`, `vat_rate`, `vat_amount`, `paid_at`, `status` gồm `cancelled` | FE có `tax_amount`; không có `subtotal`/`vat_rate`/`paid_at` — align serializer + type. |
+| **Customer** | Dictionary ghi migration có thể **chưa** có `contact_person` / `code` / `status` | FE `Customer` có `contact_person` — chỉ dùng nếu BE/migration đã bổ sung (xem §6.1 dictionary). |
+| **Vehicle assignment** | `driver_id` → FK **employees** | FE gán `Driver` nested — đúng hướng nếu API trả employee/driver theo quan hệ. |
+| **Payroll** | `payroll_period_id`, `notes`, mốc `approved_at` / `paid_at`, enum `draft` \| `approved` \| `paid` \| `locked` | FE `Payroll` tối giản — bổ sung khi màn chi tiết/report cần. |
+| **Payroll detail** | `meta_json`, audit `*_by` | FE `PayrollDetail` chưa có — thêm optional khi export chi tiết. |
+
 **Quy ước envelope thường gặp:**
 
 | Ngữ cảnh | Cấu trúc `response.data` (sau axios) | Phần “bản ghi” FE đọc |

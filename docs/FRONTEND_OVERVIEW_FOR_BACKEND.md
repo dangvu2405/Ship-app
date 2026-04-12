@@ -2,6 +2,8 @@
 
 Tài liệu mô tả cách SPA gọi API, kỳ vọng về payload/response và các điểm cần đồng bộ với Laravel API. Mã nguồn: repo **ship-app** (Vite + React).
 
+> Báo cáo toàn diện (kiến trúc + chức năng + component + endpoint + payload): [`FRONTEND_FULL_REPORT.md`](./FRONTEND_FULL_REPORT.md).
+
 ---
 
 ## 1. Công nghệ & vai trò
@@ -15,7 +17,7 @@ Tài liệu mô tả cách SPA gọi API, kỳ vọng về payload/response và 
 | **Axios** | Một instance chung (`src/services/api.ts`), interceptor xử lý lỗi/toast. |
 | **TanStack Query** | Một số query tùy chỉnh (ví dụ select phân trang) dùng cùng `dataProvider`/`api`. |
 
-Backend được giả định là **REST JSON** dưới tiền tố versioned (mặc định **`/api/v1`**).
+Backend được giả định là **REST JSON** dưới tiền tố versioned (mặc định **`/api/v1`**). Từ điển cột DB / mô tả nghiệp vụ backend: [`ship-app-api/docs/DATABASE_DATA_DICTIONARY.md`](../../ship-app-api/docs/DATABASE_DATA_DICTIONARY.md).
 
 ---
 

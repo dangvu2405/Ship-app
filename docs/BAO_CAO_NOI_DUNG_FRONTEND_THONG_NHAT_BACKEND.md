@@ -9,9 +9,11 @@ Tài liệu này dành cho **team backend** và **team frontend** dùng chung đ
 - **Mục đích:** mô tả cách SPA (Ship App, Vite + React + Refine) gọi API Laravel REST JSON, để backend triển khai/kiểm thử đúng path, query, body và envelope.
 - **Phạm vi:** REST dưới prefix versioned (mặc định `/api/v1`), axios một instance, CRUD qua `dataProvider`, endpoint tùy chỉnh trong `src/services/endpoints.ts`.
 - **Tài liệu chi tiết (đọc kèm):**
+  - [`FRONTEND_FULL_REPORT.md`](./FRONTEND_FULL_REPORT.md) — **báo cáo toàn diện** (kiến trúc, chức năng, component, endpoint, payload — 1 file duy nhất).
   - [`FRONTEND_OVERVIEW_FOR_BACKEND.md`](./FRONTEND_OVERVIEW_FOR_BACKEND.md) — kiến trúc gọi API, env, auth, parse list/detail.
   - [`FRONTEND_PAYLOADS_BY_SCREEN.md`](./FRONTEND_PAYLOADS_BY_SCREEN.md) — bảng query từng màn + body form theo resource.
   - [`FRONTEND_RESPONSE_FIELDS_BY_RESOURCE.md`](./FRONTEND_RESPONSE_FIELDS_BY_RESOURCE.md) — **từng trường dữ liệu JSON nhận vào** (response) theo resource.
+- **Từ điển dữ liệu backend (canonical DB / API field):** [`DATABASE_DATA_DICTIONARY.md`](../../ship-app-api/docs/DATABASE_DATA_DICTIONARY.md) trong repo **ship-app-api** — đối chiếu khi đặt tên cột, enum, và serializer.
 
 ---
 

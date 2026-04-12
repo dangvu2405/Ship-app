@@ -1,3 +1,15 @@
+/**
+ * Kiểu domain cho **JSON nhận về** từ backend (sau envelope).
+ *
+ * - **`ApiResponse<T>`** — `success`, `message?`, `data?`, `errors?` (lỗi validation dạng Laravel).
+ * - **List** `GET /{resource}` — `data` thường là `{ data: T[], meta?: { total, current_page, last_page, per_page } }`; mỗi phần tử mảng khớp interface tương ứng (ví dụ `Company`).
+ * - **Một bản ghi** `GET|POST|PUT /{resource}/:id` — `data` là object `T` (unwrap envelope, không lồn `.data` con thêm một tầng).
+ *
+ * Map `resource` (segment sau base `/api/v1`) → kiểu một bản ghi: **`ApiResourceResponseByName`** (cuối file).
+ * Bảng mô tả từng trường: `docs/FRONTEND_RESPONSE_FIELDS_BY_RESOURCE.md`.
+ * Từ điển DB backend (canonical): `ship-app-api/docs/DATABASE_DATA_DICTIONARY.md` (repo api, cùng thư mục cha với ship-app).
+ */
+
 export interface User {
   id: number;
   username: string;
@@ -6,6 +18,15 @@ export interface User {
   status: string;
   roles?: Role[];
   employee?: Employee;
+  /** DB `users.avatar_url` */
+  avatar_url?: string;
+  last_login_at?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  residential_address?: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Permission {
@@ -19,6 +40,8 @@ export interface Role {
   name: string;
   description?: string;
   permissions?: Permission[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Employee {
@@ -29,9 +52,30 @@ export interface Employee {
   phone?: string;
   type: 'office' | 'driver';
   status: string;
+  office_id?: number;
+  department_id?: number;
+  position_id?: number;
   office?: Office;
   department?: Department;
   position?: Position;
+  dob?: string;
+  gender?: 'male' | 'female' | 'other' | string;
+  address?: string;
+  avatar_url?: string;
+  national_id_no?: string;
+  national_id_issue_date?: string;
+  national_id_issue_place?: string;
+  social_insurance_no?: string;
+  health_insurance_no?: string;
+  insurance_registered_at?: string;
+  join_date?: string;
+  resign_date?: string;
+  bank_name?: string;
+  bank_account_no?: string;
+  bank_account_name?: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Company {
@@ -43,6 +87,9 @@ export interface Company {
   phone?: string;
   email?: string;
   status: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Office {
@@ -53,6 +100,9 @@ export interface Office {
   company_id: number;
   manager_id?: number;
   company?: Company;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Department {
@@ -62,6 +112,9 @@ export interface Department {
   office_id: number;
   parent_id?: number;
   office?: Office;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Position {
@@ -71,6 +124,9 @@ export interface Position {
   base_salary: number;
   level?: number;
   description?: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Vehicle {
@@ -83,6 +139,9 @@ export interface Vehicle {
   capacity?: number;
   status: string;
   office_id: number;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Trip {
@@ -99,6 +158,12 @@ export interface Trip {
   start_time?: string;
   end_time?: string;
   customer?: Customer;
+  /** Khi API/report trả thêm scope công ty / văn phòng */
+  company_id?: number;
+  office_id?: number;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Customer {
@@ -109,7 +174,11 @@ export interface Customer {
   email?: string;
   phone?: string;
   address?: string;
+  /** Có thể chưa có trên DB cho đến khi migration bổ sung — giữ optional */
   contact_person?: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Driver {
@@ -118,12 +187,22 @@ export interface Driver {
   license_no: string;
   license_class: string;
   expired_date?: string;
+  /** DB: `available` | `busy` | `offline` — UI cũ có thể dùng alias khác cho đến khi thống nhất API */
   available_status?: string;
   employee?: Employee;
-  /** Số CCCD / CMND */
+  /** DB `drivers.license_image_url` — ảnh GPLX */
+  license_image_url?: string;
+  /** DB `drivers.identity_image_url` — ảnh giấy tờ định danh */
+  identity_image_url?: string;
+  driver_insurance_no?: string;
+  driver_insurance_expired_date?: string;
+  health_certificate_no?: string;
+  health_certificate_expired_date?: string;
+  /** Số CCCD / CMND — có thể map từ `employees.national_id_no` qua API */
   id_card_no?: string;
   id_card_issue_date?: string;
   permanent_address?: string;
+  /** Alias UI / response cũ; song song với `license_image_url` / `identity_image_url` */
   id_card_front_url?: string;
   id_card_back_url?: string;
   insurance_provider?: string;
@@ -132,6 +211,9 @@ export interface Driver {
   insurance_doc_url?: string;
   /** Ghi chú / thông tin chi tiết bổ sung */
   profile_notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Invoice {
@@ -140,22 +222,34 @@ export interface Invoice {
   customer_id: number;
   trip_id?: number;
   total_amount: number;
+  /** Legacy / alias; dictionary dùng `vat_amount` */
   tax_amount?: number;
+  subtotal?: number;
+  vat_rate?: number;
+  vat_amount?: number;
   issued_at?: string;
+  paid_at?: string;
   due_date?: string;
   status: string;
   trip?: Trip;
   customer?: Customer;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface VehicleAssignment {
   id: number;
   vehicle_id: number;
+  /** DB FK tới `employees` (tài xế) */
   driver_id: number;
   from_date: string;
   to_date?: string;
   vehicle?: Vehicle;
   driver?: Driver | Employee;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface VehicleExpense {
@@ -168,6 +262,9 @@ export interface VehicleExpense {
   note?: string;
   vehicle?: Vehicle;
   driver?: Driver | Employee;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Allowance {
@@ -176,12 +273,18 @@ export interface Allowance {
   name: string;
   default_amount?: number;
   taxable?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Deduction {
   id: number;
   code: string;
   name: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Attendance {
@@ -192,8 +295,12 @@ export interface Attendance {
   check_out?: string;
   work_hours?: number;
   overtime_hours?: number;
+  /** DB bắt buộc; API list có thể chưa gửi — giữ optional cho an toàn type */
   status?: string;
   employee?: Employee;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Payroll {
@@ -203,7 +310,20 @@ export interface Payroll {
   year: number;
   status: string;
   locked_at?: string;
+  payroll_period_id?: number;
+  notes?: string;
+  calculated_at?: string;
+  calculated_by?: number;
+  approved_at?: string;
+  approved_by?: number;
+  paid_at?: string;
+  created_by?: number;
+  updated_by?: number;
+  deleted_by?: number;
   details?: PayrollDetail[];
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface PayrollDetail {
@@ -219,7 +339,14 @@ export interface PayrollDetail {
   fuel_cost: number;
   tax: number;
   net_salary: number;
+  meta_json?: Record<string, unknown>;
+  created_by?: number;
+  updated_by?: number;
+  deleted_by?: number;
   employee?: Employee;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface ApiResponse<T> {
@@ -310,3 +437,51 @@ export interface LateAttendanceNotification {
   notified?: boolean;
   note?: string;
 }
+
+/**
+ * Khóa = tên **resource** Refine / segment path (không có leading slash), sau `API_BASE_URL`.
+ * Giá trị = kiểu **một bản ghi** trong list (`data.data[]`) hoặc detail/create/update (`data`).
+ */
+export interface ApiResourceResponseByName {
+  allowances: Allowance;
+  attendances: Attendance;
+  companies: Company;
+  customers: Customer;
+  deductions: Deduction;
+  departments: Department;
+  drivers: Driver;
+  employees: Employee;
+  invoices: Invoice;
+  offices: Office;
+  payrolls: Payroll;
+  positions: Position;
+  roles: Role;
+  trip_bonus_rules: TripBonusRule;
+  trips: Trip;
+  users: User;
+  vehicle_assignments: VehicleAssignment;
+  vehicle_expenses: VehicleExpense;
+  vehicles: Vehicle;
+}
+
+/** Tên resource CRUD có kiểu phản hồi tương ứng trong `ApiResourceResponseByName`. */
+export type ApiCrudResourceName = keyof ApiResourceResponseByName;
+
+/**
+ * Phản hồi đặc thù (không map 1-1 qua `ApiResourceResponseByName`):
+ *
+ * | Endpoint (relative tới `/api/v1` trừ ghi chú) | Kiểu `data` / phần hữu ích |
+ * |-----------------------------------------------|------------------------------|
+ * | `GET /user` | `User` |
+ * | `POST /auth/login` | `{ user: User; token?: string }` (trong `ApiResponse['data']`) |
+ * | `GET /reports/dashboard` | object → FE chuẩn hóa thành `DashboardStats` (`dashboard.service`) |
+ * | `GET /permissions`, `GET /roles/:id` (nested) | `Permission[]` hoặc `Role` kèm `permissions` |
+ * | `GET /chat/sessions`, messages… | `ChatSession`, `ChatMessage`, … |
+ * | `GET /attendances/late/list` | `LateAttendanceNotification[]` (shape tùy BE) |
+ * | `GET /api/v2/employees` (base `/api`) | nên thống nhất với BE; có thể mở rộng type riêng |
+ */
+export type ApiSpecialEndpointData = {
+  '/user': User;
+  '/auth/login': { user: User; token?: string };
+  '/reports/dashboard': DashboardStats;
+};
