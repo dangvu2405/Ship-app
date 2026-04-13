@@ -118,9 +118,11 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
                     <div>
                       <Flex justify="space-between" align="center">
                         <Typography.Text strong>{t('auth.password')}</Typography.Text>
-                        <Button type="link" size="small" onClick={handleUnavailableAction} style={{ padding: 0, height: 'auto' }}>
-                          {t('auth.forgotPassword')}
-                        </Button>
+                        <Link to={ROUTES.forgotPassword}>
+                          <Button type="link" size="small" style={{ padding: 0, height: 'auto' }}>
+                            {t('auth.forgotPassword')}
+                          </Button>
+                        </Link>
                       </Flex>
                       <Input.Password
                         id="password"

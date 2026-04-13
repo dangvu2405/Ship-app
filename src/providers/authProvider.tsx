@@ -182,11 +182,32 @@ export const authProvider: AuthProvider = {
     }
   },
 
-  forgotPassword: async () => {
-    // Implement forgot password logic
-    return {
-      success: true,
-    };
+  forgotPassword: async ({ email }) => {
+    try {
+      const response = await authService.forgotPassword(String(email ?? '').trim());
+      if (response.success) {
+        return { success: true };
+      }
+      return {
+        success: false,
+        error: {
+          message: response.message || 'Request failed',
+          name: 'ForgotPasswordError',
+        },
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error && typeof error === 'object' && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+          : undefined;
+      return {
+        success: false,
+        error: {
+          message: errorMessage || 'Request failed',
+          name: 'ForgotPasswordError',
+        },
+      };
+    }
   },
 
   updatePassword: async () => {

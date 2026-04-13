@@ -33,6 +33,12 @@ const withRoleGuard = (node: ReactNode, role?: 'admin') => {
 export const AppPages = {
   LoginForm: lazyWithMinDelay(() => import('@/pages/auth/login-form').then((m) => ({ default: m.LoginForm }))),
   RegisterForm: lazyWithMinDelay(() => import('@/pages/auth/register-form').then((m) => ({ default: m.RegisterForm }))),
+  ForgotPasswordForm: lazyWithMinDelay(() =>
+    import('@/pages/auth/forgot-password-form').then((m) => ({ default: m.ForgotPasswordForm })),
+  ),
+  ForgotPasswordVerifyForm: lazyWithMinDelay(() =>
+    import('@/pages/auth/forgot-password-verify-form').then((m) => ({ default: m.ForgotPasswordVerifyForm })),
+  ),
   Dashboard: lazyWithMinDelay(() => import('@/pages/dashboard/dashboard')),
   NotFound: lazyWithMinDelay(() => import('@/pages/404').then((m) => ({ default: m.NotFound }))),
 };

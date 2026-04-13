@@ -64,6 +64,8 @@ function App() {
           <Routes>
             <Route path={ROUTES.login} element={suspensePage(<AppPages.LoginForm />)} />
             <Route path={ROUTES.register} element={suspensePage(<AppPages.RegisterForm />)} />
+            <Route path={ROUTES.forgotPassword} element={suspensePage(<AppPages.ForgotPasswordForm />)} />
+            <Route path={ROUTES.forgotPasswordVerify} element={suspensePage(<AppPages.ForgotPasswordVerifyForm />)} />
             <Route
               element={
                 <Authenticated key="authenticated-layout" fallback={<Navigate to={ROUTES.login} replace />}>

@@ -34,6 +34,21 @@ class AuthService {
     return response.data;
   }
 
+  /** Gửi email đặt lại mật khẩu (body `{ email }` — tùy backend). */
+  async forgotPassword(email: string): Promise<ApiResponse<unknown>> {
+    const response = await api.post(ENDPOINTS.auth.forgotPassword, { email }, { skipErrorToast: true, errorMode: 'silent' });
+    return response.data;
+  }
+
+  async verifyForgotPasswordCode(email: string, code: string): Promise<ApiResponse<unknown>> {
+    const response = await api.post(
+      ENDPOINTS.auth.forgotPasswordVerify,
+      { email, code: code.replace(/\s/g, '') },
+      { skipErrorToast: true, errorMode: 'silent' },
+    );
+    return response.data;
+  }
+
   async refreshToken(): Promise<ApiResponse<{ token: string }>> {
     const response = await api.post(ENDPOINTS.auth.refresh);
     return response.data;

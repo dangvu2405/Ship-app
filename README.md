@@ -1,6 +1,6 @@
 # ERP Admin Dashboard
 
-A complete Admin Dashboard for ERP Mini System (HR + Fleet + Payroll) built with React, TypeScript, and Vite. This project is structured as a monorepo with shared UI components and a main web application.
+A complete Admin Dashboard for ERP Mini System (HR + Fleet + Payroll) built with React, TypeScript, and Vite. The application lives in a single Vite package under `src/`.
 
 ## Tech Stack
 
@@ -12,30 +12,20 @@ A complete Admin Dashboard for ERP Mini System (HR + Fleet + Payroll) built with
 - **Axios** - HTTP client
 - **Recharts** - Charts
 - **Zustand** - State management
-- **Headless UI** - UI components
 - **React Hot Toast** - Notifications
 
 ## Project Structure
 
 ```
 /
-├── apps/                 # Applications
-│   └── web/              # Main web application
-│       ├── components.json
-│       └── src/          # Web app source code
-├── packages/             # Shared packages
-│   └── ui/               # Shared UI components
-│       ├── components.json
-│       └── src/          # UI package source code
-├── src/                  # Main source code (if applicable)
+├── components.json       # Optional shadcn-style paths (chart helpers under src/components/ui)
+├── src/                  # Application source
 │   ├── components/       # Reusable components
 │   │   ├── common/       # Common components (Breadcrumb, PageHeader, etc.)
-│   │   ├── form/         # Form components (Input, Select, Button)
+│   │   ├── form/         # Form field helpers (Ant Design Form)
 │   │   ├── table/        # Table components (DataTable, Pagination)
-│   │   ├── modal/        # Modal components (ConfirmModal)
-│   │   └── ui/           # UI components
+│   │   └── ui/           # Chart helpers (e.g. Recharts shell)
 │   ├── layouts/          # Layout components
-│   │   ├── AuthLayout.tsx
 │   │   └── AppLayout.tsx
 │   ├── pages/            # Page components
 │   │   ├── auth/         # Authentication pages

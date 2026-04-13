@@ -15,6 +15,8 @@ export const ROUTES = {
   root: '/',
   login: '/login',
   register: '/register',
+  forgotPassword: '/forgot-password',
+  forgotPasswordVerify: '/forgot-password/verify',
   dashboard: '/dashboard',
   admin: {
     root: ADMIN_PREFIX,
@@ -126,6 +128,7 @@ export const getResourceShowRoute = (resource: string, id: RouteParam) => {
 export const LEGACY_ROUTES = {
   LOGIN: ROUTES.login,
   REGISTER: ROUTES.register,
+  FORGOT_PASSWORD: ROUTES.forgotPassword,
   DASHBOARD: ROUTES.dashboard,
   COMPANIES: ROUTES.admin.companies.list,
   DRIVERS: `${ADMIN_PREFIX}/drivers`,

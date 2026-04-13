@@ -16,6 +16,9 @@ export const ENDPOINTS = {
     logout: '/auth/logout',
     refresh: '/auth/refresh',
     register: '/auth/register',
+    forgotPassword: '/auth/forgot-password',
+    /** Xác minh mã gửi qua email (body `{ email, code }` — chỉnh theo backend). */
+    forgotPasswordVerify: '/auth/forgot-password/verify',
     me: '/user',
   },
   companies: crud('/companies'),
