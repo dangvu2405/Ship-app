@@ -167,8 +167,8 @@ export const AttendanceLatePanel = () => {
   return (
     <Card className="min-h-[760px]">
       <CardHeader className="space-y-2">
-        <CardTitle className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 text-balance">
+          <CalendarDays className="h-5 w-5 shrink-0" aria-hidden />
           {t('notificationCenter.attendance.title')}
         </CardTitle>
         <CardDescription>{t('notificationCenter.attendance.description')}</CardDescription>
@@ -176,32 +176,41 @@ export const AttendanceLatePanel = () => {
 
       <CardContent className="space-y-4">
         <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-          <div className="grid gap-2">
+          <div className="grid min-w-0 gap-2">
             <Label htmlFor="late-date">{t('notificationCenter.attendance.date')}</Label>
-            <Input id="late-date" name="late_date" type="date" value={lateDate} onChange={(event) => setLateDate(event.target.value)} />
+            <Input
+              id="late-date"
+              name="late_date"
+              type="date"
+              autoComplete="off"
+              value={lateDate}
+              onChange={(event) => setLateDate(event.target.value)}
+            />
           </div>
 
           <Button variant="outline" onClick={() => void loadLateAttendances(lateDate)} disabled={lateLoading}>
-            {lateLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+            {lateLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <RefreshCcw className="mr-2 h-4 w-4" aria-hidden />}
             {t('notificationCenter.refresh')}
           </Button>
 
           <Button onClick={() => void handleNotifyLateAttendances()} disabled={notifyLoading}>
-            {notifyLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellRing className="mr-2 h-4 w-4" />}
+            {notifyLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <BellRing className="mr-2 h-4 w-4" aria-hidden />}
             {t('notificationCenter.attendance.notify')}
           </Button>
         </div>
 
         <div className="rounded-lg border">
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <div>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+            <div className="min-w-0">
               <p className="font-medium">{t('notificationCenter.attendance.listTitle')}</p>
               <p className="text-xs text-muted-foreground">
-                {lateAttendances.length} {t('notificationCenter.attendance.items')}
+                <span className="tabular-nums">{lateAttendances.length}</span> {t('notificationCenter.attendance.items')}
               </p>
             </div>
             {lateDate ? (
-              <Badge variant="secondary">{lateDate}</Badge>
+              <Badge variant="secondary" className="shrink-0">
+                {lateDate}
+              </Badge>
             ) : null}
           </div>
 
@@ -219,7 +228,7 @@ export const AttendanceLatePanel = () => {
               {lateLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
+                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" aria-hidden />
                     {t('notificationCenter.loading')}
                   </TableCell>
                 </TableRow>
@@ -232,34 +241,30 @@ export const AttendanceLatePanel = () => {
               ) : (
                 lateAttendances.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="space-y-1">
+                    <TableCell className="min-w-0">
+                      <div className="space-y-1 break-words">
                         <p className="font-medium">{item.employeeName}</p>
-                        {item.employeeCode ? (
-                          <p className="text-xs text-muted-foreground">{item.employeeCode}</p>
-                        ) : null}
-                        {item.date ? (
-                          <p className="text-xs text-muted-foreground">{item.date}</p>
-                        ) : null}
+                        {item.employeeCode ? <p className="text-xs text-muted-foreground">{item.employeeCode}</p> : null}
+                        {item.date ? <p className="text-xs text-muted-foreground">{item.date}</p> : null}
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{item.checkIn || '-'}</TableCell>
                     <TableCell>
-                      {typeof item.lateMinutes === 'number' ? (
-                        <div className="flex items-center gap-1">
-                          <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
+                      {typeof item.lateMinutes === 'number' && Number.isFinite(item.lateMinutes) ? (
+                        <div className="flex items-center gap-1 tabular-nums">
+                          <Clock3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
                           {item.lateMinutes} {t('notificationCenter.attendance.minutes')}
                         </div>
                       ) : (
                         '-'
                       )}
                     </TableCell>
-                    <TableCell>{item.lateAfter || '-'}</TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-0 break-words">{item.lateAfter || '-'}</TableCell>
+                    <TableCell className="min-w-0">
                       <Badge variant={item.notified ? 'default' : 'secondary'}>
                         {item.notified ? t('notificationCenter.attendance.notified') : t('notificationCenter.attendance.pending')}
                       </Badge>
-                      {item.note ? <p className="mt-1 text-xs text-muted-foreground">{item.note}</p> : null}
+                      {item.note ? <p className="mt-1 text-xs text-muted-foreground break-words">{item.note}</p> : null}
                     </TableCell>
                   </TableRow>
                 ))

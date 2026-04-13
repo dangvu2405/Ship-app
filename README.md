@@ -1,6 +1,6 @@
 # ERP Admin Dashboard
 
-A complete Admin Dashboard for ERP Mini System (HR + Fleet + Payroll) built with React, TypeScript, and Vite.
+A complete Admin Dashboard for ERP Mini System (HR + Fleet + Payroll) built with React, TypeScript, and Vite. This project is structured as a monorepo with shared UI components and a main web application.
 
 ## Tech Stack
 
@@ -18,39 +18,70 @@ A complete Admin Dashboard for ERP Mini System (HR + Fleet + Payroll) built with
 ## Project Structure
 
 ```
-src/
- ├── assets/              # Static assets
- ├── components/          # Reusable components
- │    ├── common/         # Common components (Breadcrumb, PageHeader, etc.)
- │    ├── form/           # Form components (Input, Select, Button)
- │    ├── table/          # Table components (DataTable, Pagination)
- │    └── modal/          # Modal components (ConfirmModal)
- ├── layouts/             # Layout components
- │    ├── AuthLayout.tsx
- │    └── AdminLayout.tsx
- ├── pages/               # Page components
- │    ├── auth/           # Authentication pages
- │    ├── dashboard/      # Dashboard page
- │    ├── hr/             # HR module pages
- │    ├── payroll/        # Payroll module pages
- │    └── ...
- ├── routes/              # Route configuration
- ├── services/            # API services
- ├── stores/              # Zustand stores
- ├── hooks/               # Custom hooks
- ├── utils/               # Utility functions
- └── types/               # TypeScript types
+/
+├── apps/                 # Applications
+│   └── web/              # Main web application
+│       ├── components.json
+│       └── src/          # Web app source code
+├── packages/             # Shared packages
+│   └── ui/               # Shared UI components
+│       ├── components.json
+│       └── src/          # UI package source code
+├── src/                  # Main source code (if applicable)
+│   ├── components/       # Reusable components
+│   │   ├── common/       # Common components (Breadcrumb, PageHeader, etc.)
+│   │   ├── form/         # Form components (Input, Select, Button)
+│   │   ├── table/        # Table components (DataTable, Pagination)
+│   │   ├── modal/        # Modal components (ConfirmModal)
+│   │   └── ui/           # UI components
+│   ├── layouts/          # Layout components
+│   │   ├── AuthLayout.tsx
+│   │   └── AppLayout.tsx
+│   ├── pages/            # Page components
+│   │   ├── auth/         # Authentication pages
+│   │   ├── dashboard/    # Dashboard page
+│   │   ├── employees/    # Employee management
+│   │   ├── payrolls/     # Payroll management
+│   │   ├── vehicles/     # Vehicle management
+│   │   ├── trips/        # Trip management
+│   │   └── ...
+│   ├── routes/           # Route configuration
+│   ├── services/         # API services
+│   ├── stores/           # Zustand stores
+│   ├── hooks/            # Custom hooks
+│   ├── utils/            # Utility functions
+│   ├── types/            # TypeScript types
+│   ├── providers/        # Context providers
+│   ├── locales/          # Internationalization
+│   └── shared/           # Shared utilities
+├── docs/                 # Documentation
+├── public/               # Static assets
+└── package.json          # Root package.json
 ```
 
 ## Installation
 
-1. **Install dependencies:**
+### Prerequisites
+- **Node.js**: Version 20.19.0 or higher (recommended: 22.12.0+)
+- **npm**: Latest version
+- **Backend**: Laravel API server running on `http://localhost:8080` (see backend documentation for setup)
+
+### Steps
+
+1. **Clone the repository:**
+
+```bash
+git clone <repository-url>
+cd ship-app
+```
+
+2. **Install dependencies:**
 
 ```bash
 npm install
 ```
 
-2. **Configure environment:**
+3. **Configure environment:**
 
 Copy `.env.example` to `.env`. Đồng bộ với backend (`APP_URL` trong Laravel, không có `/api`):
 
@@ -60,13 +91,13 @@ VITE_API_ORIGIN=http://localhost:8080
 
 Dev mặc định gọi API qua `/api` (Vite proxy → `VITE_API_ORIGIN`). Chỉ cần `VITE_API_BASE_URL` nếu muốn URL đầy đủ tùy chỉnh.
 
-3. **Run development server:**
+4. **Run development server:**
 
 ```bash
 npm run dev
 ```
 
-4. **Build for production:**
+5. **Build for production:**
 
 ```bash
 npm run build

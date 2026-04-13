@@ -3,13 +3,7 @@ import { Form } from 'antd';
 import { useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ApartmentOutlined, ShopOutlined } from '@ant-design/icons';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
@@ -41,15 +35,6 @@ import { getTripStatusLabel } from '@/utils/tripStatus';
 import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 import { usePaginatedResourceSelectOptions } from '@/hooks/usePaginatedResourceSelectOptions';
-
-/** Tab lọc nhanh theo trạng thái chuyến (đồng bộ filter API `status`). */
-const TRIP_STATUS_TABS: { value: string; labelKey: string }[] = [
-  { value: 'all', labelKey: 'common.all' },
-  { value: 'pending', labelKey: 'trips.statusPending' },
-  { value: 'in_progress', labelKey: 'trips.statusInProgress' },
-  { value: 'completed', labelKey: 'trips.statusCompleted' },
-  { value: 'cancelled', labelKey: 'trips.statusCancelled' },
-];
 
 const getTripStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (status) {
@@ -147,11 +132,6 @@ export function TripsList() {
     setAppliedCompanyId(undefined);
     setAppliedOfficeId(undefined);
     setAppliedStatus(undefined);
-    setCurrent(1);
-  };
-
-  const handleStatusTabChange = (value: string) => {
-    setAppliedStatus(value === 'all' ? undefined : value);
     setCurrent(1);
   };
 
