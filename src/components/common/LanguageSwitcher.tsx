@@ -1,39 +1,19 @@
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import Globe from 'lucide-react/dist/esm/icons/globe';
+import { GlobalOutlined } from '@ant-design/icons';
+import { Button, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
 import { useTranslation } from '@/hooks/useTranslation';
 
-/**
- * LanguageSwitcher - Component to switch between languages
- * 
- * @example
- * ```tsx
- * <LanguageSwitcher />
- * ```
- */
 export const LanguageSwitcher = () => {
   const { setLocale } = useTranslation();
 
+  const items: MenuProps['items'] = [
+    { key: 'vi', label: 'Tiếng Việt', onClick: () => setLocale('vi') },
+    { key: 'en', label: 'English', onClick: () => setLocale('en') },
+  ];
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Toggle language">
-          <Globe className="h-5 w-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setLocale('vi')}>
-          Tiếng Việt
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setLocale('en')}>
-          English
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+      <Button type="text" icon={<GlobalOutlined />} aria-label="Toggle language" />
+    </Dropdown>
   );
 };

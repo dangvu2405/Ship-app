@@ -1,5 +1,5 @@
-import { BellRing } from 'lucide-react';
-import { AttendanceLatePanel } from '@/components/common/AttendanceLatePanel';
+import { Space, Typography } from 'antd';
+import { BellOutlined } from '@ant-design/icons';
 import { AuthLogsAndSessionManagement } from '@/components/common/AuthLogsAndSessionManagement';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -7,19 +7,20 @@ export const Notifications = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <BellRing className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-          <h1 className="text-balance">{t('notificationCenter.title')}</h1>
-        </div>
-        <p className="max-w-3xl text-pretty text-muted-foreground">{t('notificationCenter.description')}</p>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <div>
+        <Space align="center" size="small" wrap>
+          <BellOutlined style={{ fontSize: 20, color: 'var(--ant-color-primary)' }} aria-hidden />
+          <Typography.Title level={2} style={{ margin: 0 }}>
+            {t('notificationCenter.title')}
+          </Typography.Title>
+        </Space>
+        <Typography.Paragraph type="secondary" style={{ maxWidth: 768, marginBottom: 0, marginTop: 8 }}>
+          {t('notificationCenter.description')}
+        </Typography.Paragraph>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <AttendanceLatePanel />
-        <AuthLogsAndSessionManagement />
-      </div>
-    </div>
+      <AuthLogsAndSessionManagement />
+    </Space>
   );
 };

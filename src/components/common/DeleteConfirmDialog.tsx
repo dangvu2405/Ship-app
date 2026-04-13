@@ -1,16 +1,6 @@
 import { useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Modal, Typography } from 'antd';
 import { useTranslation } from '@/hooks/useTranslation';
-import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 
 interface DeleteConfirmDialogProps {
   open: boolean;
@@ -34,13 +24,13 @@ export function DeleteConfirmDialog({
   const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleConfirm = async () => {
+  const handleOk = async () => {
     setIsDeleting(true);
     try {
       await onConfirm();
       onOpenChange(false);
-    } catch (error) {
-      // Error handling is done by the caller
+    } catch {
+      // Caller handles errors
     } finally {
       setIsDeleting(false);
     }
@@ -49,44 +39,26 @@ export function DeleteConfirmDialog({
   const isLoading = loading || isDeleting;
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {title || t('deleteConfirm.title')}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {description || (
-              <>
-                {t('deleteConfirm.description')}
-                {itemName && (
-                  <span className="font-semibold text-foreground"> {itemName}</span>
-                )}
-                ? {t('deleteConfirm.warning')}
-              </>
-            )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>
-            {t('common.cancel')}
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={isLoading}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('common.loading')}
-              </>
-            ) : (
-              t('common.delete')
-            )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Modal
+      open={open}
+      onCancel={() => !isLoading && onOpenChange(false)}
+      onOk={handleOk}
+      okText={t('common.delete')}
+      cancelText={t('common.cancel')}
+      okButtonProps={{ danger: true, loading: isLoading }}
+      cancelButtonProps={{ disabled: isLoading }}
+      title={title || t('deleteConfirm.title')}
+      destroyOnClose
+    >
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+        {description || (
+          <>
+            {t('deleteConfirm.description')}
+            {itemName && <Typography.Text strong> {itemName}</Typography.Text>}
+            ? {t('deleteConfirm.warning')}
+          </>
+        )}
+      </Typography.Paragraph>
+    </Modal>
   );
 }

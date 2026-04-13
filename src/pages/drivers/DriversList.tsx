@@ -1,11 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigation } from '@refinedev/core';
-import { Form } from 'antd';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { Button, Card, Form, Tabs, Tag } from 'antd';
+import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
@@ -15,11 +12,6 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import PlusIcon from 'lucide-react/dist/esm/icons/plus';
-import CalendarDaysIcon from 'lucide-react/dist/esm/icons/calendar-days';
-import EyeIcon from 'lucide-react/dist/esm/icons/eye';
-import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
-import Trash2Icon from 'lucide-react/dist/esm/icons/trash-2';
 import type { Driver } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -53,6 +45,16 @@ export function DriversList() {
       { label: t('drivers.statusAvailable'), value: 'available' },
       { label: t('drivers.statusOnTrip'), value: 'on_trip' },
       { label: t('drivers.statusOff'), value: 'off' },
+    ],
+    [t],
+  );
+
+  const statusTabsItems = useMemo(
+    () => [
+      { key: 'all', label: t('common.all') },
+      { key: 'available', label: t('drivers.statusAvailable') },
+      { key: 'on_trip', label: t('drivers.statusOnTrip') },
+      { key: 'off', label: t('drivers.statusOff') },
     ],
     [t],
   );
@@ -144,57 +146,53 @@ export function DriversList() {
       header: t('drivers.availableStatus'),
       dataIndex: 'available_status',
       render: (r) => {
-        const variant = r.available_status === 'available' ? 'default' : r.available_status === 'on_trip' ? 'secondary' : 'outline';
         const label = r.available_status === 'available'
           ? t('drivers.statusAvailable')
           : r.available_status === 'on_trip'
             ? t('drivers.statusOnTrip')
             : t('drivers.statusOff');
-        return <Badge variant={variant}>{label}</Badge>;
+        const color =
+          r.available_status === 'available' ? 'success' : r.available_status === 'on_trip' ? 'processing' : undefined;
+        return <Tag color={color}>{label}</Tag>;
       },
     },
     {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
+            type="text"
+            size="small"
+            icon={<EyeOutlined aria-hidden />}
             aria-label={t('common.view')}
             onClick={(e) => {
               e.stopPropagation();
               show('drivers', record.id);
             }}
-          >
-            <EyeIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
+            type="text"
+            size="small"
+            icon={<EditOutlined aria-hidden />}
             aria-label={t('common.edit')}
             onClick={(e) => {
               e.stopPropagation();
               handleEdit(record.id);
             }}
-          >
-            <PencilIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            type="text"
+            size="small"
+            danger
+            icon={<DeleteOutlined aria-hidden />}
             aria-label={t('common.delete')}
             onClick={(e) => {
               e.stopPropagation();
               setSelected(record);
               setDeleteDialogOpen(true);
             }}
-          >
-            <Trash2Icon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
         </div>
       ),
     },
@@ -214,29 +212,17 @@ export function DriversList() {
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('drivers.title') }]}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild className="gap-2">
-              <Link to={ROUTES.admin.driversSchedule}>
-                <CalendarDaysIcon className="h-4 w-4" aria-hidden />
-                {t('drivers.openScheduleButton')}
-              </Link>
-            </Button>
-            <Button onClick={handleCreate} className="gap-2">
-              <PlusIcon className="h-4 w-4" />
+            <Link to={ROUTES.admin.driversSchedule}>
+              <Button icon={<CalendarOutlined aria-hidden />}>{t('drivers.openScheduleButton')}</Button>
+            </Link>
+            <Button type="primary" icon={<PlusOutlined aria-hidden />} onClick={handleCreate}>
               {t('drivers.createDriver')}
             </Button>
           </div>
         }
       />
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6 space-y-4">
-          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
-            <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
-              <TabsTrigger value="available">{t('drivers.statusAvailable')}</TabsTrigger>
-              <TabsTrigger value="on_trip">{t('drivers.statusOnTrip')}</TabsTrigger>
-              <TabsTrigger value="off">{t('drivers.statusOff')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
 
           <ListPageFilters variant="grid-4">
             <ListPageFilters.Search
@@ -285,8 +271,7 @@ export function DriversList() {
                 emptyMessage={t('common.noData')}
                 emptyDescription={t('emptyState.listDescription', { resource: t('drivers.title') })}
                 emptyAction={
-                  <Button onClick={handleCreate} className="gap-2">
-                    <PlusIcon className="h-4 w-4" />
+                  <Button type="primary" icon={<PlusOutlined aria-hidden />} onClick={handleCreate}>
                     {t('drivers.createDriver')}
                   </Button>
                 }
@@ -294,7 +279,6 @@ export function DriversList() {
               />
             </PageLoadingOverlay>
           )}
-        </CardContent>
       </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.license_no} />
       {formOpen && (

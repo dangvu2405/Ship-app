@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@refinedev/core';
-import { Form } from 'antd';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ShopOutlined } from '@ant-design/icons';
+import { Button, Card, Form, Tag } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, ShopOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
@@ -14,10 +11,6 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { DepartmentFormDialog } from './DepartmentFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import PlusIcon from 'lucide-react/dist/esm/icons/plus';
-import EyeIcon from 'lucide-react/dist/esm/icons/eye';
-import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
-import TrashIcon from 'lucide-react/dist/esm/icons/trash-2';
 import type { Department, Office } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -121,50 +114,45 @@ export function DepartmentsList() {
     {
       key: 'office',
       header: t('employees.office'),
-      render: (row) => row.office?.name ? <Badge variant="outline">{row.office.name}</Badge> : '—',
+      render: (row) => row.office?.name ? <Tag>{row.office.name}</Tag> : '—',
     },
     {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
+            type="text"
+            size="small"
+            icon={<EyeOutlined aria-hidden />}
             aria-label={t('common.view')}
             onClick={(e) => {
               e.stopPropagation();
               show('departments', record.id);
             }}
-          >
-            <EyeIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
+            type="text"
+            size="small"
+            icon={<EditOutlined aria-hidden />}
             aria-label={t('common.edit')}
             onClick={(e) => {
               e.stopPropagation();
               handleOpenDialog('edit', record.id);
             }}
-          >
-            <PencilIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive"
+            type="text"
+            size="small"
+            danger
+            icon={<DeleteOutlined aria-hidden />}
             aria-label={t('common.delete')}
             onClick={(e) => {
               e.stopPropagation();
               setSelected(record);
               setDeleteOpen(true);
             }}
-          >
-            <TrashIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
         </div>
       ),
     },
@@ -185,14 +173,12 @@ export function DepartmentsList() {
           { label: t('departments.title') },
         ]}
         actions={
-          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-            <PlusIcon className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
             {t('departments.createDepartment')}
           </Button>
         }
       />
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6 space-y-4">
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
           <ListPageFilters variant="grid-4">
             <ListPageFilters.Search
               placeholder={t('common.search')}
@@ -245,8 +231,7 @@ export function DepartmentsList() {
               emptyMessage={t('common.noData')}
               emptyDescription={t('emptyState.listDescription', { resource: t('departments.title') })}
               emptyAction={
-                <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-                  <PlusIcon className="h-4 w-4" />
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
                   {t('departments.createDepartment')}
                 </Button>
               }
@@ -254,7 +239,6 @@ export function DepartmentsList() {
             />
             </PageLoadingOverlay>
           )}
-        </CardContent>
       </Card>
       <DeleteConfirmDialog
         open={deleteOpen}

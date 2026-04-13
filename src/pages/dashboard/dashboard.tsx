@@ -3,7 +3,7 @@ import { useList } from "@refinedev/core"
 import { SectionCards } from "@/components/section-cards"
 import { useDashboardStats } from "@/hooks/useDashboardStats"
 import { useDashboardTripRevenue } from "@/hooks/useDashboardTripRevenue"
-import { DashboardRecentTrips } from "@/components/dashboard/DashboardRecentTrips"
+import { DashboardRevenueByCompany } from "@/components/dashboard/DashboardRevenueByCompany"
 import { DashboardChartSkeleton } from "@/components/dashboard/DashboardChartSkeleton"
 import { lazyWithMinDelay } from "@/utils/lazyWithMinDelay"
 import type { Company, Office } from "@/types"
@@ -25,7 +25,7 @@ export default function Dashboard() {
     filters: [{ field: "status", operator: "eq", value: "active" }],
     sorters: [{ field: "name", order: "asc" }],
   })
-  const companies = companiesData?.data ?? []
+  const companies = useMemo(() => companiesData?.data ?? [], [companiesData])
 
   const { data: officesData } = useList<Office>({
     resource: "offices",
@@ -80,7 +80,12 @@ export default function Dashboard() {
             offices={offices}
           />
         </Suspense>
-        <DashboardRecentTrips companyId={companyId} />
+        <DashboardRevenueByCompany
+          companies={companies}
+          companyId={companyId}
+          month={period.month}
+          year={period.year}
+        />
       </div>
     </>
   )

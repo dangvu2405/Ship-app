@@ -1,16 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
-import { Form } from 'antd';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { Button, Card, Dropdown, Form, Tabs, Tag } from 'antd';
+import type { MenuProps } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
@@ -20,7 +12,6 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { CompanyFormDialog } from './CompanyFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import type { Company } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -49,6 +40,15 @@ export function CompaniesList() {
     () => [
       { label: t('common.active'), value: 'active' },
       { label: t('common.inactive'), value: 'inactive' },
+    ],
+    [t],
+  );
+
+  const statusTabsItems = useMemo(
+    () => [
+      { key: 'all', label: t('common.all') },
+      { key: 'active', label: t('common.active') },
+      { key: 'inactive', label: t('common.inactive') },
     ],
     [t],
   );
@@ -130,6 +130,31 @@ export function CompaniesList() {
     );
   };
 
+  const rowMenu = (record: Company): MenuProps => ({
+    items: [
+      {
+        key: 'view',
+        icon: <EyeOutlined />,
+        label: t('common.view'),
+        onClick: () => show('companies', record.id),
+      },
+      {
+        key: 'edit',
+        icon: <EditOutlined />,
+        label: t('common.edit'),
+        onClick: () => handleOpenDialog('edit', record.id),
+      },
+      { type: 'divider' },
+      {
+        key: 'delete',
+        icon: <DeleteOutlined />,
+        label: t('common.delete'),
+        danger: true,
+        onClick: () => handleDelete(record),
+      },
+    ],
+  });
+
   const columns: DataTableColumn<Company>[] = [
     { key: 'code', header: t('companies.code'), dataIndex: 'code' },
     { key: 'name', header: t('companies.name'), dataIndex: 'name' },
@@ -142,37 +167,19 @@ export function CompaniesList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
+        <Tag color={item.status === 'active' ? 'success' : 'default'}>
           {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </Badge>
+        </Tag>
       ),
     },
     {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => show('companies', record.id)}>
-                <Eye className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.view')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleOpenDialog('edit', record.id)}>
-                <Edit className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
-                <Trash2 className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <Dropdown menu={rowMenu(record)} trigger={['click']}>
+            <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t('common.actions')} />
+          </Dropdown>
         </div>
       ),
     },
@@ -194,22 +201,14 @@ export function CompaniesList() {
         description={t('companies.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
             {t('companies.createCompany')}
           </Button>
         }
       />
 
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6 space-y-4">
-          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
-            <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
-              <TabsTrigger value="active">{t('common.active')}</TabsTrigger>
-              <TabsTrigger value="inactive">{t('common.inactive')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
 
           <ListPageFilters variant="grid-4">
             <ListPageFilters.Search
@@ -260,8 +259,7 @@ export function CompaniesList() {
                 emptyMessage={t('common.noData')}
                 emptyDescription={t('emptyState.listDescription', { resource: t('companies.title') })}
                 emptyAction={
-                  <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-                    <Plus className="h-4 w-4" />
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
                     {t('companies.createCompany')}
                   </Button>
                 }
@@ -274,7 +272,6 @@ export function CompaniesList() {
               />
             </PageLoadingOverlay>
           )}
-        </CardContent>
       </Card>
 
       <DeleteConfirmDialog

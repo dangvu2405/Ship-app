@@ -16,6 +16,26 @@ export default defineConfig(({ mode }) => {
 
   return {
   plugins: [react()],
+  /**
+   * Pre-bundle các dep dùng chung (antd/dayjs/refine) để giảm 504 "Outdated Optimize Dep"
+   * khi trình duyệt còn URL cũ trong lúc Vite tái tạo `.vite/deps`.
+   */
+  optimizeDeps: {
+    include: [
+      '@lottiefiles/dotlottie-react',
+      '@lottiefiles/dotlottie-web',
+      'dayjs',
+      'dayjs/locale/vi',
+      '@ant-design/icons',
+      'antd',
+      '@ant-design/cssinjs',
+      '@refinedev/core',
+      '@refinedev/antd',
+      '@refinedev/react-router-v6',
+      'react-router-dom',
+      '@tanstack/react-query',
+    ],
+  },
   build: {
     chunkSizeWarningLimit: 2000,
   },
@@ -35,7 +55,8 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     watch: {
-      usePolling: true,
+      // Polling = nhiều invalidation → dễ lệch optimize cache; chỉ bật khi cần (Docker/WSL).
+      usePolling: process.env.VITE_WATCH_POLLING === 'true',
     },
     port: 3000,
     proxy: {

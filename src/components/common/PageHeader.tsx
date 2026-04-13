@@ -1,5 +1,8 @@
 import { ReactNode } from 'react';
-import { Breadcrumb } from './Breadcrumb';
+import { Link } from 'react-router-dom';
+import { Breadcrumb, Flex, Typography, theme } from 'antd';
+import { HomeOutlined } from '@ant-design/icons';
+import { ROUTES } from '@/routes';
 
 export interface BreadcrumbItem {
   label: string;
@@ -14,23 +17,67 @@ interface PageHeaderProps {
 }
 
 export const PageHeader = ({ title, description, breadcrumb, actions }: PageHeaderProps) => {
+  const { token } = theme.useToken();
+
+  const breadcrumbItems = breadcrumb
+    ? [
+        {
+          title: (
+            <Link to={ROUTES.dashboard}>
+              <HomeOutlined /> Home
+            </Link>
+          ),
+        },
+        ...breadcrumb.map((item, index) => ({
+          key: index,
+          title: item.path ? <Link to={item.path}>{item.label}</Link> : item.label,
+        })),
+      ]
+    : undefined;
+
   return (
-    <div className="mb-6 space-y-3">
-      {breadcrumb && (
-        <div className="rounded-xl border border-border/60 bg-background/70 px-3 py-2 backdrop-blur-sm">
-          <Breadcrumb items={breadcrumb} />
+    <div style={{ marginBottom: token.marginLG }}>
+      {breadcrumbItems && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: '8px 12px',
+            borderRadius: token.borderRadiusLG,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            background: token.colorBgContainer,
+          }}
+        >
+          <Breadcrumb items={breadcrumbItems} />
         </div>
       )}
-      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-background via-background to-primary/5 p-5 shadow-sm">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-        <div className="pointer-events-none absolute -left-10 -bottom-10 h-24 w-24 rounded-full bg-primary/5 blur-2xl" />
-        <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: token.borderRadiusLG * 1.25,
+          border: `1px solid ${token.colorBorderSecondary}`,
+          padding: 20,
+          background: `linear-gradient(90deg, ${token.colorBgContainer} 0%, ${token.colorBgContainer} 60%, ${token.colorPrimaryBg} 100%)`,
+          boxShadow: token.boxShadowTertiary,
+        }}
+      >
+        <Flex justify="space-between" align="flex-start" gap={16} wrap="wrap">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">{title}</h1>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+            <Typography.Title level={2} style={{ margin: 0 }}>
+              {title}
+            </Typography.Title>
+            {description && (
+              <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+                {description}
+              </Typography.Paragraph>
+            )}
           </div>
-          {actions && <div className="flex flex-wrap gap-3 md:justify-end">{actions}</div>}
-        </div>
+          {actions && (
+            <Flex gap={12} wrap="wrap" style={{ marginLeft: 'auto' }}>
+              {actions}
+            </Flex>
+          )}
+        </Flex>
       </div>
     </div>
   );

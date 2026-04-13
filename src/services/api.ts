@@ -93,9 +93,10 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    const status = getErrorStatus(error);
+
     // Mark that toast has been shown to prevent duplicate
     errorWithFlag.__toastShown = true;
-    const status = getErrorStatus(error);
 
     if (status === 401) {
       clearAuthToken();

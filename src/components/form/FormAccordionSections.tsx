@@ -1,12 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { Collapse } from "antd"
 import { useTranslation } from "@/hooks/useTranslation"
 
 /** Key con của `common.formSections` trong locale (vd: `basic` → `common.formSections.basic`). */
@@ -23,7 +18,7 @@ export type FormSectionTitleKey =
   | "status"
 
 export interface FormAccordionSectionSpec {
-  /** Giá trị `AccordionItem` (unique). */
+  /** Giá trị panel (unique). */
   value: string
   /** Khóa tiêu đề dưới `common.formSections`. */
   titleKey: FormSectionTitleKey
@@ -38,7 +33,7 @@ type FormAccordionSectionsProps = {
 }
 
 /**
- * Nhóm field form theo section thu/mở (Radix Accordion + animation).
+ * Nhóm field form theo section thu/mở (Ant Design Collapse).
  * Dùng bên trong một `<Form>` Ant Design duy nhất.
  */
 export function FormAccordionSections({
@@ -47,33 +42,24 @@ export function FormAccordionSections({
   className,
 }: FormAccordionSectionsProps) {
   const { t } = useTranslation()
-  const defaultValue = defaultOpen ?? sections[0]?.value ?? ""
+  const defaultActiveKey = defaultOpen ?? sections[0]?.value ?? ""
 
   if (sections.length === 0) {
     return null
   }
 
   return (
-    <Accordion
-      type="single"
-      collapsible
-      defaultValue={defaultValue}
-      className={className ?? "flex w-full flex-col gap-2"}
-    >
-      {sections.map((section) => (
-        <AccordionItem
-          key={section.value}
-          value={section.value}
-          className="rounded-lg border border-border/70 bg-muted/20 px-1 data-[state=open]:bg-muted/35"
-        >
-          <AccordionTrigger className="px-3 py-2.5 text-sm font-medium hover:no-underline">
-            {t(`common.formSections.${section.titleKey}`)}
-          </AccordionTrigger>
-          <AccordionContent className="px-3 pt-0 pb-3">
-            <div className="flex flex-col gap-3">{section.children}</div>
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
+    <Collapse
+      bordered={false}
+      defaultActiveKey={defaultActiveKey ? [defaultActiveKey] : undefined}
+      className={className ?? "form-accordion-sections flex w-full flex-col gap-2 bg-transparent"}
+      expandIconPosition="end"
+      items={sections.map((section) => ({
+        key: section.value,
+        label: t(`common.formSections.${section.titleKey}`),
+        className: "rounded-lg border border-border/70 bg-muted/20",
+        children: <div className="flex flex-col gap-3">{section.children}</div>,
+      }))}
+    />
   )
 }

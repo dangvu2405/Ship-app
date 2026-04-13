@@ -60,18 +60,6 @@ export const resources: ResourceProps[] = [
     },
   },
   {
-    name: 'employees',
-    list: ROUTES.admin.employees.list,
-    create: ROUTES.admin.employees.create,
-    edit: ROUTES.admin.employees.edit,
-    show: ROUTES.admin.employees.show,
-    meta: {
-      label: 'Employees',
-      icon: 'UserOutlined',
-      canDelete: true,
-    },
-  },
-  {
     name: 'vehicles',
     list: ROUTES.admin.vehicles.list,
     create: ROUTES.admin.vehicles.create,
@@ -188,18 +176,6 @@ export const resources: ResourceProps[] = [
     meta: {
       label: 'Deductions',
       icon: 'MinusCircleOutlined',
-      canDelete: true,
-    },
-  },
-  {
-    name: 'attendances',
-    list: ROUTES.admin.attendances.list,
-    create: ROUTES.admin.attendances.create,
-    edit: ROUTES.admin.attendances.edit,
-    show: ROUTES.admin.attendances.show,
-    meta: {
-      label: 'Attendance',
-      icon: 'CalendarOutlined',
       canDelete: true,
     },
   },

@@ -1,26 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+  BellOutlined,
+  CheckOutlined,
+} from '@ant-design/icons';
+import { Badge, Button, Dropdown, Empty, Flex, Segmented, Spin, Typography, theme } from 'antd';
 import { NotificationItem } from './NotificationItem';
-import { TableSkeleton } from './TableSkeleton';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
 import type { ActivityLog } from '@/types';
-import BellIcon from 'lucide-react/dist/esm/icons/bell';
-import CheckCheckIcon from 'lucide-react/dist/esm/icons/check-check';
 
 type NotificationTab = 'all' | 'activity' | 'system' | 'user';
-
-const NOTIFICATION_TAB_VALUES: NotificationTab[] = ['all', 'activity', 'system', 'user'];
 
 function filterLogsForTab(tab: NotificationTab, logs: ActivityLog[]): ActivityLog[] {
   if (tab === 'all') return logs;
@@ -38,6 +29,7 @@ interface NotificationPopupProps {
 
 export function NotificationPopup({ children }: NotificationPopupProps) {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NotificationTab>('all');
@@ -50,7 +42,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
     markAllAsRead,
   } = useNotifications({
     enablePolling: true,
-    pollingInterval: open ? 30000 : 60000, // 30s when open, 60s when closed
+    pollingInterval: open ? 30000 : 60000,
   });
 
   const handleMarkAsRead = async (id: number) => {
@@ -76,131 +68,97 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
 
   const filteredLogs = filterLogsForTab(activeTab, activityLogs);
 
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        {children || (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 relative"
-            title={t('header.notifications')}
-            aria-label={t('header.notifications')}
-          >
-            <BellIcon className="h-4 w-4" aria-hidden />
-            {unreadCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
-              >
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Badge>
-            )}
+  const tabOptions = [
+    { label: t('notifications.all'), value: 'all' as const },
+    { label: t('notifications.activity'), value: 'activity' as const },
+    { label: t('notifications.system'), value: 'system' as const },
+    { label: t('notifications.user'), value: 'user' as const },
+  ];
+
+  const panel = (
+    <div
+      style={{
+        width: 'min(350px, calc(100vw - 1rem))',
+        background: token.colorBgElevated,
+        borderRadius: token.borderRadiusLG,
+        boxShadow: token.boxShadowSecondary,
+        overflow: 'hidden',
+      }}
+    >
+      <Flex align="center" justify="space-between" style={{ padding: 16, borderBottom: `1px solid ${token.colorSplit}` }}>
+        <Flex align="center" gap={8}>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            {t('notifications.title')}
+          </Typography.Title>
+          {unreadCount > 0 && (
+            <Badge count={unreadCount > 99 ? '99+' : unreadCount} showZero={false} />
+          )}
+        </Flex>
+        {unreadCount > 0 && (
+          <Button type="link" size="small" icon={<CheckOutlined />} onClick={() => void handleMarkAllAsRead()}>
+            {t('notifications.markAllRead')}
           </Button>
         )}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-full max-w-[min(350px,calc(100vw-1rem))] p-0" align="end">
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold">{t('notifications.title')}</h3>
-            {unreadCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {unreadCount} {t('notifications.unread')}
-              </Badge>
-            )}
+      </Flex>
+
+      <div style={{ padding: '8px 12px 0' }}>
+        <Segmented<NotificationTab>
+          block
+          size="small"
+          value={activeTab}
+          onChange={(v) => setActiveTab(v)}
+          options={tabOptions}
+        />
+      </div>
+
+      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+        {activityLoading ? (
+          <Flex justify="center" style={{ padding: 24 }}>
+            <Spin />
+          </Flex>
+        ) : filteredLogs.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('notifications.empty')} style={{ padding: 24 }} />
+        ) : (
+          <div style={{ padding: 8 }}>
+            {filteredLogs.map((notification) => (
+              <NotificationItem
+                key={notification.id}
+                notification={notification}
+                onClick={() => handleMarkAsRead(notification.id)}
+              />
+            ))}
           </div>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleMarkAllAsRead}
-              className="h-7 text-xs"
-            >
-              <CheckCheckIcon className="h-3 w-3 mr-1" aria-hidden />
-              {t('notifications.markAllRead')}
-            </Button>
-          )}
-        </div>
-
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NotificationTab)} className="w-full">
-          <TabsList className="w-full min-w-0 rounded-none border-b flex overflow-x-auto overflow-y-hidden">
-            <TabsTrigger
-              value="all"
-              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
-              title={t('notifications.all')}
-            >
-              {t('notifications.all')}
-            </TabsTrigger>
-            <TabsTrigger
-              value="activity"
-              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
-              title={t('notifications.activity')}
-            >
-              {t('notifications.activity')}
-            </TabsTrigger>
-            <TabsTrigger
-              value="system"
-              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
-              title={t('notifications.system')}
-            >
-              {t('notifications.system')}
-            </TabsTrigger>
-            <TabsTrigger
-              value="user"
-              className="min-w-0 flex-1 truncate px-2 text-xs sm:text-sm"
-              title={t('notifications.user')}
-            >
-              {t('notifications.user')}
-            </TabsTrigger>
-          </TabsList>
-
-          {NOTIFICATION_TAB_VALUES.map((tab) => {
-            const logs = filterLogsForTab(tab, activityLogs);
-            return (
-              <TabsContent key={tab} value={tab} className="m-0">
-                <div className="max-h-[400px] overflow-y-auto">
-                  {activityLoading ? (
-                    <div className="p-4">
-                      <TableSkeleton rows={5} columns={1} />
-                    </div>
-                  ) : logs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-8 text-center">
-                      <BellIcon className="h-12 w-12 text-muted-foreground mb-2" aria-hidden />
-                      <p className="text-sm text-muted-foreground">{t('notifications.empty')}</p>
-                    </div>
-                  ) : (
-                    <div className="p-2">
-                      {logs.map((notification) => (
-                        <NotificationItem
-                          key={notification.id}
-                          notification={notification}
-                          onClick={() => handleMarkAsRead(notification.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
-
-        {filteredLogs.length > 0 && (
-          <>
-            <Separator />
-            <div className="p-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleViewAll}
-                className="w-full"
-              >
-                {t('notifications.viewAll')}
-              </Button>
-            </div>
-          </>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </div>
+
+      {filteredLogs.length > 0 && (
+        <div style={{ padding: 8, borderTop: `1px solid ${token.colorSplit}` }}>
+          <Button type="default" block onClick={handleViewAll}>
+            {t('notifications.viewAll')}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Dropdown
+      open={open}
+      onOpenChange={setOpen}
+      dropdownRender={() => panel}
+      trigger={['click']}
+      placement="bottomRight"
+    >
+      {children || (
+        <Badge count={unreadCount > 0 ? (unreadCount > 99 ? 99 : unreadCount) : 0} size="small" offset={[-2, 2]}>
+          <Button
+            type="text"
+            icon={<BellOutlined />}
+            title={t('header.notifications')}
+            aria-label={t('header.notifications')}
+          />
+        </Badge>
+      )}
+    </Dropdown>
   );
 }

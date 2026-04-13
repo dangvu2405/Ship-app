@@ -1,5 +1,4 @@
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tag, Tooltip } from 'antd';
 import { formatDateTimeVN, formatDateVN } from '@/utils/format';
 
 type DateTimeBadgeMode = 'date' | 'datetime';
@@ -22,15 +21,8 @@ export function DateTimeBadge({ value, mode = 'date', emptyText = '—' }: DateT
   const formatted = formatDateValue(value, mode);
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge variant="outline" className="font-normal">
-            {formatted}
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>{value}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip title={value}>
+      <Tag className="m-0 font-normal">{formatted}</Tag>
+    </Tooltip>
   );
 }

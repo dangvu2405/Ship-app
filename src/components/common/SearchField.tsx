@@ -1,6 +1,6 @@
-import { Input } from '@/components/ui/input';
+import { SearchOutlined } from '@ant-design/icons';
+import { Input } from 'antd';
 import { cn } from '@/lib/utils';
-import Search from 'lucide-react/dist/esm/icons/search';
 
 interface SearchFieldProps {
   value: string;
@@ -9,16 +9,16 @@ interface SearchFieldProps {
   className?: string;
 }
 
-/** Wrapper `list-page-filters__search`: grid track rộng + flex icon/input (căn dọc trong toolbar). */
 export function SearchField({ value, onChange, placeholder, className }: SearchFieldProps) {
   return (
-    <div className="min-w-0 w-full list-page-filters__search">
-      <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+    <div className={cn('min-w-0 w-full list-page-filters__search', className)}>
       <Input
+        allowClear
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={cn('min-w-0 flex-1', className)}
+        prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-tertiary)' }} />}
+        className="min-w-0 flex-1"
       />
     </div>
   );

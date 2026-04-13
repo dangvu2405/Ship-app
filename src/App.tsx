@@ -5,7 +5,6 @@ import { ConfigProvider, theme as antdTheme } from 'antd';
 import { Toaster } from 'react-hot-toast';
 import { Fragment, Suspense, useEffect, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
 import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
@@ -93,7 +92,6 @@ function App() {
         <UnsavedChangesNotifier />
         <DocumentTitleHandler />
         <Toaster position="top-right" />
-        <ShadcnToaster />
       </Refine>
       </ConfigProvider>
       </QueryClientProvider>

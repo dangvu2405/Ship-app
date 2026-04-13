@@ -123,7 +123,6 @@ export const authProvider: AuthProvider = {
   },
 
   getIdentity: async () => {
-    // First, check Zustand store (for test login)
     const storeState = getAuthStoreState();
     if (storeState.user) {
       return storeState.user;

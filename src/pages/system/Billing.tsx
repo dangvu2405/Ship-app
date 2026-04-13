@@ -1,29 +1,32 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, Space, Typography } from 'antd';
+import { CreditCardOutlined } from '@ant-design/icons';
 import { useTranslation } from '@/hooks/useTranslation';
-import CreditCardIcon from 'lucide-react/dist/esm/icons/credit-card';
 
 export const Billing = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <CreditCardIcon className="h-5 w-5 text-primary" aria-hidden />
-          <h1>{t('billing.title')}</h1>
-        </div>
-        <p className="text-muted-foreground">{t('billing.description')}</p>
+    <Space direction="vertical" size="large" style={{ width: '100%', maxWidth: 768 }}>
+      <div>
+        <Space align="center" size="small">
+          <CreditCardOutlined style={{ fontSize: 20, color: 'var(--ant-color-primary)' }} aria-hidden />
+          <Typography.Title level={2} style={{ margin: 0 }}>
+            {t('billing.title')}
+          </Typography.Title>
+        </Space>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 8 }}>
+          {t('billing.description')}
+        </Typography.Paragraph>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('billing.comingSoonTitle')}</CardTitle>
-          <CardDescription>{t('billing.comingSoonDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{t('billing.placeholder')}</p>
-        </CardContent>
+      <Card title={t('billing.comingSoonTitle')}>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {t('billing.comingSoonDescription')}
+        </Typography.Paragraph>
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 12 }}>
+          {t('billing.placeholder')}
+        </Typography.Text>
       </Card>
-    </div>
+    </Space>
   );
 };

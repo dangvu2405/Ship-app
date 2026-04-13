@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useDelete, useList, useNavigation } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button, Card } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
@@ -10,10 +10,6 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { PositionFormDialog } from './PositionFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import PlusIcon from 'lucide-react/dist/esm/icons/plus';
-import EyeIcon from 'lucide-react/dist/esm/icons/eye';
-import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
-import TrashIcon from 'lucide-react/dist/esm/icons/trash-2';
 import type { Position } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -99,44 +95,39 @@ export function PositionsList() {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
+            type="text"
+            size="small"
+            icon={<EyeOutlined aria-hidden />}
             aria-label={t('common.view')}
             onClick={(e) => {
               e.stopPropagation();
               show('positions', record.id);
             }}
-          >
-            <EyeIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
+            type="text"
+            size="small"
+            icon={<EditOutlined aria-hidden />}
             aria-label={t('common.edit')}
             onClick={(e) => {
               e.stopPropagation();
               handleOpenDialog('edit', record.id);
             }}
-          >
-            <PencilIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive"
+            type="text"
+            size="small"
+            danger
+            icon={<DeleteOutlined aria-hidden />}
             aria-label={t('common.delete')}
             onClick={(e) => {
               e.stopPropagation();
               setSelected(record);
               setDeleteOpen(true);
             }}
-          >
-            <TrashIcon className="h-4 w-4" aria-hidden />
-          </Button>
+          />
         </div>
       ),
     },
@@ -155,14 +146,12 @@ export function PositionsList() {
           { label: t('positions.title') },
         ]}
         actions={
-          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-            <PlusIcon className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
             {t('positions.createPosition')}
           </Button>
         }
       />
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6">
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
         <ListPageFilters variant="grid-3">
           <ListPageFilters.Search
             placeholder={t('common.search')}
@@ -192,8 +181,7 @@ export function PositionsList() {
               emptyMessage={t('common.noData')}
               emptyDescription={t('emptyState.listDescription', { resource: t('positions.title') })}
               emptyAction={
-                <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-                  <PlusIcon className="h-4 w-4" />
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
                   {t('positions.createPosition')}
                 </Button>
               }
@@ -201,7 +189,6 @@ export function PositionsList() {
             />
           </PageLoadingOverlay>
         )}
-        </CardContent>
       </Card>
       <DeleteConfirmDialog
         open={deleteOpen}

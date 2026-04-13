@@ -1,16 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button, Card, Dropdown, Select, Tabs, Tag } from 'antd';
+import type { MenuProps } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
@@ -19,11 +11,6 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { VehicleFormDialog } from './VehicleFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import Plus from 'lucide-react/dist/esm/icons/plus';
-import Eye from 'lucide-react/dist/esm/icons/eye';
-import Edit from 'lucide-react/dist/esm/icons/edit';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
 import type { Vehicle } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -46,6 +33,24 @@ export function VehiclesList() {
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
+
+  const statusSelectOptions = useMemo(
+    () => [
+      { value: 'all', label: t('common.all') },
+      { value: 'active', label: t('common.active') },
+      { value: 'inactive', label: t('common.inactive') },
+    ],
+    [t],
+  );
+
+  const statusTabsItems = useMemo(
+    () => [
+      { key: 'all', label: t('common.all') },
+      { key: 'active', label: t('common.active') },
+      { key: 'inactive', label: t('common.inactive') },
+    ],
+    [t],
+  );
 
   const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Vehicle>({
     resource: 'vehicles',
@@ -121,6 +126,34 @@ export function VehiclesList() {
     );
   };
 
+  const rowMenu = useCallback(
+    (record: Vehicle): MenuProps => ({
+      items: [
+        {
+          key: 'view',
+          icon: <EyeOutlined />,
+          label: t('common.view'),
+          onClick: () => show('vehicles', record.id),
+        },
+        {
+          key: 'edit',
+          icon: <EditOutlined />,
+          label: t('common.edit'),
+          onClick: () => handleOpenDialog('edit', record.id),
+        },
+        { type: 'divider' },
+        {
+          key: 'delete',
+          icon: <DeleteOutlined />,
+          label: t('common.delete'),
+          danger: true,
+          onClick: () => handleDelete(record),
+        },
+      ],
+    }),
+    [t, show, handleDelete, handleOpenDialog],
+  );
+
   const columns = useMemo<DataTableColumn<Vehicle>[]>(
     () => [
     { key: 'plate_number', header: t('vehicles.plateNumber'), dataIndex: 'plate_number' },
@@ -139,42 +172,24 @@ export function VehiclesList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
+        <Tag color={item.status === 'active' ? 'success' : 'default'}>
           {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </Badge>
+        </Tag>
       ),
     },
     {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => show('vehicles', record.id)}>
-                <Eye className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.view')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleOpenDialog('edit', record.id)}>
-                <Edit className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
-                <Trash2 className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <Dropdown menu={rowMenu(record)} trigger={['click']}>
+            <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t('common.actions')} />
+          </Dropdown>
         </div>
       ),
     },
   ],
-    [t, show, handleDelete, handleOpenDialog]
+    [t, rowMenu]
   );
 
   const breadcrumb = [
@@ -193,22 +208,14 @@ export function VehiclesList() {
         description={t('vehicles.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
             {t('vehicles.createVehicle')}
           </Button>
         }
       />
 
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6 space-y-4">
-          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
-            <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
-              <TabsTrigger value="active">{t('common.active')}</TabsTrigger>
-              <TabsTrigger value="inactive">{t('common.inactive')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
 
           <ListPageFilters variant="grid-4">
             <ListPageFilters.Search
@@ -217,18 +224,12 @@ export function VehiclesList() {
               onChange={setSearchKeyword}
             />
             <Select
+              className="list-page-filters__radix-select"
               value={selectedStatus ?? 'all'}
-              onValueChange={(value) => setSelectedStatus(value === 'all' ? undefined : value)}
-            >
-              <SelectTrigger className="list-page-filters__radix-select">
-                <SelectValue placeholder={t('common.status')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('common.all')}</SelectItem>
-                <SelectItem value="active">{t('common.active')}</SelectItem>
-                <SelectItem value="inactive">{t('common.inactive')}</SelectItem>
-              </SelectContent>
-            </Select>
+              options={statusSelectOptions}
+              onChange={(value) => setSelectedStatus(value === 'all' ? undefined : String(value))}
+              placeholder={t('common.status')}
+            />
             <ListPageFilters.Actions
               onSearch={handleSearchFilters}
               onReset={handleClearFilters}
@@ -251,8 +252,7 @@ export function VehiclesList() {
                 emptyMessage={t('common.noData')}
                 emptyDescription={t('emptyState.listDescription', { resource: t('vehicles.title') })}
                 emptyAction={
-                  <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-                    <Plus className="h-4 w-4" />
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
                     {t('vehicles.createVehicle')}
                   </Button>
                 }
@@ -265,7 +265,6 @@ export function VehiclesList() {
               />
             </PageLoadingOverlay>
           )}
-        </CardContent>
       </Card>
 
       <DeleteConfirmDialog

@@ -1,20 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useInvalidate, useNavigation } from '@refinedev/core';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button, Card, Tag } from 'antd';
+import { CheckCircleOutlined, DownloadOutlined, EditOutlined, EyeOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { useTranslation } from '@/hooks/useTranslation';
-import PlusIcon from 'lucide-react/dist/esm/icons/plus';
-import EyeIcon from 'lucide-react/dist/esm/icons/eye';
-import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
-import CheckCircleIcon from 'lucide-react/dist/esm/icons/check-circle';
-import LockIcon from 'lucide-react/dist/esm/icons/lock';
-import DownloadIcon from 'lucide-react/dist/esm/icons/download';
 import type { Payroll } from '@/types';
 import { ROUTES } from '@/routes';
 import payrollService from '@/services/payroll.service';
@@ -47,10 +40,10 @@ function payrollStatusText(status: string, t: Translate): string {
   }
 }
 
-function payrollStatusVariant(status: string): 'default' | 'secondary' | 'destructive' {
-  if (status === 'approved') return 'default';
-  if (status === 'locked') return 'destructive';
-  return 'secondary';
+function payrollStatusTagColor(status: string): string {
+  if (status === 'approved') return 'success';
+  if (status === 'locked') return 'error';
+  return 'processing';
 }
 
 export function PayrollsList() {
@@ -140,9 +133,9 @@ export function PayrollsList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <Badge variant={payrollStatusVariant(item.status)}>
+        <Tag color={payrollStatusTagColor(item.status)}>
           {payrollStatusText(item.status, t)}
-        </Badge>
+        </Tag>
       ),
     },
     {
@@ -162,70 +155,51 @@ export function PayrollsList() {
         return (
           <div role="presentation" className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
             <Button
-              variant="ghost"
-              size="sm"
+              type="text"
+              size="small"
+              icon={<EyeOutlined aria-hidden />}
               onClick={() => show('payrolls', record.id)}
-              className="h-8 w-8 p-0"
               title={t('common.view')}
               aria-label={t('common.view')}
-            >
-              <EyeIcon className="h-4 w-4" aria-hidden />
-            </Button>
+            />
             <Button
-              variant="ghost"
-              size="sm"
+              type="text"
+              size="small"
+              icon={<EditOutlined aria-hidden />}
               onClick={() => handleEdit(record.id)}
-              className="h-8 w-8 p-0"
               title={t('common.edit')}
               aria-label={t('common.edit')}
-            >
-              <PencilIcon className="h-4 w-4" aria-hidden />
-            </Button>
+            />
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
+              type="text"
+              size="small"
+              icon={<CheckCircleOutlined aria-hidden />}
               disabled={locked || isBusy || !canApprove}
+              loading={isBusy && busy?.op === 'approve'}
               title={t('payrolls.approve')}
               aria-label={t('payrolls.approve')}
               onClick={() => void run(record.id, 'approve')}
-            >
-              {isBusy && busy?.op === 'approve' ? (
-                <span className="text-xs">…</span>
-              ) : (
-                <CheckCircleIcon className="h-4 w-4" aria-hidden />
-              )}
-            </Button>
+            />
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
+              type="text"
+              size="small"
+              icon={<LockOutlined aria-hidden />}
               disabled={locked || isBusy || !canLock}
+              loading={isBusy && busy?.op === 'lock'}
               title={isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
               aria-label={isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
               onClick={() => void run(record.id, 'lock')}
-            >
-              {isBusy && busy?.op === 'lock' ? (
-                <span className="text-xs">…</span>
-              ) : (
-                <LockIcon className="h-4 w-4" aria-hidden />
-              )}
-            </Button>
+            />
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
+              type="text"
+              size="small"
+              icon={<DownloadOutlined aria-hidden />}
               disabled={isBusy}
+              loading={isBusy && busy?.op === 'export'}
               title={t('payrolls.exportJson')}
               aria-label={t('payrolls.exportJson')}
               onClick={() => void run(record.id, 'export')}
-            >
-              {isBusy && busy?.op === 'export' ? (
-                <span className="text-xs">…</span>
-              ) : (
-                <DownloadIcon className="h-4 w-4" aria-hidden />
-              )}
-            </Button>
+            />
           </div>
         );
       },
@@ -250,15 +224,13 @@ export function PayrollsList() {
         description={t('payrolls.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={handleCreate} className="gap-2">
-            <PlusIcon className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             {t('payrolls.createPayroll')}
           </Button>
         }
       />
 
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6">
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
         {isError ? (
           <ErrorState
             title={t('common.loadError')}
@@ -274,8 +246,7 @@ export function PayrollsList() {
               emptyMessage={t('common.noData')}
               emptyDescription={t('emptyState.listDescription', { resource: t('payrolls.title') })}
               emptyAction={
-                <Button onClick={handleCreate} className="gap-2">
-                  <PlusIcon className="h-4 w-4" />
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                   {t('payrolls.createPayroll')}
                 </Button>
               }
@@ -288,7 +259,6 @@ export function PayrollsList() {
             />
           </PageLoadingOverlay>
         )}
-        </CardContent>
       </Card>
       {formOpen && (
         <PayrollFormDialog

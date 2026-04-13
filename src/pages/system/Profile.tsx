@@ -1,95 +1,135 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import {
+  Avatar,
+  Button,
+  Card,
+  Col,
+  Divider,
+  Flex,
+  Form,
+  Input,
+  Row,
+  Space,
+  Tag,
+  Typography,
+} from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export const Profile = () => {
   const { user } = useAuthStore();
   const { t } = useTranslation();
+  const initial = (user?.username || 'U').charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Page Header */}
+    <Space direction="vertical" size="large" style={{ width: '100%', maxWidth: 1152 }}>
       <div>
-        <h1>{t('profile.title')}</h1>
-        <p className="text-muted-foreground mt-1">{t('profile.description')}</p>
+        <Typography.Title level={2} style={{ marginBottom: 4 }}>
+          {t('profile.title')}
+        </Typography.Title>
+        <Typography.Text type="secondary">{t('profile.description')}</Typography.Text>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Profile Card */}
-        <Card className="lg:col-span-1">
-          <CardContent className="pt-6 flex flex-col items-center text-center">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-blue-700 flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-primary/20 mb-4">
-              {(user?.username || 'U').charAt(0).toUpperCase()}
-            </div>
-            <h3 className="text-lg font-semibold">{user?.username || t('profile.user')}</h3>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <div className="flex gap-2 mt-3">
-              {user?.roles?.map((role) => (
-                <Badge key={role.id} variant="secondary">{role.name}</Badge>
-              )) ?? <Badge variant="secondary">{t('profile.user')}</Badge>}
-            </div>
-            <Separator className="my-5" />
-            <div className="w-full space-y-3 text-left">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('profile.status')}</span>
-                <Badge variant="outline">{t('common.active')}</Badge>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={8}>
+          <Card>
+            <Flex vertical align="center" gap="middle">
+              <Avatar size={96} style={{ background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)' }}>
+                {initial}
+              </Avatar>
+              <div style={{ textAlign: 'center' }}>
+                <Typography.Title level={4} style={{ marginBottom: 4 }}>
+                  {user?.username || t('profile.user')}
+                </Typography.Title>
+                <Typography.Text type="secondary">{user?.email}</Typography.Text>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('profile.memberSince')}</span>
-                <span className="font-medium">2024</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <Flex wrap gap="small" justify="center">
+                {user?.roles?.length
+                  ? user.roles.map((role) => <Tag key={role.id}>{role.name}</Tag>)
+                  : <Tag>{t('profile.user')}</Tag>}
+              </Flex>
+              <Divider style={{ margin: '8px 0' }} />
+              <Flex vertical gap="small" style={{ width: '100%' }}>
+                <Flex justify="space-between" align="center">
+                  <Typography.Text type="secondary">{t('profile.status')}</Typography.Text>
+                  <Tag bordered={false} color="success">
+                    {t('common.active')}
+                  </Tag>
+                </Flex>
+                <Flex justify="space-between" align="center">
+                  <Typography.Text type="secondary">{t('profile.memberSince')}</Typography.Text>
+                  <Typography.Text strong>2024</Typography.Text>
+                </Flex>
+              </Flex>
+            </Flex>
+          </Card>
+        </Col>
 
-        {/* Edit Form */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{t('profile.personalInformation.title')}</CardTitle>
-            <CardDescription>{t('profile.personalInformation.description')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="username">{t('profile.personalInformation.username')}</Label>
-                  <Input id="username" defaultValue={user?.username} placeholder={t('profile.personalInformation.usernamePlaceholder')} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">{t('profile.personalInformation.email')}</Label>
-                  <Input id="email" type="email" defaultValue={user?.email} placeholder={t('profile.personalInformation.emailPlaceholder')} />
-                </div>
-              </div>
+        <Col xs={24} lg={16}>
+          <Card
+            title={t('profile.personalInformation.title')}
+            extra={<UserOutlined aria-hidden style={{ color: 'var(--ant-color-text-tertiary)' }} />}
+          >
+            <Typography.Paragraph type="secondary" style={{ marginTop: -8, marginBottom: 24 }}>
+              {t('profile.personalInformation.description')}
+            </Typography.Paragraph>
+            <Form layout="vertical" requiredMark={false}>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item label={t('profile.personalInformation.username')}>
+                    <Input
+                      id="username"
+                      defaultValue={user?.username}
+                      placeholder={t('profile.personalInformation.usernamePlaceholder')}
+                      autoComplete="username"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item label={t('profile.personalInformation.email')}>
+                    <Input
+                      id="email"
+                      type="email"
+                      defaultValue={user?.email}
+                      placeholder={t('profile.personalInformation.emailPlaceholder')}
+                      autoComplete="email"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-              <Separator />
+              <Divider />
 
-              <div>
-                <h4 className="text-sm font-semibold mb-3">{t('profile.changePassword.title')}</h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="current-password">{t('profile.changePassword.currentPassword')}</Label>
-                    <Input id="current-password" type="password" placeholder={t('profile.changePassword.currentPasswordPlaceholder')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">{t('profile.changePassword.newPassword')}</Label>
-                    <Input id="new-password" type="password" placeholder={t('profile.changePassword.newPasswordPlaceholder')} />
-                  </div>
-                </div>
-              </div>
+              <Typography.Title level={5}>{t('profile.changePassword.title')}</Typography.Title>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item label={t('profile.changePassword.currentPassword')}>
+                    <Input.Password
+                      id="current-password"
+                      placeholder={t('profile.changePassword.currentPasswordPlaceholder')}
+                      autoComplete="current-password"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item label={t('profile.changePassword.newPassword')}>
+                    <Input.Password
+                      id="new-password"
+                      placeholder={t('profile.changePassword.newPasswordPlaceholder')}
+                      autoComplete="new-password"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="outline">{t('common.cancel')}</Button>
-                <Button>{t('profile.saveChanges')}</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              <Flex justify="flex-end" gap="small" style={{ marginTop: 8 }}>
+                <Button>{t('common.cancel')}</Button>
+                <Button type="primary">{t('profile.saveChanges')}</Button>
+              </Flex>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
+    </Space>
   );
 };

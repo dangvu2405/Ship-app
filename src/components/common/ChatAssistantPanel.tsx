@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
-import { Bot, Loader2, MessageSquareText, RefreshCcw, Send, UserRound } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import toast from 'react-hot-toast';
-
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
+import {
+  LoadingOutlined,
+  MessageOutlined,
+  ReloadOutlined,
+  RobotOutlined,
+  SendOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import { Button, Card, Divider, Flex, Input, Space, Spin, Tag, Typography, theme } from 'antd';
 import { MessageRenderer } from '@/components/common/chat/MessageRenderer';
 import { useTranslation } from '@/hooks/useTranslation';
 import { hasAuthToken } from '@/lib/auth-session';
-import { cn } from '@/lib/utils';
 import chatService from '@/services/chat.service';
 import { useAuthStore } from '@/stores/auth.store';
 import type { ChatTask } from '@/utils/chatPrompt';
@@ -109,9 +109,10 @@ const shouldRetryChatRequest = (error: unknown): boolean => {
 type ChatAssistantPanelProps = {
   className?: string;
   compact?: boolean;
+  style?: CSSProperties;
 };
 
-export const ChatAssistantPanel = ({ className, compact = false }: ChatAssistantPanelProps) => {
+export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAssistantPanelProps) => {
   const { t } = useTranslation();
   const tRef = useRef(t);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -123,6 +124,7 @@ export const ChatAssistantPanel = ({ className, compact = false }: ChatAssistant
   const task: ChatTask = 'chat'; // Fixed task
   const contextJson = ''; // No context needed
   const [responseMeta, setResponseMeta] = useState<{ cached?: boolean; guarded?: boolean }>({});
+  const { token } = theme.useToken();
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -387,141 +389,156 @@ export const ChatAssistantPanel = ({ className, compact = false }: ChatAssistant
     return parsed.toLocaleString();
   };
 
+  const scrollBoxStyle = compact
+    ? { maxHeight: 320, minHeight: 240, overflowY: 'auto' as const, paddingRight: 4 }
+    : { maxHeight: 420, minHeight: 420, overflowY: 'auto' as const, paddingRight: 4 };
+
   return (
-    <Card className={cn(compact ? 'min-h-0' : 'min-h-[760px]', className)}>
-      <CardHeader className="space-y-3">
-          <div className="space-y-3">
-            <div>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquareText className="h-5 w-5" />
-              {t('notificationCenter.chat.title')}
-            </CardTitle>
-            <CardDescription>{t('notificationCenter.chat.description')}</CardDescription>
-            </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {responseMeta.cached ? <Badge variant="secondary">{t('notificationCenter.chat.cached')}</Badge> : null}
-          {responseMeta.guarded ? <Badge variant="outline">{t('notificationCenter.chat.guarded')}</Badge> : null}
-        </div>
-      </CardHeader>
+    <Card
+      className={className}
+      style={{ minHeight: compact ? undefined : 760, ...style }}
+      title={
+        <Space align="start">
+          <MessageOutlined />
+          <span>{t('notificationCenter.chat.title')}</span>
+        </Space>
+      }
+    >
+      <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+        {t('notificationCenter.chat.description')}
+      </Typography.Paragraph>
+      <Space wrap>
+        {responseMeta.cached ? <Tag>{t('notificationCenter.chat.cached')}</Tag> : null}
+        {responseMeta.guarded ? <Tag bordered={false}>{t('notificationCenter.chat.guarded')}</Tag> : null}
+      </Space>
 
-      <CardContent
-        className={cn(
-          'grid gap-4',
-          'lg:grid-cols-[1fr]',
-        )}
-      >
-        <div className="flex min-h-0 flex-col gap-4">
-          <div className="rounded-lg border bg-background p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium">{t('notificationCenter.chat.newChat')}</p>
-                <p className="text-sm text-muted-foreground">
-                  {t('notificationCenter.chat.composeHint')}
-                </p>
-              </div>
-            </div>
+      <Divider />
 
-            <Separator className="my-4" />
+      <Flex vertical gap={16} style={{ minHeight: 0 }}>
+        <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, padding: 16 }}>
+          <Typography.Text strong>{t('notificationCenter.chat.newChat')}</Typography.Text>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 4 }}>
+            {t('notificationCenter.chat.composeHint')}
+          </Typography.Paragraph>
 
-            <div
-              ref={messagesContainerRef}
-              onScroll={handleMessagesScroll}
-              className={cn('space-y-3 overflow-y-auto pr-1', compact ? 'max-h-[320px] min-h-[240px]' : 'max-h-[420px] min-h-[420px]')}
-            >
-              {chatMessages.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-                  <Bot className="h-8 w-8" />
-                  <p>{t('notificationCenter.chat.emptyMessages')}</p>
-                </div>
-              ) : (
-                <>
-                  {chatMessages.map((message, index) => {
-                    const isUser = message.role === 'user';
-                    const isAssistantError = !isUser && message.isError === true;
-                    const retrySource = isAssistantError ? getRetrySourceFromIndex(index) : '';
-                    return (
-                      <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                        <div
-                          className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                            isUser
-                              ? 'bg-primary text-primary-foreground'
-                              : isAssistantError
-                                ? 'border border-destructive/40 bg-destructive/10'
-                                : 'bg-muted'
-                          }`}
-                        >
-                          <div className="mb-1 flex items-center gap-2 text-xs opacity-80">
-                            {isUser ? <UserRound className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                            <span>{isUser ? t('notificationCenter.chat.you') : t('notificationCenter.chat.assistant')}</span>
-                            {message.model ? <span>• {message.model}</span> : null}
-                            {isAssistantError ? <Badge variant="destructive">{t('notificationCenter.chat.failed')}</Badge> : null}
+          <Divider style={{ margin: '16px 0' }} />
+
+          <div ref={messagesContainerRef} onScroll={handleMessagesScroll} style={scrollBoxStyle}>
+            {chatMessages.length === 0 ? (
+              <Flex
+                vertical
+                align="center"
+                justify="center"
+                gap={8}
+                style={{
+                  minHeight: 160,
+                  border: `1px dashed ${token.colorBorder}`,
+                  borderRadius: token.borderRadiusLG,
+                  padding: 24,
+                  background: token.colorFillAlter,
+                }}
+              >
+                <RobotOutlined style={{ fontSize: 32, color: token.colorTextTertiary }} />
+                <Typography.Text type="secondary">{t('notificationCenter.chat.emptyMessages')}</Typography.Text>
+              </Flex>
+            ) : (
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                {chatMessages.map((message, index) => {
+                  const isUser = message.role === 'user';
+                  const isAssistantError = !isUser && message.isError === true;
+                  const retrySource = isAssistantError ? getRetrySourceFromIndex(index) : '';
+                  const bubbleBg = isUser
+                    ? token.colorPrimary
+                    : isAssistantError
+                      ? token.colorErrorBg
+                      : token.colorFillSecondary;
+                  const bubbleFg = isUser ? token.colorTextLightSolid : token.colorText;
+
+                  return (
+                    <Flex key={message.id} justify={isUser ? 'flex-end' : 'flex-start'}>
+                      <div
+                        style={{
+                          maxWidth: '85%',
+                          borderRadius: 16,
+                          padding: '12px 16px',
+                          background: bubbleBg,
+                          color: bubbleFg,
+                          border: isAssistantError ? `1px solid ${token.colorErrorBorder}` : undefined,
+                        }}
+                      >
+                        <Flex align="center" gap={8} style={{ marginBottom: 4, fontSize: 12, opacity: 0.85 }}>
+                          {isUser ? <UserOutlined /> : <RobotOutlined />}
+                          <span>{isUser ? t('notificationCenter.chat.you') : t('notificationCenter.chat.assistant')}</span>
+                          {message.model ? <span>• {message.model}</span> : null}
+                          {isAssistantError ? <Tag color="error">{t('notificationCenter.chat.failed')}</Tag> : null}
+                        </Flex>
+                        {message.isPending ? (
+                          <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            <Spin indicator={<LoadingOutlined spin />} size="small" /> {message.content}
+                          </Typography.Paragraph>
+                        ) : isUser ? (
+                          <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: bubbleFg }}>
+                            {message.content}
+                          </Typography.Paragraph>
+                        ) : (
+                          <MessageRenderer content={message.content} />
+                        )}
+                        {message.createdAt ? (
+                          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 11 }}>
+                            {formatDateTime(message.createdAt)}
+                          </Typography.Text>
+                        ) : null}
+                        {isAssistantError && retrySource ? (
+                          <div style={{ marginTop: 8 }}>
+                            <Button
+                              size="small"
+                              icon={<ReloadOutlined />}
+                              onClick={() => void handleSendChat(retrySource)}
+                              disabled={sendingMessage}
+                            >
+                              {t('notificationCenter.chat.retrySend')}
+                            </Button>
                           </div>
-                          {message.isPending ? (
-                            <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                              <span className="inline-flex items-center gap-2 text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                {message.content}
-                              </span>
-                            </p>
-                          ) : isUser ? (
-                            <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.content}</p>
-                          ) : (
-                            <MessageRenderer content={message.content} />
-                          )}
-                          {message.createdAt ? (
-                            <p className="mt-2 text-[11px] opacity-70">{formatDateTime(message.createdAt)}</p>
-                          ) : null}
-                          {isAssistantError && retrySource ? (
-                            <div className="mt-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-7"
-                                onClick={() => void handleSendChat(retrySource)}
-                                disabled={sendingMessage}
-                              >
-                                <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                                {t('notificationCenter.chat.retrySend')}
-                              </Button>
-                            </div>
-                          ) : null}
-                        </div>
+                        ) : null}
                       </div>
-                    );
-                  })}
-
-                </>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-
-          <div className="grid gap-4 rounded-lg border bg-muted/20 p-4">
-            <div className="grid gap-2">
-              <Label htmlFor="chat-message">{t('notificationCenter.chat.message')}</Label>
-              <Textarea
-                id="chat-message"
-                name="chat_message"
-                autoComplete="off"
-                value={chatMessage}
-                onChange={(event) => setChatMessage(event.target.value)}
-                placeholder={t('notificationCenter.chat.messagePlaceholder')}
-                rows={4}
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">{t('notificationCenter.chat.contextHint')}</p>
-              <Button onClick={() => void handleSendChat()} disabled={sendingMessage}>
-                {sendingMessage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                {t('notificationCenter.chat.send')}
-              </Button>
-            </div>
+                    </Flex>
+                  );
+                })}
+              </Space>
+            )}
+            <div ref={messagesEndRef} />
           </div>
         </div>
-      </CardContent>
+
+        <div
+          style={{
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: token.borderRadiusLG,
+            padding: 16,
+            background: token.colorFillAlter,
+          }}
+        >
+          <Typography.Text>{t('notificationCenter.chat.message')}</Typography.Text>
+          <Input.TextArea
+            id="chat-message"
+            name="chat_message"
+            autoComplete="off"
+            value={chatMessage}
+            onChange={(e) => setChatMessage(e.target.value)}
+            placeholder={t('notificationCenter.chat.messagePlaceholder')}
+            rows={4}
+            style={{ marginTop: 8 }}
+          />
+          <Flex justify="space-between" align="center" gap={12} style={{ marginTop: 12 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {t('notificationCenter.chat.contextHint')}
+            </Typography.Text>
+            <Button type="primary" onClick={() => void handleSendChat()} disabled={sendingMessage} icon={sendingMessage ? <LoadingOutlined /> : <SendOutlined />}>
+              {t('notificationCenter.chat.send')}
+            </Button>
+          </Flex>
+        </div>
+      </Flex>
     </Card>
   );
 };

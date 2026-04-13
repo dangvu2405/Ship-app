@@ -45,8 +45,6 @@ const DepartmentsList = lazyWithMinDelay(() => import('@/pages/departments/Depar
 const DepartmentFormDialog = lazyWithMinDelay(() => import('@/pages/departments/DepartmentFormDialog').then((m) => ({ default: m.DepartmentFormDialog })));
 const PositionsList = lazyWithMinDelay(() => import('@/pages/positions/PositionsList').then((m) => ({ default: m.PositionsList })));
 const PositionFormDialog = lazyWithMinDelay(() => import('@/pages/positions/PositionFormDialog').then((m) => ({ default: m.PositionFormDialog })));
-const EmployeesList = lazyWithMinDelay(() => import('@/pages/employees/EmployeesList').then((m) => ({ default: m.EmployeesList })));
-const EmployeeFormDialog = lazyWithMinDelay(() => import('@/pages/employees/EmployeeFormDialog').then((m) => ({ default: m.EmployeeFormDialog })));
 const VehiclesList = lazyWithMinDelay(() => import('@/pages/vehicles/VehiclesList').then((m) => ({ default: m.VehiclesList })));
 const VehicleFormDialog = lazyWithMinDelay(() => import('@/pages/vehicles/VehicleFormDialog').then((m) => ({ default: m.VehicleFormDialog })));
 const TripsList = lazyWithMinDelay(() => import('@/pages/trips/TripsList').then((m) => ({ default: m.TripsList })));
@@ -68,8 +66,6 @@ const AllowancesList = lazyWithMinDelay(() => import('@/pages/allowances/Allowan
 const AllowanceFormDialog = lazyWithMinDelay(() => import('@/pages/allowances/AllowanceFormDialog').then((m) => ({ default: m.AllowanceFormDialog })));
 const DeductionsList = lazyWithMinDelay(() => import('@/pages/deductions/DeductionsList').then((m) => ({ default: m.DeductionsList })));
 const DeductionFormDialog = lazyWithMinDelay(() => import('@/pages/deductions/DeductionFormDialog').then((m) => ({ default: m.DeductionFormDialog })));
-const AttendancesList = lazyWithMinDelay(() => import('@/pages/attendances/AttendancesList').then((m) => ({ default: m.AttendancesList })));
-const AttendanceFormDialog = lazyWithMinDelay(() => import('@/pages/attendances/AttendanceFormDialog').then((m) => ({ default: m.AttendanceFormDialog })));
 const PayrollsList = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollsList').then((m) => ({ default: m.PayrollsList })));
 const PayrollFormDialog = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollFormDialog').then((m) => ({ default: m.PayrollFormDialog })));
 const Reports = lazyWithMinDelay(() => import('@/pages/reports/Reports').then((m) => ({ default: m.Reports })));
@@ -81,13 +77,13 @@ const Notifications = lazyWithMinDelay(() => import('@/pages/system/Notification
 const Profile = lazyWithMinDelay(() => import('@/pages/system/Profile').then((m) => ({ default: m.Profile })));
 const Settings = lazyWithMinDelay(() => import('@/pages/system/Settings').then((m) => ({ default: m.Settings })));
 const Billing = lazyWithMinDelay(() => import('@/pages/system/Billing').then((m) => ({ default: m.Billing })));
+const SystemUsersHub = lazyWithMinDelay(() => import('@/pages/system/Users').then((m) => ({ default: m.Users })));
 
 export const crudRoutes: CrudRouteConfig[] = [
   { key: 'companies', routes: ROUTES.admin.companies, List: CompaniesList, Form: CompanyFormDialog },
   { key: 'offices', routes: ROUTES.admin.offices, List: OfficesList, Form: OfficeFormDialog },
   { key: 'departments', routes: ROUTES.admin.departments, List: DepartmentsList, Form: DepartmentFormDialog },
   { key: 'positions', routes: ROUTES.admin.positions, List: PositionsList, Form: PositionFormDialog },
-  { key: 'employees', routes: ROUTES.admin.employees, List: EmployeesList, Form: EmployeeFormDialog, requiredRole: 'admin' },
   { key: 'vehicles', routes: ROUTES.admin.vehicles, List: VehiclesList, Form: VehicleFormDialog, requiredRole: 'admin' },
   { key: 'trips', routes: ROUTES.admin.trips, List: TripsList, Form: TripFormDialog, requiredRole: 'admin' },
   {
@@ -104,7 +100,6 @@ export const crudRoutes: CrudRouteConfig[] = [
   { key: 'vehicle_expenses', routes: ROUTES.admin.vehicle_expenses, List: VehicleExpensesList, Form: VehicleExpenseFormDialog },
   { key: 'allowances', routes: ROUTES.admin.allowances, List: AllowancesList, Form: AllowanceFormDialog },
   { key: 'deductions', routes: ROUTES.admin.deductions, List: DeductionsList, Form: DeductionFormDialog },
-  { key: 'attendances', routes: ROUTES.admin.attendances, List: AttendancesList, Form: AttendanceFormDialog },
   { key: 'payrolls', routes: ROUTES.admin.payrolls, List: PayrollsList, Form: PayrollFormDialog },
   { key: 'users', routes: ROUTES.admin.users, List: UsersList, Form: UserFormDialog, requiredRole: 'admin' },
   { key: 'roles', routes: ROUTES.admin.roles, List: RolesList, Form: RoleFormDialog, requiredRole: 'admin' },
@@ -116,6 +111,12 @@ export const singleRoutes: SingleRouteConfig[] = [
   { key: 'profile', path: ROUTES.admin.profile, Component: Profile },
   { key: 'settings', path: ROUTES.admin.settings, Component: Settings },
   { key: 'billing', path: ROUTES.admin.billing, Component: Billing },
+  {
+    key: 'system_users_hub',
+    path: ROUTES.admin.systemUsers,
+    Component: SystemUsersHub,
+    requiredRole: 'admin',
+  },
   {
     key: 'drivers_schedule',
     path: ROUTES.admin.driversSchedule,

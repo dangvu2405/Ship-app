@@ -1,176 +1,219 @@
-import * as React from "react"
-import { Link } from "react-router-dom"
-import LayoutDashboardIcon from "lucide-react/dist/esm/icons/layout-dashboard"
-import RouteIcon from "lucide-react/dist/esm/icons/route"
-import PercentIcon from "lucide-react/dist/esm/icons/percent"
-import DollarSignIcon from "lucide-react/dist/esm/icons/dollar-sign"
-import FileTextIcon from "lucide-react/dist/esm/icons/file-text"
-import AnchorIcon from "lucide-react/dist/esm/icons/anchor"
-import ShieldIcon from "lucide-react/dist/esm/icons/shield"
-import LayersIcon from "lucide-react/dist/esm/icons/layers"
-import UserRoundCogIcon from "lucide-react/dist/esm/icons/user-round-cog"
-import CarFrontIcon from "lucide-react/dist/esm/icons/car-front"
-import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Flex, Menu, Typography, theme } from 'antd';
+import type { MenuProps } from 'antd';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { useAuthStore } from "@/stores/auth.store"
-import { useTranslation } from "@/hooks/useTranslation"
-import { ROUTES } from "@/routes"
+  DeploymentUnitOutlined,
+  ApartmentOutlined,
+  CarOutlined,
+  DashboardOutlined,
+  DollarOutlined,
+  FileTextOutlined,
+  PercentageOutlined,
+  RocketOutlined,
+  SafetyCertificateOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
+import { NavUser } from '@/components/nav-user';
+import { useAuthStore } from '@/stores/auth.store';
+import { useTranslation } from '@/hooks/useTranslation';
+import { ROUTES } from '@/routes';
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuthStore()
-  const { t } = useTranslation()
-  const isAdmin = user?.roles?.some((role) => role.name === 'admin') ?? false
+type NavLeaf = { title: string; url: string };
+type NavSingle = { title: string; url: string; icon?: ReactNode; adminOnly?: boolean };
+type NavGroup = { title: string; icon?: ReactNode; adminOnly?: boolean; items: NavLeaf[] };
+type NavEntry = NavSingle | NavGroup;
 
-  const adminMenu = [
-    {
-      title: t('dashboard.title'),
-      url: ROUTES.dashboard,
-      icon: LayoutDashboardIcon,
-    },
-    {
-      title: t('trips.title'),
-      url: ROUTES.admin.trips.list,
-      icon: RouteIcon,
-    },
-    {
-      title: t('tripBonusRules.title'),
-      url: ROUTES.admin.trip_bonus_rules.list,
-      icon: PercentIcon,
-      adminOnly: true,
-    },
-    {
-      title: t('payrolls.title'),
-      url: ROUTES.admin.payrolls.list,
-      icon: DollarSignIcon,
-    },
-    {
-      title: t('reports.title'),
-      url: ROUTES.admin.reports.list,
-      icon: FileTextIcon,
-    },
-    {
-      title: t('companies.title'),
-      icon: LayersIcon,
-      items: [
-        { title: t('companies.title'), url: ROUTES.admin.companies.list },
-        { title: t('offices.title'), url: ROUTES.admin.offices.list },
-        { title: t('departments.title'), url: ROUTES.admin.departments.list },
-        { title: t('positions.title'), url: ROUTES.admin.positions.list },
-      ],
-    },
-    {
-      title: t('employees.title'),
-      icon: UserRoundCogIcon,
-      items: [
-        { title: t('employees.title'), url: ROUTES.admin.employees.list },
-        { title: t('attendances.title'), url: ROUTES.admin.attendances.list },
-        { title: t('drivers.title'), url: ROUTES.admin.drivers.list },
-        { title: t('drivers.scheduleTitle'), url: ROUTES.admin.driversSchedule },
-        { title: t('customers.title'), url: ROUTES.admin.customers.list },
-        { title: t('allowances.title'), url: ROUTES.admin.allowances.list },
-        { title: t('deductions.title'), url: ROUTES.admin.deductions.list },
-      ],
-    },
-    {
-      title: t('vehicles.title'),
-      icon: CarFrontIcon,
-      items: [
-        { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
-        { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
-        { title: t('vehicleAssignments.title'), url: ROUTES.admin.vehicle_assignments.list },
-        { title: t('vehicleExpenses.title'), url: ROUTES.admin.vehicle_expenses.list },
-      ],
-    },
-    {
-      title: t('users.title'),
-      icon: ShieldIcon,
-      adminOnly: true,
-      items: [
-        { title: t('users.title'), url: ROUTES.admin.users.list },
-        { title: t('roles.title'), url: ROUTES.admin.roles.list },
-      ],
-    },
-  ]
+function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return 'items' in entry;
+}
 
-  const operatorMenu = [
-    {
-      title: t('dashboard.title'),
-      url: ROUTES.dashboard,
-      icon: LayoutDashboardIcon,
-    },
-    {
-      title: t('trips.title'),
-      url: ROUTES.admin.trips.list,
-      icon: RouteIcon,
-    },
-    {
-      title: t('payrolls.title'),
-      url: ROUTES.admin.payrolls.list,
-      icon: DollarSignIcon,
-    },
-    {
-      title: t('employees.title'),
-      icon: UserRoundCogIcon,
-      items: [
-        { title: t('employees.title'), url: ROUTES.admin.employees.list },
-        { title: t('attendances.title'), url: ROUTES.admin.attendances.list },
-      ],
-    },
-    {
-      title: t('vehicles.title'),
-      icon: CarFrontIcon,
-      items: [
-        { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
-        { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
-      ],
-    },
-  ]
+function isRouteActive(pathname: string, url: string) {
+  return pathname === url || pathname.startsWith(`${url}/`);
+}
 
-  const filteredNavMain = (isAdmin ? adminMenu : operatorMenu).filter((item) => {
-    if (!('adminOnly' in item) || !item.adminOnly) {
-      return true
+export function AppSidebarContent({ collapsed }: { collapsed: boolean }) {
+  const { user } = useAuthStore();
+  const { t } = useTranslation();
+  const { token } = theme.useToken();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const isAdmin = user?.roles?.some((role) => role.name === 'admin') ?? false;
+
+  const adminMenu: NavEntry[] = useMemo(
+    () => [
+      { title: t('dashboard.title'), url: ROUTES.dashboard, icon: <DashboardOutlined /> },
+      { title: t('trips.title'), url: ROUTES.admin.trips.list, icon: <RocketOutlined /> },
+      {
+        title: t('tripBonusRules.title'),
+        url: ROUTES.admin.trip_bonus_rules.list,
+        icon: <PercentageOutlined />,
+        adminOnly: true,
+      },
+      { title: t('payrolls.title'), url: ROUTES.admin.payrolls.list, icon: <DollarOutlined /> },
+      { title: t('reports.title'), url: ROUTES.admin.reports.list, icon: <FileTextOutlined /> },
+      {
+        title: t('companies.title'),
+        icon: <ApartmentOutlined />,
+        items: [
+          { title: t('companies.title'), url: ROUTES.admin.companies.list },
+          { title: t('offices.title'), url: ROUTES.admin.offices.list },
+          { title: t('departments.title'), url: ROUTES.admin.departments.list },
+          { title: t('positions.title'), url: ROUTES.admin.positions.list },
+        ],
+      },
+      {
+        title: t('dashboard.fleetStaffNavGroup'),
+        icon: <TeamOutlined />,
+        items: [
+          { title: t('drivers.title'), url: ROUTES.admin.drivers.list },
+          { title: t('drivers.scheduleTitle'), url: ROUTES.admin.driversSchedule },
+          { title: t('customers.title'), url: ROUTES.admin.customers.list },
+          { title: t('allowances.title'), url: ROUTES.admin.allowances.list },
+          { title: t('deductions.title'), url: ROUTES.admin.deductions.list },
+        ],
+      },
+      {
+        title: t('vehicles.title'),
+        icon: <CarOutlined />,
+        items: [
+          { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
+          { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
+          { title: t('vehicleAssignments.title'), url: ROUTES.admin.vehicle_assignments.list },
+          { title: t('vehicleExpenses.title'), url: ROUTES.admin.vehicle_expenses.list },
+        ],
+      },
+      {
+        title: t('users.title'),
+        icon: <SafetyCertificateOutlined />,
+        adminOnly: true,
+        items: [
+          { title: t('users.title'), url: ROUTES.admin.users.list },
+          { title: t('roles.title'), url: ROUTES.admin.roles.list },
+        ],
+      },
+    ],
+    [t],
+  );
+
+  const operatorMenu: NavEntry[] = useMemo(
+    () => [
+      { title: t('dashboard.title'), url: ROUTES.dashboard, icon: <DashboardOutlined /> },
+      { title: t('trips.title'), url: ROUTES.admin.trips.list, icon: <RocketOutlined /> },
+      { title: t('payrolls.title'), url: ROUTES.admin.payrolls.list, icon: <DollarOutlined /> },
+      {
+        title: t('vehicles.title'),
+        icon: <CarOutlined />,
+        items: [
+          { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
+          { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
+        ],
+      },
+    ],
+    [t],
+  );
+
+  const filteredNav = useMemo(() => {
+    const list = isAdmin ? adminMenu : operatorMenu;
+    return list.filter((item) => {
+      if (!('adminOnly' in item) || !item.adminOnly) return true;
+      return isAdmin;
+    });
+  }, [adminMenu, operatorMenu, isAdmin]);
+
+  const menuItems: MenuProps['items'] = useMemo(() => {
+    return filteredNav.map((item, index) => {
+      const groupKey = `group-${index}`;
+      if (isNavGroup(item)) {
+        return {
+          key: groupKey,
+          icon: item.icon,
+          label: item.title,
+          children: item.items.map((child) => ({
+            key: child.url,
+            label: <Link to={child.url}>{child.title}</Link>,
+          })),
+        };
+      }
+      return {
+        key: item.url,
+        icon: item.icon,
+        label: <Link to={item.url}>{item.title}</Link>,
+      };
+    });
+  }, [filteredNav]);
+
+  const selectedKeys = useMemo(() => {
+    const keys: string[] = [];
+    for (const item of filteredNav) {
+      if (isNavGroup(item)) {
+        for (const child of item.items) {
+          if (isRouteActive(pathname, child.url)) {
+            keys.push(child.url);
+            break;
+          }
+        }
+      } else if (isRouteActive(pathname, item.url)) {
+        keys.push(item.url);
+      }
     }
-    return isAdmin
-  })
+    return keys;
+  }, [filteredNav, pathname]);
+
+  const defaultOpenKeys = useMemo(() => {
+    const open: string[] = [];
+    filteredNav.forEach((item, index) => {
+      if (!isNavGroup(item)) return;
+      if (item.items.some((child) => isRouteActive(pathname, child.url))) {
+        open.push(`group-${index}`);
+      }
+    });
+    return open;
+  }, [filteredNav, pathname]);
+
+  const [openKeys, setOpenKeys] = useState<string[]>(defaultOpenKeys);
+
+  useEffect(() => {
+    setOpenKeys((prev) => {
+      const next = [...new Set([...prev, ...defaultOpenKeys])];
+      return next;
+    });
+  }, [defaultOpenKeys]);
 
   const userData = {
-    name: user?.username || "User",
-    email: user?.email || "user@example.com",
-    avatar: "",
-  }
+    name: user?.username || 'User',
+    email: user?.email || 'user@example.com',
+    avatar: '',
+  };
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <Link to={ROUTES.dashboard}>
-                <AnchorIcon className="h-5 w-5" />
-                <span className="text-base font-semibold">Ship ERP</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={filteredNavMain} />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={userData} />
-      </SidebarFooter>
-    </Sidebar>
-  )
+    <Flex vertical style={{ height: '100%' }}>
+      <div style={{ padding: collapsed ? '12px 8px' : '16px 16px 8px' }}>
+        <Link to={ROUTES.dashboard} style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Flex align="center" gap={collapsed ? 0 : 10} justify={collapsed ? 'center' : 'flex-start'}>
+            <DeploymentUnitOutlined style={{ fontSize: 20, color: token.colorPrimary }} />
+            {!collapsed && (
+              <Typography.Text strong style={{ fontSize: 16 }}>
+                Ship ERP
+              </Typography.Text>
+            )}
+          </Flex>
+        </Link>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+        <Menu
+          mode="inline"
+          inlineCollapsed={collapsed}
+          selectedKeys={selectedKeys}
+          openKeys={collapsed ? [] : openKeys}
+          onOpenChange={(keys) => setOpenKeys(keys as string[])}
+          items={menuItems}
+          style={{ borderInlineEnd: 0 }}
+        />
+      </div>
+      <div style={{ padding: collapsed ? 8 : 12, borderTop: `1px solid ${token.colorSplit}` }}>
+        <NavUser user={userData} collapsed={collapsed} />
+      </div>
+    </Flex>
+  );
 }

@@ -79,12 +79,9 @@ export const vi = {
     loginFailed: 'Đăng nhập thất bại',
     invalidCredentials: 'Thông tin đăng nhập không hợp lệ',
     sessionExpired: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-    skipLogin: 'Bỏ qua đăng nhập (Demo)',
     welcomeBack: 'Chào mừng trở lại',
     loginToAccount: 'Đăng nhập vào tài khoản Ship ERP của bạn',
     emailPlaceholder: 'name@company.com',
-    testLogin: '🧪 Test Login (Skip Auth)',
-    testUiLogin: 'Đăng nhập test UI',
     orContinueWith: 'Hoặc tiếp tục với',
     loginWithApple: 'Đăng nhập bằng Apple',
     loginWithGoogle: 'Đăng nhập bằng Google',
@@ -109,6 +106,7 @@ export const vi = {
     statsRetry: 'Thử lại',
     allCompanies: 'Tất cả công ty',
     filterByCompany: 'Lọc theo công ty',
+    fleetStaffNavGroup: 'Đội ngũ & vận hành',
     recentActivity: 'Hoạt động gần đây',
     cards: {
       totalRevenue: 'Tổng doanh thu',
@@ -151,6 +149,11 @@ export const vi = {
     recentTrips: 'Chuyến gần đây',
     recentTripsDescription: 'Các chuyến mới nhất',
     noRecentTrips: 'Chưa có chuyến',
+    revenueByCompany: 'Doanh thu theo công ty',
+    revenueByCompanyDescription:
+      'Chuyến hoàn thành trong tháng {month}/{year}: tổng giá chuyến (VND) theo từng công ty. Bộ lọc phía trên thu hẹp bảng này.',
+    revenueByCompanyTrips: 'Số chuyến hoàn thành',
+    revenueByCompanyEmpty: 'Không có dữ liệu công ty cho màn hình này',
   },
 
   // Companies
@@ -548,6 +551,24 @@ export const vi = {
     noPayrollForPeriod: 'Không có bảng lương cho công ty và kỳ này',
     totalNet: 'Tổng lương thực nhận',
     employeesOnPayroll: 'Số nhân viên trên bảng lương',
+    exportCsv: 'Xuất CSV',
+    csvSectionSnapshot: 'Tổng quan dashboard (kỳ)',
+    csvSectionPayroll: 'Tổng hợp bảng lương (công ty đã chọn)',
+    csvSectionLines: 'Chi tiết dòng bảng lương',
+    csvPayrollId: 'ID bảng lương',
+    csvPayrollStatus: 'Trạng thái bảng lương',
+    csvNoPayrollSummary: 'Chưa có dữ liệu tổng hợp lương để xuất',
+    csvColEmployeeCode: 'Mã NV',
+    csvColEmployeeName: 'Họ tên',
+    csvColBaseSalary: 'Lương cơ bản',
+    csvColWorkingDays: 'Ngày công',
+    csvColOvertime: 'Tăng ca',
+    csvColBonus: 'Thưởng',
+    csvColAllowance: 'Phụ cấp',
+    csvColDeduction: 'Khấu trừ',
+    csvColFuelCost: 'Chi phí nhiên liệu',
+    csvColTax: 'Thuế',
+    csvColNetSalary: 'Thực nhận',
   },
 
   // Users
@@ -578,6 +599,7 @@ export const vi = {
     settings: 'Cài đặt',
     notifications: 'Thông báo',
     billing: 'Thanh toán',
+    userHub: 'Trung tâm người dùng',
     searchPlaceholder: 'Tìm kiếm...',
     switchToLightMode: 'Chuyển sang chế độ sáng',
     switchToDarkMode: 'Chuyển sang chế độ tối',
@@ -730,7 +752,7 @@ export const vi = {
 
   notificationCenter: {
     title: 'Trung tâm thông báo',
-    description: 'Theo dõi đi muộn, nhật ký đăng nhập và phiên thiết bị tại một nơi.',
+    description: 'Xem nhật ký đăng nhập và phiên thiết bị.',
     refresh: 'Làm mới',
     loading: 'Đang tải...',
     chat: {

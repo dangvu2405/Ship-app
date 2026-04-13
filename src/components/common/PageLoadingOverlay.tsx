@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { Spin } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
+import { LottieTruckLoader } from '@/components/common/LottieTruckLoader';
 
 type PageLoadingOverlayProps = {
   loading: boolean;
@@ -13,7 +12,7 @@ type PageLoadingOverlayProps = {
 };
 
 /**
- * Lớp mờ + spinner trên một khối nội dung (card / bảng) khi đang tải dữ liệu trang.
+ * Lớp mờ + Lottie xe tải trên một khối nội dung khi đang tải dữ liệu.
  */
 export function PageLoadingOverlay({
   loading,
@@ -24,33 +23,17 @@ export function PageLoadingOverlay({
   const { t } = useTranslation();
 
   return (
-    <div
-      className={cn('relative', minHeight, className)}
-      aria-busy={loading}
-      aria-live="polite"
-    >
-      <div
-        className={cn(
-          'transition-opacity duration-200',
-          loading && 'pointer-events-none opacity-40',
-        )}
-      >
+    <div className={cn('relative', minHeight, className)} aria-busy={loading} aria-live="polite">
+      <div className={cn('transition-opacity duration-200', loading && 'pointer-events-none opacity-40')}>
         {children}
       </div>
       {loading ? (
         <div
-          className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-background/55 backdrop-blur-sm dark:bg-background/60"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[inherit] bg-background/55 backdrop-blur-sm dark:bg-background/60"
           role="status"
         >
-          <Spin
-            spinning
-            indicator={
-              <LoadingOutlined className="text-primary" style={{ fontSize: 32 }} spin aria-hidden />
-            }
-            tip={<span className="text-sm text-muted-foreground">{t('common.loading')}</span>}
-          >
-            <div className="h-10 w-10" aria-hidden />
-          </Spin>
+          <LottieTruckLoader size={140} />
+          <span className="text-sm text-muted-foreground">{t('common.loading')}</span>
         </div>
       ) : null}
     </div>

@@ -1,24 +1,14 @@
 import { useEffect } from 'react';
-import { Form } from 'antd';
+import { Alert, Button, Form, Space } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  getFormDialogContentClassName,
-} from '@/components/ui/dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { DepartmentForm } from './DepartmentForm';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
-import ArrowLeftIcon from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Department } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
@@ -117,61 +107,63 @@ export function DepartmentFormDialog({ open, mode, recordId, onClose, onSuccess 
     }
   }, [hasRecordId, data?.data, form]);
 
-  if (hasRecordId && isLoadingData) {
-    return (
+  const title = isViewMode ? t('common.view') : isEdit ? t('departments.editDepartment') : t('departments.createDepartment');
+  const description = isViewMode
+    ? t('departments.editDescription')
+    : isEdit
+      ? t('departments.editDescription')
+      : t('departments.createDescription');
+
+  const footer = (
+    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+      <Button icon={<ArrowLeftOutlined />} onClick={requestClose}>
+        {t('common.back')}
+      </Button>
+      {!isViewMode ? (
+        <Button type="primary" onClick={() => form.submit()} loading={isLoading}>
+          {isEdit ? t('common.update') : t('common.create')}
+        </Button>
+      ) : (
+        <span />
+      )}
+    </Space>
+  );
+
+  const body =
+    hasRecordId && isLoadingData ? (
+      <TableSkeleton rows={6} columns={1} />
+    ) : (
       <>
-      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className={getFormDialogContentClassName('default')}>
-          <DialogHeader>
-            <DialogTitle>{isViewMode ? t('common.view') : t('departments.editDepartment')}</DialogTitle>
-          </DialogHeader>
-          <TableSkeleton rows={6} columns={1} />
-        </DialogContent>
-      </Dialog>
-        <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+        <Alert
+          type="info"
+          message={t('formGuides.title')}
+          description={t('formGuides.department')}
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Form
+          form={form}
+          onFinish={handleSubmit}
+          layout="vertical"
+          validateTrigger={['onBlur', 'onSubmit']}
+          disabled={isViewMode}
+        >
+          <DepartmentForm form={form} initialValues={data?.data} />
+        </Form>
       </>
     );
-  }
 
   return (
     <>
-    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className={getFormDialogContentClassName('default', 'p-0 rounded-2xl')}>
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('departments.editDepartment') : t('departments.createDepartment')}</DialogTitle>
-          <DialogDescription>
-            {isViewMode ? t('departments.editDescription') : isEdit ? t('departments.editDescription') : t('departments.createDescription')}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="px-6 pb-6 space-y-4">
-          <Alert>
-            <AlertTitle>{t('formGuides.title')}</AlertTitle>
-            <AlertDescription>{t('formGuides.department')}</AlertDescription>
-          </Alert>
-
-          <Form
-            form={form}
-            onFinish={handleSubmit}
-            layout="vertical"
-            validateTrigger={["onBlur", "onSubmit"]}
-            disabled={isViewMode}
-          >
-            <DepartmentForm form={form} initialValues={data?.data} />
-          </Form>
-        </div>
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
-          <Button variant="outline" type="button" onClick={requestClose} className="gap-2">
-            <ArrowLeftIcon className="h-4 w-4" />
-            {t('common.back')}
-          </Button>
-          {!isViewMode ? (
-            <Button type="submit" onClick={() => form.submit()} disabled={isLoading}>
-              {isLoading ? t('common.loading') : isEdit ? t('common.update') : t('common.create')}
-            </Button>
-          ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <ResourceFormModal
+        open={dialogOpen}
+        onOpenChange={handleDialogOpenChange}
+        title={title}
+        description={description}
+        footer={footer}
+      >
+        {body}
+      </ResourceFormModal>
       <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
     </>
   );

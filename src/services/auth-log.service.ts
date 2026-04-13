@@ -30,7 +30,9 @@ export type AuthSummary = {
 
 const PAGE_SIZE_DEFAULT = 10;
 
-const mockAuditLogs = (_date: string): AuthLogAuditRow[] => [
+const mockAuditLogs = (date: string): AuthLogAuditRow[] => {
+  void date;
+  return [
   {
     id: '1',
     username: 'user1',
@@ -48,6 +50,7 @@ const mockAuditLogs = (_date: string): AuthLogAuditRow[] => [
     performedBy: 'Admin',
   },
 ];
+};
 
 const mockSessions: AuthSessionRow[] = [
   {

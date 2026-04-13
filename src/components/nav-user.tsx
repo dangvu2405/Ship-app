@@ -1,48 +1,45 @@
+import { useMemo, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLogout } from '@refinedev/core';
-import BellIcon from 'lucide-react/dist/esm/icons/bell';
-import CreditCardIcon from 'lucide-react/dist/esm/icons/credit-card';
-import LogOutIcon from 'lucide-react/dist/esm/icons/log-out';
-import MoreVerticalIcon from 'lucide-react/dist/esm/icons/more-vertical';
-import SettingsIcon from 'lucide-react/dist/esm/icons/settings';
-import UserCircleIcon from 'lucide-react/dist/esm/icons/user-circle';
-
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar';
+  BellOutlined,
+  CreditCardOutlined,
+  LogoutOutlined,
+  MoreOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import { Avatar, Button, Dropdown, Flex, Typography, theme } from 'antd';
+import type { MenuProps } from 'antd';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
 
 function routeActive(pathname: string, url: string) {
   return pathname === url || pathname.startsWith(`${url}/`);
 }
 
+type QuickLink = { to: string; label: string; icon: ReactNode };
+
 export function NavUser({
   user,
+  collapsed,
 }: {
   user: {
     name: string;
     email: string;
     avatar: string;
   };
+  collapsed: boolean;
 }) {
-  const { isMobile } = useSidebar();
+  const { token } = theme.useToken();
   const location = useLocation();
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
   const { t } = useTranslation();
+  const authUser = useAuthStore((s) => s.user);
+  const isAdmin = authUser?.roles?.some((role) => role.name === 'admin') ?? false;
 
   const userInitials = user.name
     ? user.name
@@ -53,95 +50,93 @@ export function NavUser({
         .slice(0, 2)
     : user.email?.[0].toUpperCase() || 'U';
 
-  const handleBilling = () => {
-    navigate(ROUTES.admin.billing);
-  };
+  const quickLinks = useMemo((): QuickLink[] => {
+    const links: QuickLink[] = [
+      { to: ROUTES.admin.notifications, label: t('header.notifications'), icon: <BellOutlined /> },
+      { to: ROUTES.admin.profile, label: t('header.profile'), icon: <UserOutlined /> },
+      { to: ROUTES.admin.billing, label: t('header.billing'), icon: <CreditCardOutlined /> },
+      { to: ROUTES.admin.settings, label: t('header.settings'), icon: <SettingOutlined /> },
+    ];
+    if (isAdmin) {
+      links.push({
+        to: ROUTES.admin.systemUsers,
+        label: t('header.userHub'),
+        icon: <TeamOutlined />,
+      });
+    }
+    return links;
+  }, [t, isAdmin]);
 
   const handleLogout = () => {
     logout();
     navigate(ROUTES.login);
   };
 
-  const quickLinks = [
+  const dropdownItems: MenuProps['items'] = [
     {
-      to: ROUTES.admin.notifications,
-      label: t('header.notifications'),
-      icon: BellIcon,
+      key: 'logout',
+      danger: true,
+      icon: <LogoutOutlined />,
+      label: t('auth.logout'),
+      onClick: handleLogout,
     },
-    {
-      to: ROUTES.admin.profile,
-      label: t('header.profile'),
-      icon: UserCircleIcon,
-    },
-    {
-      to: ROUTES.admin.settings,
-      label: t('header.settings'),
-      icon: SettingsIcon,
-    },
-  ] as const;
+  ];
+
+  if (collapsed) {
+    return (
+      <Flex vertical align="center" gap={4}>
+        {quickLinks.map(({ to, label, icon }) => (
+          <Link key={to} to={to} title={label}>
+            <Button
+              type={routeActive(location.pathname, to) ? 'primary' : 'text'}
+              icon={icon}
+              size="small"
+              aria-label={label}
+            />
+          </Link>
+        ))}
+        <Dropdown menu={{ items: dropdownItems }} trigger={['click']} placement="topRight">
+          <Button type="text" icon={<Avatar size="small">{userInitials}</Avatar>} aria-label={user.name} />
+        </Dropdown>
+      </Flex>
+    );
+  }
 
   return (
-    <SidebarMenu className="gap-0.5">
-      {quickLinks.map(({ to, label, icon: Icon }) => (
-        <SidebarMenuItem key={to}>
-          <SidebarMenuButton asChild isActive={routeActive(location.pathname, to)} tooltip={label}>
-            <Link to={to}>
-              <Icon />
-              <span>{label}</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+    <Flex vertical gap={4}>
+      {quickLinks.map(({ to, label, icon }) => (
+        <Link key={to} to={to} style={{ width: '100%' }}>
+          <Button
+            block
+            type="text"
+            icon={icon}
+            style={{
+              justifyContent: 'flex-start',
+              fontWeight: routeActive(location.pathname, to) ? 600 : 400,
+              color: routeActive(location.pathname, to) ? token.colorPrimary : undefined,
+            }}
+          >
+            {label}
+          </Button>
+        </Link>
       ))}
 
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="mt-1 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="h-8 w-8 rounded-lg grayscale">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">{userInitials}</AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-              </div>
-              <MoreVerticalIcon className="ml-auto size-4 shrink-0" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg bg-popover/80 backdrop-blur-md"
-            side={isMobile ? 'bottom' : 'right'}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">{userInitials}</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleBilling}>
-              <CreditCardIcon />
-              {t('header.billing')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-              <LogOutIcon />
-              {t('auth.logout')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+      <Dropdown menu={{ items: dropdownItems }} trigger={['click']} placement="topRight">
+        <Button block type="text" style={{ height: 'auto', paddingBlock: 8 }}>
+          <Flex align="center" gap={10} style={{ width: '100%', textAlign: 'left' }}>
+            <Avatar src={user.avatar || undefined}>{userInitials}</Avatar>
+            <Flex vertical style={{ flex: 1, minWidth: 0 }} align="stretch">
+              <Typography.Text ellipsis strong>
+                {user.name}
+              </Typography.Text>
+              <Typography.Text ellipsis type="secondary" style={{ fontSize: 12 }}>
+                {user.email}
+              </Typography.Text>
+            </Flex>
+            <MoreOutlined />
+          </Flex>
+        </Button>
+      </Dropdown>
+    </Flex>
   );
 }

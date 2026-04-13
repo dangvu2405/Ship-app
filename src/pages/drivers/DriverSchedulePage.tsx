@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useList } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button, Card, Flex, Space, Typography } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -73,28 +72,27 @@ export function DriverSchedulePage() {
   return (
     <>
       <PageHeader title={t('drivers.scheduleTitle')} />
-      <Card>
-        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <Card
+        className="rounded-xl shadow-sm border"
+        styles={{ body: { padding: 24 } }}
+      >
+        <Flex vertical gap={16} className="sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>{t('drivers.scheduleTitle')}</CardTitle>
-            <CardDescription>{t('drivers.scheduleWeekHint')}</CardDescription>
+            <Typography.Title level={4} style={{ marginBottom: 4 }}>
+              {t('drivers.scheduleTitle')}
+            </Typography.Title>
+            <Typography.Text type="secondary">{t('drivers.scheduleWeekHint')}</Typography.Text>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={goPrevWeek}>
-              {t('drivers.schedulePrevWeek')}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={goNextWeek}>
-              {t('drivers.scheduleNextWeek')}
-            </Button>
-            <Button type="button" variant="secondary" size="sm" onClick={handleExportJson}>
-              {t('drivers.scheduleExportJson')}
-            </Button>
-            <Button type="button" size="sm" onClick={() => void handleCopyJson()}>
+          <Space wrap>
+            <Button onClick={goPrevWeek}>{t('drivers.schedulePrevWeek')}</Button>
+            <Button onClick={goNextWeek}>{t('drivers.scheduleNextWeek')}</Button>
+            <Button onClick={handleExportJson}>{t('drivers.scheduleExportJson')}</Button>
+            <Button type="primary" onClick={() => void handleCopyJson()}>
               {t('drivers.scheduleCopyJson')}
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
+          </Space>
+        </Flex>
+        <div className="mt-4 overflow-x-auto">
           {isLoading ? (
             <TableSkeleton rows={6} columns={4} />
           ) : (
@@ -137,7 +135,7 @@ export function DriverSchedulePage() {
               </tbody>
             </table>
           )}
-        </CardContent>
+        </div>
       </Card>
     </>
   );

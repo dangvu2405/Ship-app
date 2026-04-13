@@ -1,30 +1,96 @@
-import { Fragment, Suspense } from 'react';
+import { Fragment, Suspense, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Layout, theme } from 'antd';
 import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppSidebarContent } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { FloatingChatAssistant } from '@/components/common/FloatingChatAssistant';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { useAppStore } from '@/stores/app.store';
+
+const { Sider, Content, Header } = Layout;
 
 export function AppLayout() {
+  const { sidebarOpen, setSidebarOpen, toggleSidebar } = useAppStore();
+  const { token } = theme.useToken();
+  const collapsed = !sidebarOpen;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'b' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleSidebar]);
+
   return (
     <Fragment>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <SiteHeader />
-          <div className="relative flex flex-1 flex-col bg-muted/20">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.08),transparent_40%),radial-gradient(circle_at_bottom_left,hsl(var(--success)/0.06),transparent_35%)]" />
-            <div className="@container/main relative flex flex-1 flex-col gap-2">
-              <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
+      <Layout style={{ minHeight: '100vh' }}>
+        <Sider
+          width={260}
+          collapsed={collapsed}
+          onCollapse={(c) => setSidebarOpen(!c)}
+          collapsible
+          breakpoint="lg"
+          collapsedWidth={72}
+          style={{
+            overflow: 'hidden',
+            height: '100vh',
+            position: 'sticky',
+            top: 0,
+            left: 0,
+            borderRight: `1px solid ${token.colorSplit}`,
+          }}
+        >
+          <AppSidebarContent collapsed={collapsed} />
+        </Sider>
+        <Layout style={{ minHeight: '100vh' }}>
+          <Header
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 50,
+              paddingInline: 0,
+              height: 56,
+              lineHeight: '56px',
+              background: token.colorBgContainer,
+              borderBottom: `1px solid ${token.colorSplit}`,
+            }}
+          >
+            <SiteHeader sidebarCollapsed={collapsed} onToggleSidebar={toggleSidebar} />
+          </Header>
+          <Content
+            style={{
+              margin: 0,
+              minHeight: 280,
+              background: token.colorFillAlter,
+            }}
+          >
+            <div
+              style={{
+                position: 'relative',
+                minHeight: '100%',
+                background: `radial-gradient(circle at top right, ${token.colorPrimary}14, transparent 40%), radial-gradient(circle at bottom left, ${token.colorSuccess}12, transparent 35%)`,
+              }}
+            >
+              <div
+                style={{
+                  margin: '0 auto',
+                  width: '100%',
+                  maxWidth: 1600,
+                  padding: '16px 16px 24px',
+                }}
+              >
                 <Suspense fallback={<AppLoadingSpin variant="outlet" />}>
                   <Outlet />
                 </Suspense>
               </div>
             </div>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+          </Content>
+        </Layout>
+      </Layout>
       <FloatingChatAssistant />
     </Fragment>
   );

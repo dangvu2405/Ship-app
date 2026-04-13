@@ -1,67 +1,51 @@
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchOutlined, MoonOutlined, SunOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { Button, Divider, Flex, Input, theme } from 'antd';
 import { useAppStore } from '@/stores/app.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { NotificationPopup } from '@/components/common/NotificationPopup';
-import Search from 'lucide-react/dist/esm/icons/search';
-import Moon from 'lucide-react/dist/esm/icons/moon';
-import Sun from 'lucide-react/dist/esm/icons/sun';
 
-export function SiteHeader() {
-  const { theme, toggleTheme } = useAppStore();
+type SiteHeaderProps = {
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+};
+
+export function SiteHeader({ sidebarCollapsed, onToggleSidebar }: SiteHeaderProps) {
+  const { theme: colorMode, toggleTheme } = useAppStore();
   const { t } = useTranslation();
+  const { token } = theme.useToken();
 
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] duration-300 ease-out">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        {/* Left: sidebar trigger */}
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
+    <Flex align="center" gap="small" style={{ width: '100%', height: '100%', paddingInline: 16 }}>
+      <Button
+        type="text"
+        icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+        onClick={onToggleSidebar}
+        aria-label={t('header.toggleSidebar')}
+        title={t('header.toggleSidebar')}
+      />
+      <Divider type="vertical" style={{ height: 20, margin: 0 }} />
+      <div style={{ flex: 1, maxWidth: 420 }}>
+        <Input
+          allowClear
+          prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+          placeholder={t('header.searchPlaceholder')}
+          variant="borderless"
+          style={{ background: token.colorFillTertiary, borderRadius: token.borderRadiusLG }}
         />
-
-        {/* Center: Search */}
-        <div className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('header.searchPlaceholder')}
-              className="pl-9 h-8 bg-transparent border-transparent hover:border-input focus-visible:border-input"
-            />
-          </div>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="ml-auto flex items-center gap-1">
-          {/* Language Switcher */}
-          <LanguageSwitcher />
-
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle Theme"
-            className="h-8 w-8"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? t('header.switchToLightMode') : t('header.switchToDarkMode')}
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </Button>
-
-          {/* Notifications */}
-          <NotificationPopup />
-
-          <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
-        </div>
       </div>
-    </header>
-  )
+      <Flex align="center" gap={4} style={{ marginLeft: 'auto' }}>
+        <LanguageSwitcher />
+        <Button
+          type="text"
+          icon={colorMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+          onClick={toggleTheme}
+          aria-label={colorMode === 'dark' ? t('header.switchToLightMode') : t('header.switchToDarkMode')}
+          title={colorMode === 'dark' ? t('header.switchToLightMode') : t('header.switchToDarkMode')}
+        />
+        <NotificationPopup />
+        <Divider type="vertical" style={{ height: 20, margin: 0 }} />
+      </Flex>
+    </Flex>
+  );
 }

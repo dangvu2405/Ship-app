@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
-import { Form } from 'antd';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button, Card, Form, Tag } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
@@ -12,10 +10,6 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import PlusIcon from 'lucide-react/dist/esm/icons/plus';
-import EyeIcon from 'lucide-react/dist/esm/icons/eye';
-import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
-import Trash2Icon from 'lucide-react/dist/esm/icons/trash-2';
 import type { Invoice } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -138,27 +132,19 @@ export function InvoicesList() {
                 ? t('invoices.statusPaid')
                 : status;
 
-        return (
-          <Badge variant={status === 'draft' ? 'secondary' : status === 'paid' ? 'default' : 'outline'}>
-            {statusLabel}
-          </Badge>
-        );
+        const color =
+          status === 'draft' ? undefined : status === 'paid' ? 'success' : status === 'issued' ? 'processing' : undefined;
+        return <Tag color={color}>{statusLabel}</Tag>;
       },
     },
     {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.view')} onClick={(e) => { e.stopPropagation(); show('invoices', record.id); }}>
-            <EyeIcon className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.edit')} onClick={(e) => { e.stopPropagation(); handleEdit(record.id); }}>
-            <PencilIcon className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" aria-label={t('common.delete')} onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
-            <Trash2Icon className="h-4 w-4" aria-hidden />
-          </Button>
+        <div className="flex gap-1">
+          <Button type="text" size="small" icon={<EyeOutlined aria-hidden />} aria-label={t('common.view')} onClick={(e) => { e.stopPropagation(); show('invoices', record.id); }} />
+          <Button type="text" size="small" icon={<EditOutlined aria-hidden />} aria-label={t('common.edit')} onClick={(e) => { e.stopPropagation(); handleEdit(record.id); }} />
+          <Button type="text" size="small" danger icon={<DeleteOutlined aria-hidden />} aria-label={t('common.delete')} onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }} />
         </div>
       ),
     },
@@ -175,14 +161,12 @@ export function InvoicesList() {
         description={t('invoices.description')}
         breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('invoices.title') }]}
         actions={
-          <Button onClick={handleCreate} className="gap-2">
-            <PlusIcon className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             {t('invoices.createInvoice')}
           </Button>
         }
       />
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6">
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
         <ListPageFilters variant="grid-4">
           <ListPageFilters.Search
             placeholder={t('common.search')}
@@ -230,8 +214,7 @@ export function InvoicesList() {
               emptyMessage={t('common.noData')}
               emptyDescription={t('emptyState.listDescription', { resource: t('invoices.title') })}
               emptyAction={
-                <Button onClick={handleCreate} className="gap-2">
-                  <PlusIcon className="h-4 w-4" />
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                   {t('invoices.createInvoice')}
                 </Button>
               }
@@ -239,7 +222,6 @@ export function InvoicesList() {
             />
           </PageLoadingOverlay>
         )}
-        </CardContent>
       </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.code} />
       {formOpen && (

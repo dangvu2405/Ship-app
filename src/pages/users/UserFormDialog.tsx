@@ -1,27 +1,18 @@
 import { useEffect } from 'react';
-import { Form } from 'antd';
+import { Alert, Button, Form, Space } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useUpdate, useOne, useNavigation } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  getFormDialogContentClassName,
-} from '@/components/ui/dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { UserForm } from './UserForm';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
-import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { User } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+
 interface UserFormValues {
   username: string;
   email: string;
@@ -83,6 +74,20 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
 
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
+  const handleClose = () => {
+    onClose?.();
+    if (!isControlled) {
+      list('users');
+    }
+  };
+
+  const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
+    form,
+    isViewMode,
+    isSubmitting: isLoading,
+    onClose: handleClose,
+  });
+
   const handleSubmit = (values: UserFormValues) => {
     const payload = buildPayload(values, isEdit);
 
@@ -136,20 +141,6 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
     }
   };
 
-  const handleClose = () => {
-    onClose?.();
-    if (!isControlled) {
-      list('users');
-    }
-  };
-
-  const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
-    form,
-    isViewMode,
-    isSubmitting: isLoading,
-    onClose: handleClose,
-  });
-
   useEffect(() => {
     if (!hasRecordId || !data?.data) {
       return;
@@ -164,73 +155,64 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
     });
   }, [hasRecordId, data?.data, form]);
 
-  if (hasRecordId && isLoadingData) {
-    return (
+  const title = isViewMode ? t('common.view') : isEdit ? t('users.editUser') : t('users.createUser');
+  const description = isViewMode
+    ? t('users.editDescription')
+    : isEdit
+      ? t('users.editDescription')
+      : t('users.createDescription');
+
+  const footer = (
+    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+      <Button icon={<ArrowLeftOutlined />} onClick={requestClose}>
+        {t('common.back')}
+      </Button>
+      {!isViewMode ? (
+        <Button type="primary" onClick={() => form.submit()} loading={isLoading}>
+          {isEdit ? t('common.update') : t('common.create')}
+        </Button>
+      ) : (
+        <span />
+      )}
+    </Space>
+  );
+
+  const body =
+    hasRecordId && isLoadingData ? (
+      <TableSkeleton rows={8} columns={1} />
+    ) : (
       <>
-      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className={getFormDialogContentClassName('xlarge')}>
-          <DialogHeader>
-            <DialogTitle>{isViewMode ? t('common.view') : t('users.editUser')}</DialogTitle>
-          </DialogHeader>
-          <TableSkeleton rows={8} columns={1} />
-        </DialogContent>
-      </Dialog>
-        <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
+        <Alert
+          type="info"
+          message={t('formGuides.title')}
+          description={t('formGuides.user')}
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Form
+          form={form}
+          onFinish={handleSubmit}
+          layout="vertical"
+          validateTrigger={['onBlur', 'onSubmit']}
+          disabled={isViewMode}
+        >
+          <UserForm form={form} initialValues={data?.data} isEdit={isEdit} />
+        </Form>
       </>
     );
-  }
 
   return (
     <>
-    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className={getFormDialogContentClassName('xlarge', 'p-0 rounded-2xl')}>
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle>
-            {isViewMode ? t('common.view') : isEdit ? t('users.editUser') : t('users.createUser')}
-          </DialogTitle>
-          <DialogDescription>
-            {isViewMode ? t('users.editDescription') : isEdit ? t('users.editDescription') : t('users.createDescription')}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="px-6 pb-6 space-y-4">
-          <Alert>
-            <AlertTitle>{t('formGuides.title')}</AlertTitle>
-            <AlertDescription>{t('formGuides.user')}</AlertDescription>
-          </Alert>
-
-          <Form
-            form={form}
-            onFinish={handleSubmit}
-            layout="vertical"
-            validateTrigger={["onBlur", "onSubmit"]}
-            disabled={isViewMode}
-          >
-            <UserForm form={form} initialValues={data?.data} isEdit={isEdit} />
-          </Form>
-        </div>
-
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
-          <Button variant="outline" onClick={requestClose} type="button" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            {t('common.back')}
-          </Button>
-          {!isViewMode ? (
-            <Button
-              type="submit"
-              onClick={() => form.submit()}
-              disabled={isLoading}
-            >
-              {isLoading
-                ? t('common.loading')
-                : isEdit
-                ? t('common.update')
-                : t('common.create')}
-            </Button>
-          ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <ResourceFormModal
+        open={dialogOpen}
+        onOpenChange={handleDialogOpenChange}
+        title={title}
+        description={description}
+        footer={footer}
+        width="min(72rem, calc(100vw - 2rem))"
+      >
+        {body}
+      </ResourceFormModal>
       <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
     </>
   );

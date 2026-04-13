@@ -4,13 +4,7 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useAppStore } from "@/stores/app.store"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, Col, Flex, Row, Segmented, Select, Spin, Typography, theme } from "antd"
 import {
   type ChartConfig,
   ChartContainer,
@@ -18,17 +12,6 @@ import {
   ChartLegendContent,
   ChartTooltip,
 } from "@/components/ui/chart"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group"
 import { useDashboardRevenueChartData, type RevenueChartTimeRange } from "@/hooks/useDashboardRevenueChartData"
 import { formatCurrencyVND } from "@/utils/format"
 import type { Company, Office } from "@/types"
@@ -56,6 +39,7 @@ export function ChartAreaInteractive({
   offices: Office[]
 }) {
   const { t } = useTranslation()
+  const { token } = theme.useToken()
   const appLocale = useAppStore((s) => s.locale)
   const dateLocale = appLocale === "vi" ? "vi-VN" : "en-US"
   const isMobile = useIsMobile()
@@ -140,85 +124,91 @@ export function ChartAreaInteractive({
     chartData.some((row) => Number(row[k] ?? 0) > 0),
   )
 
+  const companySelectOptions = [
+    { value: "all", label: t("dashboard.allCompanies") },
+    ...companies.map((c) => ({ value: String(c.id), label: c.name })),
+  ]
+
+  const rangeSegmentedOptions = [
+    { label: t("dashboard.chart.range90d"), value: "90d" },
+    { label: t("dashboard.chart.range30d"), value: "30d" },
+    { label: t("dashboard.chart.range7d"), value: "7d" },
+  ]
+
+  const chartShell = (child: React.ReactNode) => (
+    <div
+      style={{
+        height: 280,
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: token.borderRadiusLG,
+        border: `1px dashed ${token.colorBorder}`,
+        background: token.colorFillAlter,
+        padding: 16,
+      }}
+    >
+      {child}
+    </div>
+  )
+
   return (
-    <Card className="@container/card" aria-label={t("dashboard.chart.revenueAriaSummary")}>
-      <CardHeader className="relative space-y-3">
-        <div className="flex flex-col gap-3 @[640px]/card:flex-row @[640px]/card:items-start @[640px]/card:justify-between">
-          <div className="min-w-0 flex-1 space-y-1 pr-0 @[640px]/card:pr-2">
-            <CardTitle>{t("dashboard.chart.revenueTitle")}</CardTitle>
-            <CardDescription>
-              <span className="@[540px]/card:block hidden">{t("dashboard.chart.revenueDescriptionLong")}</span>
-              <span className="@[540px]/card:hidden">{t("dashboard.chart.revenueDescriptionShort")}</span>
-            </CardDescription>
-          </div>
-          <div className="flex w-full shrink-0 flex-col gap-2 @[640px]/card:w-auto @[640px]/card:min-w-[12rem]">
+    <Card aria-label={t("dashboard.chart.revenueAriaSummary")}>
+      <Flex vertical gap={16}>
+        <Row gutter={[16, 16]} align="top">
+          <Col xs={24} md={14}>
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              {t("dashboard.chart.revenueTitle")}
+            </Typography.Title>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }} className="hidden sm:block">
+              {t("dashboard.chart.revenueDescriptionLong")}
+            </Typography.Paragraph>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }} className="sm:hidden">
+              {t("dashboard.chart.revenueDescriptionShort")}
+            </Typography.Paragraph>
+          </Col>
+          <Col xs={24} md={10}>
             <Select
+              className="w-full"
+              aria-label={t("dashboard.filterByCompany")}
               value={companyId != null ? String(companyId) : "all"}
-              onValueChange={(v) => onCompanyIdChange(v === "all" ? undefined : Number(v))}
-            >
-              <SelectTrigger className="w-full" aria-label={t("dashboard.filterByCompany")}>
-                <SelectValue placeholder={t("dashboard.allCompanies")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("dashboard.allCompanies")}</SelectItem>
-                {companies.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={companySelectOptions}
+              onChange={(v) => onCompanyIdChange(v === "all" ? undefined : Number(v))}
+            />
+          </Col>
+        </Row>
+        <Flex justify="flex-end" wrap="wrap" gap={8}>
+          <div className="hidden md:block">
+            <Segmented options={rangeSegmentedOptions} value={timeRange} onChange={(v) => setRange(String(v))} />
           </div>
-        </div>
-        <div className="flex justify-end">
-          <ToggleGroup
-            type="single"
-            value={timeRange}
-            onValueChange={setRange}
-            variant="outline"
-            className="@[767px]/card:flex hidden"
-          >
-            <ToggleGroupItem value="90d" className="h-8 px-2.5">
-              {t("dashboard.chart.range90d")}
-            </ToggleGroupItem>
-            <ToggleGroupItem value="30d" className="h-8 px-2.5">
-              {t("dashboard.chart.range30d")}
-            </ToggleGroupItem>
-            <ToggleGroupItem value="7d" className="h-8 px-2.5">
-              {t("dashboard.chart.range7d")}
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <Select value={timeRange} onValueChange={setRange}>
-            <SelectTrigger className="@[767px]/card:hidden flex w-40" aria-label={t("dashboard.chart.selectRange")}>
-              <SelectValue placeholder={t("dashboard.chart.range90d")} />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">
-                {t("dashboard.chart.range90d")}
-              </SelectItem>
-              <SelectItem value="30d" className="rounded-lg">
-                {t("dashboard.chart.range30d")}
-              </SelectItem>
-              <SelectItem value="7d" className="rounded-lg">
-                {t("dashboard.chart.range7d")}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
-      <CardContent className="px-2 pt-2 sm:px-6 sm:pt-4">
+          <div className="md:hidden w-full">
+            <Select
+              className="w-full"
+              aria-label={t("dashboard.chart.selectRange")}
+              value={timeRange}
+              options={rangeSegmentedOptions}
+              onChange={(v) => setRange(v)}
+            />
+          </div>
+        </Flex>
+      </Flex>
+
+      <div style={{ padding: "8px 0 0" }}>
         {loading ? (
-          <div className="flex h-[280px] w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
-            {t("common.loading")}
-          </div>
+          chartShell(
+            <Spin tip={t("common.loading")} />,
+          )
         ) : error ? (
-          <div className="flex h-[280px] w-full items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 px-4 text-center text-sm text-destructive">
-            {error}
-          </div>
+          chartShell(
+            <Typography.Text type="danger" style={{ textAlign: "center" }}>
+              {error}
+            </Typography.Text>,
+          )
         ) : !hasAnyPoint ? (
-          <div className="flex h-[280px] w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
-            {t("dashboard.chart.noRevenueData")}
-          </div>
+          chartShell(
+            <Typography.Text type="secondary">{t("dashboard.chart.noRevenueData")}</Typography.Text>,
+          )
         ) : (
           <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
             <LineChart accessibilityLayer data={chartData} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
@@ -283,7 +273,7 @@ export function ChartAreaInteractive({
             </LineChart>
           </ChartContainer>
         )}
-      </CardContent>
+      </div>
     </Card>
   )
 }

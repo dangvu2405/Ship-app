@@ -1,11 +1,18 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Form } from 'antd';
 import { useNavigation } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { ApartmentOutlined, ShopOutlined } from '@ant-design/icons';
+import { Button, Card, Dropdown, Form, Tag } from 'antd';
+import type { MenuProps } from 'antd';
+import {
+  ApartmentOutlined,
+  CheckCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  MoreOutlined,
+  PlayCircleOutlined,
+  PlusOutlined,
+  ShopOutlined,
+} from '@ant-design/icons';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
@@ -15,13 +22,6 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { FormItemSelect } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
-import Plus from 'lucide-react/dist/esm/icons/plus';
-import Eye from 'lucide-react/dist/esm/icons/eye';
-import Edit from 'lucide-react/dist/esm/icons/edit';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
-import Play from 'lucide-react/dist/esm/icons/play';
-import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
 import type { Company, Office, Trip } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -36,18 +36,18 @@ import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 import { usePaginatedResourceSelectOptions } from '@/hooks/usePaginatedResourceSelectOptions';
 
-const getTripStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+function tripStatusTagColor(status: string): string | undefined {
   switch (status) {
     case 'completed':
-      return 'default';
+      return 'success';
     case 'in_progress':
-      return 'secondary';
+      return 'processing';
     case 'cancelled':
-      return 'destructive';
+      return 'error';
     default:
-      return 'outline';
+      return undefined;
   }
-};
+}
 
 type TripFilterForm = {
   company_id?: number;
@@ -200,6 +200,53 @@ export function TripsList() {
     [t, safeRefetch]
   );
 
+  const tripRowMenu = useCallback(
+    (record: Trip): MenuProps => {
+      const items: MenuProps['items'] = [
+        {
+          key: 'view',
+          icon: <EyeOutlined />,
+          label: t('common.view'),
+          onClick: () => show('trips', record.id),
+        },
+        {
+          key: 'edit',
+          icon: <EditOutlined />,
+          label: t('common.edit'),
+          onClick: () => handleEdit(record.id),
+        },
+      ];
+      if (record.status === 'pending') {
+        items.push({
+          key: 'start',
+          icon: <PlayCircleOutlined />,
+          label: t('trips.startTrip'),
+          disabled: busyTripId === record.id,
+          onClick: () => void handleStatusChange(record, 'in_progress'),
+        });
+      }
+      if (record.status === 'in_progress') {
+        items.push({
+          key: 'complete',
+          icon: <CheckCircleOutlined />,
+          label: t('trips.completeTrip'),
+          disabled: busyTripId === record.id,
+          onClick: () => void handleStatusChange(record, 'completed'),
+        });
+      }
+      items.push({ type: 'divider' });
+      items.push({
+        key: 'delete',
+        icon: <DeleteOutlined />,
+        label: t('common.delete'),
+        danger: true,
+        onClick: () => handleDelete(record),
+      });
+      return { items };
+    },
+    [t, show, busyTripId, handleEdit, handleDelete, handleStatusChange],
+  );
+
   const columns = useMemo<DataTableColumn<Trip>[]>(
     () => [
     { key: 'code', header: t('trips.code'), dataIndex: 'code' },
@@ -222,9 +269,7 @@ export function TripsList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <Badge variant={getTripStatusVariant(item.status)}>
-          {getTripStatusLabel(item.status, t)}
-        </Badge>
+        <Tag color={tripStatusTagColor(item.status ?? '')}>{getTripStatusLabel(item.status, t)}</Tag>
       ),
     },
     {
@@ -237,53 +282,15 @@ export function TripsList() {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => show('trips', record.id)}>
-                  <Eye className="h-4 w-4 mr-2" aria-hidden />
-                  {t('common.view')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleEdit(record.id)}>
-                  <Edit className="h-4 w-4 mr-2" aria-hidden />
-                  {t('common.edit')}
-                </DropdownMenuItem>
-                {/* Start trip: pending → in_progress */}
-                {record.status === 'pending' && (
-                  <DropdownMenuItem
-                    disabled={busyTripId === record.id}
-                    onClick={() => void handleStatusChange(record, 'in_progress')}
-                  >
-                    <Play className="h-4 w-4 mr-2" aria-hidden />
-                    {t('trips.startTrip')}
-                  </DropdownMenuItem>
-                )}
-                {/* Complete trip: in_progress → completed */}
-                {record.status === 'in_progress' && (
-                  <DropdownMenuItem
-                    disabled={busyTripId === record.id}
-                    onClick={() => void handleStatusChange(record, 'completed')}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" aria-hidden />
-                    {t('trips.completeTrip')}
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
-                  <Trash2 className="h-4 w-4 mr-2" aria-hidden />
-                  {t('common.delete')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-          </DropdownMenu>
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <Dropdown menu={tripRowMenu(record)} trigger={['click']}>
+            <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t('common.actions')} />
+          </Dropdown>
         </div>
       ),
     },
   ],
-    [t, show, busyTripId, handleEdit, handleDelete, handleStatusChange]
+    [t, tripRowMenu]
   );
 
   const breadcrumb = [
@@ -302,16 +309,14 @@ export function TripsList() {
         description={t('trips.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={handleCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             {t('trips.createTrip')}
           </Button>
         }
       />
 
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6 space-y-4">
-              <Form 
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+              <Form
                 form={filterForm}
                 layout="vertical"
                 onValuesChange={(changed) => {
@@ -349,7 +354,7 @@ export function TripsList() {
                   style={{ width: 180}}
                 />
               </Form>
-            
+
 
             <div className="list-page-filters__btn-row">
               <ListPageFilters.Actions
@@ -373,8 +378,7 @@ export function TripsList() {
                 emptyMessage={t('common.noData')}
                 emptyDescription={t('emptyState.listDescription', { resource: t('trips.title') })}
                 emptyAction={
-                  <Button onClick={handleCreate} className="gap-2">
-                    <Plus className="h-4 w-4" />
+                  <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                     {t('trips.createTrip')}
                   </Button>
                 }
@@ -387,7 +391,6 @@ export function TripsList() {
               />
             </PageLoadingOverlay>
           )}
-        </CardContent>
       </Card>
 
       <DeleteConfirmDialog

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from 'antd';
 
 interface ErrorStateProps {
   title?: string;
@@ -24,7 +24,7 @@ export const ErrorState = ({
       <h3 className="text-lg font-semibold text-foreground">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">{description}</p>
       {onRetry ? (
-        <Button onClick={onRetry} variant="outline" className="mt-5">
+        <Button type="default" onClick={onRetry} className="mt-5">
           Try Again
         </Button>
       ) : null}

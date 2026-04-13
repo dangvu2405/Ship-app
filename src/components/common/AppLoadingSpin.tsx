@@ -1,7 +1,6 @@
-import { Spin } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
+import { LottieTruckLoader } from '@/components/common/LottieTruckLoader';
 
 type AppLoadingSpinProps = {
   /**
@@ -14,23 +13,14 @@ type AppLoadingSpinProps = {
 };
 
 /**
- * Spin Ant Design chỉnh layout — dùng làm Suspense fallback hoặc vùng đang tải.
+ * Lottie xe tải theo theme — dùng làm Suspense fallback hoặc vùng đang tải.
  */
 export function AppLoadingSpin({ variant = 'page', className }: AppLoadingSpinProps) {
   const { t } = useTranslation();
   const isPage = variant === 'page';
   const isOutlet = variant === 'outlet';
 
-  const indicatorSize = isPage ? 44 : isOutlet ? 36 : 30;
-
-  const indicator = (
-    <LoadingOutlined
-      className="text-primary"
-      style={{ fontSize: indicatorSize }}
-      spin
-      aria-hidden
-    />
-  );
+  const lottieSize = isPage ? 200 : isOutlet ? 160 : 120;
 
   const tip = isPage ? (
     <div className="mt-5 max-w-sm text-center">
@@ -43,12 +33,11 @@ export function AppLoadingSpin({ variant = 'page', className }: AppLoadingSpinPr
     <span className="mt-3 block text-center text-sm font-medium text-muted-foreground">{t('common.chartLoading')}</span>
   );
 
-  const spinSizeClass = isPage ? 'h-16 w-16' : isOutlet ? 'h-12 w-12' : 'h-10 w-10';
-
-  const spin = (
-    <Spin spinning indicator={indicator} tip={tip}>
-      <div className={spinSizeClass} aria-hidden />
-    </Spin>
+  const content = (
+    <div className="flex flex-col items-center">
+      <LottieTruckLoader size={lottieSize} />
+      {tip}
+    </div>
   );
 
   if (variant === 'section') {
@@ -62,7 +51,7 @@ export function AppLoadingSpin({ variant = 'page', className }: AppLoadingSpinPr
         aria-busy="true"
         aria-live="polite"
       >
-        {spin}
+        {content}
       </div>
     );
   }
@@ -85,7 +74,7 @@ export function AppLoadingSpin({ variant = 'page', className }: AppLoadingSpinPr
           aria-hidden
         />
         <div className="pointer-events-none absolute inset-0 backdrop-blur-[1px]" aria-hidden />
-        <div className="relative z-10 flex flex-col items-center px-6 py-16">{spin}</div>
+        <div className="relative z-10 flex flex-col items-center px-6 py-16">{content}</div>
       </div>
     );
   }
@@ -111,7 +100,7 @@ export function AppLoadingSpin({ variant = 'page', className }: AppLoadingSpinPr
         aria-hidden
       />
       <div className="pointer-events-none absolute inset-0 backdrop-blur-[2px]" aria-hidden />
-      <div className="relative z-10 flex flex-col items-center px-6 py-12">{spin}</div>
+      <div className="relative z-10 flex flex-col items-center px-6 py-12">{content}</div>
     </div>
   );
 }

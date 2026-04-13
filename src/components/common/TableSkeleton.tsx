@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Flex, Skeleton } from 'antd';
 
 interface TableSkeletonProps {
   rows?: number;
@@ -7,25 +7,24 @@ interface TableSkeletonProps {
 
 export const TableSkeleton = ({ rows = 5, columns = 5 }: TableSkeletonProps) => {
   return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex gap-4 pb-2 border-b border-border/50">
+    <Flex vertical gap={12}>
+      <Flex gap={16} style={{ paddingBottom: 8, borderBottom: '1px solid var(--ant-color-split)' }}>
         {Array.from({ length: columns }).map((_, i) => (
-          <Skeleton key={`h-${i}`} className="h-4 flex-1" />
+          <Skeleton.Input key={`h-${i}`} active size="small" style={{ flex: 1, minWidth: 40 }} />
         ))}
-      </div>
-      {/* Rows */}
+      </Flex>
       {Array.from({ length: rows }).map((_, rowIndex) => (
-        <div key={rowIndex} className="flex gap-4 py-1">
+        <Flex key={rowIndex} gap={16} align="center">
           {Array.from({ length: columns }).map((_, colIndex) => (
-            <Skeleton
+            <Skeleton.Input
               key={`${rowIndex}-${colIndex}`}
-              className="h-5 flex-1"
-              style={{ maxWidth: colIndex === 0 ? '80px' : undefined }}
+              active
+              size="small"
+              style={{ flex: 1, maxWidth: colIndex === 0 ? 80 : undefined }}
             />
           ))}
-        </div>
+        </Flex>
       ))}
-    </div>
+    </Flex>
   );
 };

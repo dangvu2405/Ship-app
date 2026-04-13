@@ -1,15 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
-import { Form } from 'antd';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Button, Card, Dropdown, Form, Tag } from 'antd';
+import type { MenuProps } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
@@ -18,7 +11,6 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import type { User } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -122,6 +114,31 @@ export function UsersList() {
     );
   };
 
+  const rowMenu = (record: User): MenuProps => ({
+    items: [
+      {
+        key: 'view',
+        icon: <EyeOutlined />,
+        label: t('common.view'),
+        onClick: () => show('users', record.id),
+      },
+      {
+        key: 'edit',
+        icon: <EditOutlined />,
+        label: t('common.edit'),
+        onClick: () => handleEdit(record.id),
+      },
+      { type: 'divider' },
+      {
+        key: 'delete',
+        icon: <DeleteOutlined />,
+        label: t('common.delete'),
+        danger: true,
+        onClick: () => handleDelete(record),
+      },
+    ],
+  });
+
   const columns: DataTableColumn<User>[] = [
     { key: 'username', header: t('users.username'), dataIndex: 'username' },
     { key: 'email', header: t('users.email'), dataIndex: 'email' },
@@ -131,9 +148,9 @@ export function UsersList() {
       header: t('common.status'),
       dataIndex: 'status',
       render: (item) => (
-        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
+        <Tag color={item.status === 'active' ? 'success' : 'default'}>
           {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </Badge>
+        </Tag>
       ),
     },
     {
@@ -146,28 +163,10 @@ export function UsersList() {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => (
-        <div role="presentation" className="flex items-center" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => show('users', record.id)}>
-                <Eye className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.view')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(record.id)}>
-                <Edit className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
-                <Trash2 className="h-4 w-4 mr-2" aria-hidden />
-                {t('common.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <Dropdown menu={rowMenu(record)} trigger={['click']}>
+            <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t('common.actions')} />
+          </Dropdown>
         </div>
       ),
     },
@@ -189,15 +188,13 @@ export function UsersList() {
         description={t('users.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={handleCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             {t('users.createUser')}
           </Button>
         }
       />
 
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6">
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
         <ListPageFilters variant="grid-4">
           <ListPageFilters.Search
             placeholder={t('common.search')}
@@ -247,8 +244,7 @@ export function UsersList() {
               emptyMessage={t('common.noData')}
               emptyDescription={t('emptyState.listDescription', { resource: t('users.title') })}
               emptyAction={
-                <Button onClick={handleCreate} className="gap-2">
-                  <Plus className="h-4 w-4" />
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                   {t('users.createUser')}
                 </Button>
               }
@@ -261,7 +257,6 @@ export function UsersList() {
             />
           </PageLoadingOverlay>
         )}
-        </CardContent>
       </Card>
 
       <DeleteConfirmDialog

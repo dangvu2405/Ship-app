@@ -1,12 +1,13 @@
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquareText, X } from 'lucide-react';
+import { MessageOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Typography, theme } from 'antd';
 
 import { ChatAssistantPanel } from '@/components/common/ChatAssistantPanel';
-import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export const FloatingChatAssistant = () => {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const [open, setOpen] = useState(false);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [anchor, setAnchor] = useState({ x: 0, y: 0 });
@@ -132,38 +133,67 @@ export const FloatingChatAssistant = () => {
           type="button"
           onPointerDown={handleDragStart}
           onPointerUp={handleBubblePointerUp}
-          style={{ touchAction: 'none' }}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl ring-2 ring-primary/20 transition hover:scale-[1.03]"
+          style={{
+            touchAction: 'none',
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: token.colorPrimary,
+            color: token.colorTextLightSolid,
+            boxShadow: token.boxShadowSecondary,
+          }}
           aria-label={t('notificationCenter.chat.title')}
         >
-          {open ? <X className="h-5 w-5" /> : <MessageSquareText className="h-5 w-5" />}
+          {open ? <CloseOutlined style={{ fontSize: 20 }} /> : <MessageOutlined style={{ fontSize: 20 }} />}
         </button>
-        <p className="mt-1 text-center text-[10px] text-muted-foreground">
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4, textAlign: 'center', fontSize: 10 }}>
           {t('notificationCenter.chat.title')}
-        </p>
+        </Typography.Text>
       </div>
 
       {open ? (
         <div
-          className="fixed z-50 overflow-hidden rounded-xl border bg-background shadow-2xl"
-          style={{ left: panelPosition.left, top: panelPosition.top, width: panelPosition.width, maxHeight: panelPosition.maxHeight }}
+          style={{
+            position: 'fixed',
+            zIndex: 50,
+            overflow: 'hidden',
+            borderRadius: token.borderRadiusLG,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            background: token.colorBgContainer,
+            boxShadow: token.boxShadowSecondary,
+            left: panelPosition.left,
+            top: panelPosition.top,
+            width: panelPosition.width,
+            maxHeight: panelPosition.maxHeight,
+          }}
         >
           <div
-            className="flex cursor-move items-center justify-between border-b bg-muted/40 px-3 py-2"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: `1px solid ${token.colorSplit}`,
+              background: token.colorFillAlter,
+              padding: '8px 12px',
+              cursor: 'move',
+              touchAction: 'none',
+            }}
             onPointerDown={handleDragStart}
-            style={{ touchAction: 'none' }}
           >
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <MessageSquareText className="h-4 w-4" />
+            <Typography.Text strong style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MessageOutlined />
               {t('notificationCenter.chat.title')}
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
+            </Typography.Text>
+            <Button type="text" icon={<CloseOutlined />} onClick={() => setOpen(false)} aria-label="Close" />
           </div>
 
-          <div className="overflow-auto p-2 md:p-3" style={{ maxHeight: 'calc(100vh - 80px)' }}>
-            <ChatAssistantPanel compact className="border-0 shadow-none" />
+          <div style={{ overflow: 'auto', padding: '8px 12px', maxHeight: 'calc(100vh - 80px)' }}>
+            <ChatAssistantPanel compact style={{ boxShadow: 'none', border: 'none' }} />
           </div>
         </div>
       ) : null}

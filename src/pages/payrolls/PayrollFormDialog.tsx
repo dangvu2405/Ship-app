@@ -1,38 +1,19 @@
-import { Form } from 'antd';
+import { useCallback, useState } from 'react';
+import { Alert, Button, Flex, Form, Space, Table, Tag, theme } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useInvalidate, useNavigation, useOne } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  getFormDialogContentClassName,
-} from '@/components/ui/dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { PayrollForm } from './PayrollForm';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
-import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Payroll, PayrollDetail } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import payrollService from '@/services/payroll.service';
 import { formatCurrencyVND } from '@/utils/format';
-import { useCallback, useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
@@ -61,6 +42,7 @@ function statusLabel(status: string, t: Translate): string {
 
 export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: PayrollFormDialogProps = {}) {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const { hasRole } = useAuth();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
@@ -152,172 +134,150 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
     }
   };
 
-  if (hasRecordId && isLoadingData) {
-    return (
-      <>
-      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className={getFormDialogContentClassName('xlarge')}>
-          <DialogHeader>
-            <DialogTitle>{isViewMode ? t('common.view') : t('payrolls.editPayroll')}</DialogTitle>
-          </DialogHeader>
-          <TableSkeleton rows={8} columns={1} />
-        </DialogContent>
-      </Dialog>
-        <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
-      </>
-    );
-  }
+  const isPayrollLoading = hasRecordId && isLoadingData;
+  const isPayrollDetail = hasRecordId && !!payroll && !isLoadingData;
 
-  if (hasRecordId && payroll) {
-    const payrollId = resolvedId as number;
-    const locked = payroll.status === 'locked';
-    const canApprove = payroll.status === 'generated' || payroll.status === 'draft';
-    const canLock = payroll.status === 'approved' && isAdmin;
-    const details = payroll.details ?? [];
+  const title = isPayrollLoading || isPayrollDetail
+    ? isViewMode
+      ? t('common.view')
+      : t('payrolls.editPayroll')
+    : t('payrolls.createPayroll');
 
-    return (
-      <>
-      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className={getFormDialogContentClassName('xlarge')}>
-          <DialogHeader>
-            <DialogTitle>{isViewMode ? t('common.view') : t('payrolls.editPayroll')}</DialogTitle>
-            <DialogDescription>
-              {(payroll as Payroll & { company?: { name?: string } }).company?.name ?? `ID ${payroll.company_id}`}{' '}
-              · {t('payrolls.month')} {payroll.month}/{payroll.year}
-            </DialogDescription>
-          </DialogHeader>
+  const description = isPayrollLoading
+    ? t('payrolls.editDescription')
+    : isPayrollDetail && payroll
+      ? `${(payroll as Payroll & { company?: { name?: string } }).company?.name ?? `ID ${payroll.company_id}`} · ${t('payrolls.month')} ${payroll.month}/${payroll.year}`
+      : t('payrolls.createDescription');
 
-          <div className="flex flex-wrap items-center gap-2 py-2">
-            <Badge variant="outline">{statusLabel(payroll.status, t)}</Badge>
-            {!isViewMode ? (
-              <div className="flex flex-wrap gap-2 ml-auto">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={locked || actionLoading !== null || !canApprove}
-                  onClick={() =>
-                    runPayrollAction('approve', () => payrollService.approve(payrollId))
-                  }
-                >
-                  {actionLoading === 'approve' ? t('common.loading') : t('payrolls.approve')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={locked || actionLoading !== null || !canLock}
-                  title={isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
-                  onClick={() => runPayrollAction('lock', () => payrollService.lock(payrollId))}
-                >
-                  {actionLoading === 'lock' ? t('common.loading') : t('payrolls.lock')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={actionLoading !== null}
-                  onClick={async () => {
-                    if (!resolvedId) return;
-                    try {
-                      setActionLoading('export');
-                      await payrollService.downloadExport(resolvedId);
-                      toast.success(t('payrolls.exportJson'));
-                    } catch (error) {
-                      if (!shouldShowLocalErrorToast(error)) {
-                        return;
-                      }
-                      toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('payrolls.title') }));
-                    } finally {
-                      setActionLoading(null);
-                    }
-                  }}
-                >
-                  {actionLoading === 'export' ? t('common.loading') : t('payrolls.exportJson')}
-                </Button>
-              </div>
-            ) : null}
-          </div>
+  const backOnlyFooter = (
+    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+      <Button icon={<ArrowLeftOutlined />} onClick={requestClose}>
+        {t('common.back')}
+      </Button>
+      <span />
+    </Space>
+  );
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('payrolls.employee')}</TableHead>
-                  <TableHead className="text-right">{t('payrolls.amount')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {details.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={2} className="text-muted-foreground text-center py-8">
-                      {t('common.noData')}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  details.map((row: PayrollDetail) => (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        {(row as PayrollDetail & { employee?: { name?: string; code?: string } }).employee?.code ?? '—'}{' '}
-                        {(row as PayrollDetail & { employee?: { name?: string } }).employee?.name ?? ''}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatCurrencyVND(row.net_salary)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+  const createFooter = (
+    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+      <Button icon={<ArrowLeftOutlined />} onClick={requestClose}>
+        {t('common.back')}
+      </Button>
+      {!isViewMode ? (
+        <Button type="primary" onClick={() => form.submit()} loading={isLoading}>
+          {t('common.create')}
+        </Button>
+      ) : (
+        <span />
+      )}
+    </Space>
+  );
 
-          <DialogFooter>
-            <Button variant="outline" onClick={requestClose} type="button" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              {t('common.back')}
+  const footer = isPayrollLoading || isPayrollDetail ? backOnlyFooter : createFooter;
+
+  const body = isPayrollLoading ? (
+    <TableSkeleton rows={8} columns={1} />
+  ) : isPayrollDetail && payroll ? (
+    <>
+      <Flex wrap="wrap" gap={8} align="center" style={{ padding: '8px 0' }}>
+        <Tag bordered={false}>{statusLabel(payroll.status, t)}</Tag>
+        {!isViewMode ? (
+          <Flex wrap="wrap" gap={8} style={{ marginLeft: 'auto' }}>
+            <Button
+              size="small"
+              disabled={payroll.status === 'locked' || actionLoading !== null || !(payroll.status === 'generated' || payroll.status === 'draft')}
+              onClick={() => runPayrollAction('approve', () => payrollService.approve(resolvedId as number))}
+            >
+              {actionLoading === 'approve' ? t('common.loading') : t('payrolls.approve')}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-        <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
-      </>
-    );
-  }
+            <Button
+              size="small"
+              disabled={payroll.status === 'locked' || actionLoading !== null || !(payroll.status === 'approved' && isAdmin)}
+              title={isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
+              onClick={() => runPayrollAction('lock', () => payrollService.lock(resolvedId as number))}
+            >
+              {actionLoading === 'lock' ? t('common.loading') : t('payrolls.lock')}
+            </Button>
+            <Button
+              size="small"
+              disabled={actionLoading !== null}
+              onClick={async () => {
+                if (!resolvedId) return;
+                try {
+                  setActionLoading('export');
+                  await payrollService.downloadExport(resolvedId);
+                  toast.success(t('payrolls.exportJson'));
+                } catch (error) {
+                  if (!shouldShowLocalErrorToast(error)) {
+                    return;
+                  }
+                  toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('payrolls.title') }));
+                } finally {
+                  setActionLoading(null);
+                }
+              }}
+            >
+              {actionLoading === 'export' ? t('common.loading') : t('payrolls.exportJson')}
+            </Button>
+          </Flex>
+        ) : null}
+      </Flex>
+
+      <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, overflow: 'hidden' }}>
+        <Table<PayrollDetail>
+          size="small"
+          pagination={false}
+          rowKey="id"
+          dataSource={payroll.details ?? []}
+          locale={{ emptyText: t('common.noData') }}
+          columns={[
+            {
+              title: t('payrolls.employee'),
+              key: 'employee',
+              render: (_, row) => (
+                <span>
+                  {(row as PayrollDetail & { employee?: { name?: string; code?: string } }).employee?.code ?? '—'}{' '}
+                  {(row as PayrollDetail & { employee?: { name?: string } }).employee?.name ?? ''}
+                </span>
+              ),
+            },
+            {
+              title: t('payrolls.amount'),
+              key: 'amount',
+              align: 'right',
+              render: (_, row) => <span className="tabular-nums">{formatCurrencyVND(row.net_salary)}</span>,
+            },
+          ]}
+        />
+      </div>
+    </>
+  ) : (
+    <>
+      <Alert
+        type="info"
+        message={t('formGuides.title')}
+        description={t('formGuides.payrollCreate')}
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+      <Form form={form} onFinish={handleCreate} layout="vertical" validateTrigger={['onBlur', 'onSubmit']}>
+        <PayrollForm form={form} />
+      </Form>
+    </>
+  );
 
   return (
     <>
-    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className={getFormDialogContentClassName('xlarge', 'p-0 rounded-2xl')}>
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle>{t('payrolls.createPayroll')}</DialogTitle>
-          <DialogDescription>{t('payrolls.createDescription')}</DialogDescription>
-        </DialogHeader>
-
-        <div className="px-6 pb-6 space-y-4">
-          <Alert>
-            <AlertTitle>{t('formGuides.title')}</AlertTitle>
-            <AlertDescription>{t('formGuides.payrollCreate')}</AlertDescription>
-          </Alert>
-
-          <Form
-            form={form}
-            onFinish={handleCreate}
-            layout="vertical"
-            validateTrigger={["onBlur", "onSubmit"]}
-          >
-            <PayrollForm form={form} />
-          </Form>
-        </div>
-
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
-          <Button variant="outline" onClick={requestClose} type="button" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            {t('common.back')}
-          </Button>
-          <Button type="submit" onClick={() => form.submit()} disabled={isLoading}>
-            {isLoading ? t('common.loading') : t('common.create')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <ResourceFormModal
+        open={dialogOpen}
+        onOpenChange={handleDialogOpenChange}
+        title={title}
+        description={description}
+        footer={footer}
+        width="min(72rem, calc(100vw - 2rem))"
+      >
+        {body}
+      </ResourceFormModal>
       <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
     </>
   );

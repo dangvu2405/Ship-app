@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  Badge,
+  Button,
+  Card,
+  Col,
+  Divider,
+  Flex,
+  Row,
+  Select,
+  Space,
+  Switch,
+  Tag,
+  Typography,
+} from 'antd';
 import { useAppStore } from '@/stores/app.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import toast from 'react-hot-toast';
@@ -56,147 +63,149 @@ export const Settings = () => {
   const pushOn = notifyPush ?? true;
   const soundOn = notifySound ?? false;
 
+  const syncDarkMode = (checked: boolean) => {
+    const wantDark = checked;
+    if (wantDark && theme === 'light') toggleTheme();
+    if (!wantDark && theme === 'dark') toggleTheme();
+  };
+
+  const settingRow = (label: string, description: string, control: ReactNode) => (
+    <Flex align="center" justify="space-between" gap="middle" wrap="wrap">
+      <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+        <Typography.Text strong>{label}</Typography.Text>
+        <div>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {description}
+          </Typography.Text>
+        </div>
+      </div>
+      {control}
+    </Flex>
+  );
+
   return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Page Header */}
+    <Space direction="vertical" size="large" style={{ width: '100%', maxWidth: 768 }}>
       <div>
-        <h1>{t('settings.title')}</h1>
-        <p className="text-muted-foreground mt-1">{t('settings.description')}</p>
+        <Typography.Title level={2} style={{ marginBottom: 4 }}>
+          {t('settings.title')}
+        </Typography.Title>
+        <Typography.Text type="secondary">{t('settings.description')}</Typography.Text>
       </div>
 
-      {/* Appearance */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.appearance.title')}</CardTitle>
-          <CardDescription>{t('settings.appearance.description')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Theme */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">{t('settings.appearance.darkMode')}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('settings.appearance.darkModeDescription')}</p>
-            </div>
-            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-          </div>
-
-          <Separator />
-
-          {/* Language */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">{t('settings.appearance.language')}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('settings.appearance.languageDescription')}</p>
-            </div>
-            <Select value={locale} onValueChange={(v) => setLocale(v as 'vi' | 'en')}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="vi">{t('settings.appearance.vietnamese')}</SelectItem>
-                <SelectItem value="en">{t('settings.appearance.english')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Separator />
-
-          {/* Density */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">{t('settings.appearance.compactMode')}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('settings.appearance.compactModeDescription')}</p>
-            </div>
-            <Switch checked={compact} onCheckedChange={setCompactMode} />
-          </div>
-        </CardContent>
+      <Card title={t('settings.appearance.title')}>
+        <Typography.Paragraph type="secondary" style={{ marginTop: -8, marginBottom: 20 }}>
+          {t('settings.appearance.description')}
+        </Typography.Paragraph>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          {settingRow(
+            t('settings.appearance.darkMode'),
+            t('settings.appearance.darkModeDescription'),
+            <Switch checked={theme === 'dark'} onChange={syncDarkMode} />,
+          )}
+          <Divider style={{ margin: 0 }} />
+          {settingRow(
+            t('settings.appearance.language'),
+            t('settings.appearance.languageDescription'),
+            <Select
+              value={locale}
+              onChange={(v) => setLocale(v)}
+              style={{ width: 160 }}
+              options={[
+                { value: 'vi', label: t('settings.appearance.vietnamese') },
+                { value: 'en', label: t('settings.appearance.english') },
+              ]}
+            />,
+          )}
+          <Divider style={{ margin: 0 }} />
+          {settingRow(
+            t('settings.appearance.compactMode'),
+            t('settings.appearance.compactModeDescription'),
+            <Switch checked={compact} onChange={setCompactMode} />,
+          )}
+        </Space>
       </Card>
 
-      {/* Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.notifications.title')}</CardTitle>
-          <CardDescription>{t('settings.notifications.description')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">{t('settings.notifications.email')}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('settings.notifications.emailDescription')}</p>
-            </div>
-            <Switch checked={emailOn} onCheckedChange={setNotifyEmail} />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">{t('settings.notifications.push')}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('settings.notifications.pushDescription')}</p>
-            </div>
-            <Switch checked={pushOn} onCheckedChange={setNotifyPush} />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">{t('settings.notifications.sound')}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('settings.notifications.soundDescription')}</p>
-            </div>
-            <Switch checked={soundOn} onCheckedChange={setNotifySound} />
-          </div>
-        </CardContent>
+      <Card title={t('settings.notifications.title')}>
+        <Typography.Paragraph type="secondary" style={{ marginTop: -8, marginBottom: 20 }}>
+          {t('settings.notifications.description')}
+        </Typography.Paragraph>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          {settingRow(
+            t('settings.notifications.email'),
+            t('settings.notifications.emailDescription'),
+            <Switch checked={emailOn} onChange={setNotifyEmail} />,
+          )}
+          <Divider style={{ margin: 0 }} />
+          {settingRow(
+            t('settings.notifications.push'),
+            t('settings.notifications.pushDescription'),
+            <Switch checked={pushOn} onChange={setNotifyPush} />,
+          )}
+          <Divider style={{ margin: 0 }} />
+          {settingRow(
+            t('settings.notifications.sound'),
+            t('settings.notifications.soundDescription'),
+            <Switch checked={soundOn} onChange={setNotifySound} />,
+          )}
+        </Space>
       </Card>
 
-      {/* System Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.system.title')}</CardTitle>
-          <CardDescription>{t('settings.system.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-              <span className="text-sm text-muted-foreground">{t('settings.system.version')}</span>
-              <Badge variant="outline">1.0.0</Badge>
-            </div>
-            <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-              <span className="text-sm text-muted-foreground">{t('settings.system.environment')}</span>
-              <Badge variant="secondary">{t('settings.system.development')}</Badge>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
-              <span className="text-sm text-muted-foreground">{t('settings.system.apiStatus')}</span>
-              <div className="flex items-center gap-2">
+      <Card title={t('settings.system.title')}>
+        <Typography.Paragraph type="secondary" style={{ marginTop: -8, marginBottom: 20 }}>
+          {t('settings.system.description')}
+        </Typography.Paragraph>
+        <Row gutter={[12, 12]}>
+          <Col xs={24} sm={12}>
+            <Flex justify="space-between" align="center" style={{ padding: 12, borderRadius: 8, background: 'var(--ant-color-fill-quaternary)' }}>
+              <Typography.Text type="secondary">{t('settings.system.version')}</Typography.Text>
+              <Tag>1.0.0</Tag>
+            </Flex>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Flex justify="space-between" align="center" style={{ padding: 12, borderRadius: 8, background: 'var(--ant-color-fill-quaternary)' }}>
+              <Typography.Text type="secondary">{t('settings.system.environment')}</Typography.Text>
+              <Tag color="blue">{t('settings.system.development')}</Tag>
+            </Flex>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Flex
+              justify="space-between"
+              align="center"
+              wrap="wrap"
+              gap="small"
+              style={{ padding: 12, borderRadius: 8, background: 'var(--ant-color-fill-quaternary)' }}
+            >
+              <Typography.Text type="secondary">{t('settings.system.apiStatus')}</Typography.Text>
+              <Space size="small" wrap>
                 <Badge
-                  variant={
-                    apiHealth === 'ok' ? 'default' : apiHealth === 'error' ? 'destructive' : 'secondary'
+                  status={
+                    apiHealth === 'ok' ? 'success' : apiHealth === 'error' ? 'error' : 'processing'
                   }
-                >
-                  {apiHealth === 'loading' || apiHealth === 'idle'
-                    ? t('settings.system.apiChecking')
-                    : apiHealth === 'ok'
-                      ? t('settings.system.apiOnline')
-                      : t('settings.system.apiOffline')}
-                </Badge>
-                <Button type="button" variant="outline" size="sm" onClick={() => void refreshApiHealth()}>
+                  text={
+                    apiHealth === 'loading' || apiHealth === 'idle'
+                      ? t('settings.system.apiChecking')
+                      : apiHealth === 'ok'
+                        ? t('settings.system.apiOnline')
+                        : t('settings.system.apiOffline')
+                  }
+                />
+                <Button size="small" loading={apiHealth === 'loading'} onClick={() => void refreshApiHealth()}>
                   {t('settings.system.recheckApi')}
                 </Button>
-              </div>
-            </div>
-            <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-              <span className="text-sm text-muted-foreground">{t('settings.system.lastUpdated')}</span>
-              <span className="text-sm font-medium">Feb 2026</span>
-            </div>
-          </div>
-        </CardContent>
+              </Space>
+            </Flex>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Flex justify="space-between" align="center" style={{ padding: 12, borderRadius: 8, background: 'var(--ant-color-fill-quaternary)' }}>
+              <Typography.Text type="secondary">{t('settings.system.lastUpdated')}</Typography.Text>
+              <Typography.Text strong>Feb 2026</Typography.Text>
+            </Flex>
+          </Col>
+        </Row>
       </Card>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3">
+      <Flex justify="flex-end" gap="small" wrap="wrap">
         <Button
-          type="button"
-          variant="outline"
           onClick={() => {
             resetUiPreferences();
             toast.success(t('settings.resetDone'));
@@ -204,10 +213,10 @@ export const Settings = () => {
         >
           {t('settings.resetToDefaults')}
         </Button>
-        <Button type="button" onClick={() => toast.success(t('settings.saved'))}>
+        <Button type="primary" onClick={() => toast.success(t('settings.saved'))}>
           {t('settings.saveSettings')}
         </Button>
-      </div>
-    </div>
+      </Flex>
+    </Space>
   );
 };

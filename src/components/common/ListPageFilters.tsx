@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from 'antd';
 import { SearchField } from '@/components/common/SearchField';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -45,10 +45,10 @@ function ListPageFiltersActions({ onSearch, onReset, busy }: ListPageFiltersActi
   const { t } = useTranslation();
   return (
     <>
-      <Button type="button" className="list-page-filters__btn-search" onClick={onSearch} loading={busy}>
+      <Button type="primary" className="list-page-filters__btn-search" onClick={onSearch} loading={busy}>
         {t('common.search')}
       </Button>
-      <Button type="button" variant="ghost" className="list-page-filters__btn-reset" onClick={onReset} loading={busy}>
+      <Button type="default" className="list-page-filters__btn-reset" onClick={onReset} loading={busy}>
         {t('common.reset')}
       </Button>
     </>

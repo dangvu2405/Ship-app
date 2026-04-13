@@ -79,12 +79,9 @@ export const en = {
     loginFailed: 'Login failed',
     invalidCredentials: 'Invalid credentials',
     sessionExpired: 'Session expired. Please login again.',
-    skipLogin: 'Skip Login (Demo)',
     welcomeBack: 'Welcome back',
     loginToAccount: 'Login to your Ship ERP account',
     emailPlaceholder: 'name@company.com',
-    testLogin: '🧪 Test Login (Skip Auth)',
-    testUiLogin: 'UI Test Login',
     orContinueWith: 'Or continue with',
     loginWithApple: 'Login with Apple',
     loginWithGoogle: 'Login with Google',
@@ -109,6 +106,7 @@ export const en = {
     statsRetry: 'Retry',
     allCompanies: 'All companies',
     filterByCompany: 'Filter by company',
+    fleetStaffNavGroup: 'Fleet & people',
     recentActivity: 'Recent Activity',
     cards: {
       totalRevenue: 'Total Revenue',
@@ -151,6 +149,11 @@ export const en = {
     recentTrips: 'Recent trips',
     recentTripsDescription: 'Latest trips from your fleet',
     noRecentTrips: 'No trips yet',
+    revenueByCompany: 'Revenue by company',
+    revenueByCompanyDescription:
+      'Completed trips in {month}/{year}: sum of trip price (VND) per company. Filter above narrows this table.',
+    revenueByCompanyTrips: 'Completed trips',
+    revenueByCompanyEmpty: 'No company data for this view',
   },
 
   // Companies
@@ -548,6 +551,24 @@ export const en = {
     noPayrollForPeriod: 'No payroll found for this company and period',
     totalNet: 'Total net salary',
     employeesOnPayroll: 'Employees on payroll',
+    exportCsv: 'Export CSV',
+    csvSectionSnapshot: 'Dashboard snapshot (period)',
+    csvSectionPayroll: 'Payroll summary (selected company)',
+    csvSectionLines: 'Payroll line items',
+    csvPayrollId: 'Payroll ID',
+    csvPayrollStatus: 'Payroll status',
+    csvNoPayrollSummary: 'No payroll summary loaded for export',
+    csvColEmployeeCode: 'Employee code',
+    csvColEmployeeName: 'Employee name',
+    csvColBaseSalary: 'Base salary',
+    csvColWorkingDays: 'Working days',
+    csvColOvertime: 'Overtime',
+    csvColBonus: 'Bonus',
+    csvColAllowance: 'Allowance',
+    csvColDeduction: 'Deduction',
+    csvColFuelCost: 'Fuel cost',
+    csvColTax: 'Tax',
+    csvColNetSalary: 'Net salary',
   },
 
   // Users
@@ -578,6 +599,8 @@ export const en = {
     settings: 'Settings',
     notifications: 'Notifications',
     billing: 'Billing',
+    /** Hub page `system/Users.tsx` (nav user), distinct from CRUD users list. */
+    userHub: 'User hub',
     searchPlaceholder: 'Search...',
     switchToLightMode: 'Switch to light mode',
     switchToDarkMode: 'Switch to dark mode',
@@ -729,7 +752,7 @@ export const en = {
 
   notificationCenter: {
     title: 'Notification Center',
-    description: 'Manage late attendance alerts, audit sign-ins, and active sessions from one place.',
+    description: 'Review sign-in audit and active sessions.',
     refresh: 'Refresh',
     loading: 'Loading...',
     chat: {
