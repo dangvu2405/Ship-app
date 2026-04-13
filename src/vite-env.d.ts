@@ -16,6 +16,10 @@ interface ImportMetaEnv {
   readonly VITE_TEST_ACCOUNTS?: string;
   readonly VITE_DEMO_EMAIL?: string;
   readonly VITE_DEMO_PASSWORD?: string;
+  readonly VITE_AUTH_FORGOT_PASSWORD_SEND_ENABLED?: string;
+  readonly VITE_AUTH_FORGOT_PASSWORD_VERIFY_ENABLED?: string;
+  readonly VITE_AUTH_FORGOT_PASSWORD_PATH?: string;
+  readonly VITE_AUTH_FORGOT_PASSWORD_VERIFY_PATH?: string;
   readonly VITE_APP_NAME?: string;
   readonly VITE_APP_VERSION?: string;
 }

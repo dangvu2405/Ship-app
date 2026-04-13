@@ -1,6 +1,7 @@
 import api from './api';
 import { ApiResponse, User } from '@/types';
 import { ENDPOINTS } from './endpoints';
+import { AUTH_FORGOT_PASSWORD } from '@/utils/constants';
 
 export interface LoginCredentials {
   email: string;
@@ -15,6 +16,14 @@ export interface RegisterData {
 }
 
 class AuthService {
+  isForgotPasswordSendEnabled(): boolean {
+    return AUTH_FORGOT_PASSWORD.sendEnabled;
+  }
+
+  isForgotPasswordResetEnabled(): boolean {
+    return AUTH_FORGOT_PASSWORD.verifyEnabled;
+  }
+
   async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: User; token?: string }>> {
     const response = await api.post(ENDPOINTS.auth.login, credentials);
     return response.data;
@@ -40,10 +49,15 @@ class AuthService {
     return response.data;
   }
 
-  async verifyForgotPasswordCode(email: string, code: string): Promise<ApiResponse<unknown>> {
+  async resetForgotPassword(payload: {
+    email: string;
+    token: string;
+    password: string;
+    password_confirmation: string;
+  }): Promise<ApiResponse<unknown>> {
     const response = await api.post(
-      ENDPOINTS.auth.forgotPasswordVerify,
-      { email, code: code.replace(/\s/g, '') },
+      ENDPOINTS.auth.forgotPasswordReset,
+      payload,
       { skipErrorToast: true, errorMode: 'silent' },
     );
     return response.data;

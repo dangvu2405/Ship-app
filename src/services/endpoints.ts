@@ -1,4 +1,5 @@
 type Id = number | string;
+import { AUTH_FORGOT_PASSWORD } from '@/utils/constants';
 
 const crud = (base: string) => ({
   base,
@@ -16,10 +17,10 @@ export const ENDPOINTS = {
     logout: '/auth/logout',
     refresh: '/auth/refresh',
     register: '/auth/register',
-    forgotPassword: '/auth/forgot-password',
-    /** Xác minh mã gửi qua email (body `{ email, code }` — chỉnh theo backend). */
-    forgotPasswordVerify: '/auth/forgot-password/verify',
-    me: '/user',
+    forgotPassword: AUTH_FORGOT_PASSWORD.sendPath,
+    /** Đặt mật khẩu mới (body `{ email, token, password, password_confirmation }`). */
+    forgotPasswordReset: AUTH_FORGOT_PASSWORD.verifyPath,
+    me: '/auth/me',
   },
   companies: crud('/companies'),
   offices: crud('/offices'),

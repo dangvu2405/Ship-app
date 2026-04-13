@@ -70,6 +70,20 @@ export const API_BASE_URL = resolveApiBaseUrl();
 /** Gốc `/api` (không có /v1) — dùng với `useApiRoot` trên axios. */
 export const API_ROOT_BASE_URL = resolveApiRootBaseUrl(API_BASE_URL);
 
+const normalizeApiPath = (path: string): string => {
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+};
+
+/** Cấu hình forgot-password endpoint (backend có thể mở sau). */
+export const AUTH_FORGOT_PASSWORD = {
+  sendEnabled: import.meta.env.VITE_AUTH_FORGOT_PASSWORD_SEND_ENABLED !== 'false',
+  verifyEnabled: import.meta.env.VITE_AUTH_FORGOT_PASSWORD_VERIFY_ENABLED === 'true',
+  sendPath: normalizeApiPath(import.meta.env.VITE_AUTH_FORGOT_PASSWORD_PATH || '/auth/forgot-password'),
+  verifyPath: normalizeApiPath(import.meta.env.VITE_AUTH_FORGOT_PASSWORD_VERIFY_PATH || '/auth/reset-password'),
+} as const;
+
 // Versioned localStorage keys - bump version on schema changes
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth-token:v1',

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Button, Card, Flex, Input, Space, Typography, theme } from 'antd';
+import { Alert, Button, Card, Flex, Input, Space, Typography, theme } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import authService from '@/services/auth.service';
 import { ROUTES } from '@/routes';
@@ -15,9 +15,14 @@ export function ForgotPasswordForm() {
   const { token } = theme.useToken();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const sendEnabled = authService.isForgotPasswordSendEnabled();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!sendEnabled) {
+      toast.error(t('auth.forgotPasswordSendUnavailable'));
+      return;
+    }
     if (isSubmitting) return;
     const trimmed = email.trim();
     if (!trimmed) {
@@ -75,11 +80,14 @@ export function ForgotPasswordForm() {
                   placeholder={t('auth.emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={!sendEnabled}
                   required
                 />
               </div>
 
-              <Button type="primary" htmlType="submit" block size="large" loading={isSubmitting}>
+              {!sendEnabled && <Alert type="info" message={t('auth.forgotPasswordSendUnavailable')} showIcon />}
+
+              <Button type="primary" htmlType="submit" block size="large" loading={isSubmitting} disabled={!sendEnabled}>
                 {t('auth.forgotPasswordSubmit')}
               </Button>
 
