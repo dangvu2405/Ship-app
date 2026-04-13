@@ -92,6 +92,13 @@ export const FormItemSelect = ({
   style,
   ...formItemProps
 }: FormItemSelectProps) => {
+  const normalizedRules = rules?.map((rule) => {
+    if (typeof rule === 'object' && rule && 'required' in rule && rule.required && !rule.message) {
+      return { ...rule, message: `${label || name} is required` };
+    }
+    return rule;
+  });
+
   const resolvedAllowClear = allowClear ?? selectProps?.allowClear ?? true;
   const resolvedShowSearch = showSearch ?? selectProps?.showSearch ?? false;
 
@@ -172,7 +179,7 @@ export const FormItemSelect = ({
     <Form.Item
       name={name}
       label={label}
-      rules={rules}
+      rules={normalizedRules}
       required={required}
       tooltip={tooltip}
       help={help}

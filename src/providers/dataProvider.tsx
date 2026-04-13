@@ -3,6 +3,7 @@ import simpleRestDataProvider from '@refinedev/simple-rest';
 import { API_BASE_URL } from '@/utils/constants';
 import api from '@/services/api';
 import { throwIfEnvelopeFailed, unwrapEnvelope } from '@/services/http';
+import type { ApiListPayload } from '@/services/http/types';
 
 // Custom data provider that uses our axios instance
 export const dataProvider: DataProvider = {
@@ -39,24 +40,16 @@ export const dataProvider: DataProvider = {
     }
 
     const response = await api.get(`/${resource}`, { params: queryParams });
-    const body = response.data as { success?: boolean; data?: { data?: unknown[]; meta?: { total?: number } }; total?: number };
-
+    const body = response.data as unknown;
     throwIfEnvelopeFailed(body);
-
-    // Backend format: { success, message, data: { data: [...], meta: { current_page, last_page, per_page, total } } }
-    if (body?.data && Array.isArray(body.data.data)) {
-      const total = body.data.meta?.total ?? body.data.data.length;
-      return {
-        data: body.data.data as TData[],
-        total,
-      };
+    const payload = unwrapEnvelope<ApiListPayload<TData>>(body);
+    if (!payload || !Array.isArray(payload.data)) {
+      throw new Error(`Invalid list payload for resource "${resource}"`);
     }
-
-    if (Array.isArray(body)) {
-      return { data: body as TData[], total: body.length };
-    }
-
-    return { data: [] as TData[], total: 0 };
+    return {
+      data: payload.data,
+      total: payload.meta?.total ?? payload.data.length,
+    };
   },
   
   getOne: async <TData extends BaseRecord = BaseRecord>(params: GetOneParams) => {

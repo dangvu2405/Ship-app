@@ -52,6 +52,13 @@ export const FormItemText = ({
   style,
   ...formItemProps
 }: FormItemTextProps) => {
+  const normalizedRules = rules?.map((rule) => {
+    if (typeof rule === 'object' && rule && 'required' in rule && rule.required && !rule.message) {
+      return { ...rule, message: `${label || name} is required` };
+    }
+    return rule;
+  });
+
   // Merge inputProps with individual props (individual props take precedence)
   const mergedInputProps = {
     ...inputProps,
@@ -71,7 +78,7 @@ export const FormItemText = ({
     <Form.Item
       name={name}
       label={label}
-      rules={rules}
+      rules={normalizedRules}
       required={required}
       tooltip={tooltip}
       help={help}

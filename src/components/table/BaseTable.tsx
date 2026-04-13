@@ -264,8 +264,13 @@ export function BaseTable<T extends Record<string, unknown>>({
 
   // Merge columns with actions column
   // Convert BaseTableColumn to ColumnsType format
+  const normalizedColumns = (columns as ColumnsType<T>).map((column) => ({
+    ...column,
+    align: column.align ?? ('center' as const),
+  }));
+
   const finalColumns: ColumnsType<T> = [
-    ...(columns as ColumnsType<T>),
+    ...normalizedColumns,
     ...(actionsColumn ? [actionsColumn] : []),
   ];
 

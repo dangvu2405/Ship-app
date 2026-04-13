@@ -193,6 +193,11 @@
    ============================================================ */
 
 @layer components {
+  /* Center all Ant Table body cells (header unchanged). */
+  .ant-table-wrapper .ant-table-tbody > tr > td {
+    text-align: center !important;
+  }
+
   /* ── Raised Card (default card look) ── */
   .sku-card {
     background: var(--gradient-surface);

@@ -1,0 +1,79 @@
+---
+description: Force-enable all workspace rules
+alwaysApply: true
+---
+
+# Activate All Rules
+
+Apply every rule file under `.cursor/rules` as active guidance for this workspace.
+
+Priority when conflicts happen:
+1. `spec-compliance.mdc`
+2. `spec-payroll.mdc`
+3. `spec-dispatch.mdc`
+4. `project-standards.mdc`
+5. Remaining performance/implementation rules
+
+Rules to include:
+- `advanced-event-handler-refs.mdc`
+- `advanced-init-once.mdc`
+- `advanced-use-latest.mdc`
+- `async-api-routes.mdc`
+- `async-defer-await.mdc`
+- `async-dependencies.mdc`
+- `async-parallel.mdc`
+- `async-suspense-boundaries.mdc`
+- `bundle-barrel-imports.mdc`
+- `bundle-conditional.mdc`
+- `bundle-defer-third-party.mdc`
+- `bundle-dynamic-imports.mdc`
+- `bundle-preload.mdc`
+- `client-event-listeners.mdc`
+- `client-localstorage-schema.mdc`
+- `client-passive-event-listeners.mdc`
+- `client-swr-dedup.mdc`
+- `js-batch-dom-css.mdc`
+- `js-cache-function-results.mdc`
+- `js-cache-property-access.mdc`
+- `js-cache-storage.mdc`
+- `js-combine-iterations.mdc`
+- `js-early-exit.mdc`
+- `js-hoist-regexp.mdc`
+- `js-index-maps.mdc`
+- `js-length-check-first.mdc`
+- `js-min-max-loop.mdc`
+- `js-set-map-lookups.mdc`
+- `js-tosorted-immutable.mdc`
+- `project-standards.mdc`
+- `rendering-activity.mdc`
+- `rendering-animate-svg-wrapper.mdc`
+- `rendering-conditional-render.mdc`
+- `rendering-content-visibility.mdc`
+- `rendering-hoist-jsx.mdc`
+- `rendering-hydration-no-flicker.mdc`
+- `rendering-hydration-suppress-warning.mdc`
+- `rendering-svg-precision.mdc`
+- `rendering-usetransition-loading.mdc`
+- `rerender-defer-reads.mdc`
+- `rerender-dependencies.mdc`
+- `rerender-derived-state-no-effect.mdc`
+- `rerender-derived-state.mdc`
+- `rerender-functional-setstate.mdc`
+- `rerender-lazy-state-init.mdc`
+- `rerender-memo-with-default-value.mdc`
+- `rerender-memo.mdc`
+- `rerender-move-effect-to-event.mdc`
+- `rerender-simple-expression-in-memo.mdc`
+- `rerender-transitions.mdc`
+- `rerender-use-ref-transient-values.mdc`
+- `server-after-nonblocking.mdc`
+- `server-auth-actions.mdc`
+- `server-cache-lru.mdc`
+- `server-cache-react.mdc`
+- `server-dedup-props.mdc`
+- `server-parallel-fetching.mdc`
+- `server-serialization.mdc`
+- `spec-compliance.mdc`
+- `spec-dispatch.mdc`
+- `spec-payroll.mdc`
+- `spec.mdc`

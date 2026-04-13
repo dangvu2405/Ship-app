@@ -11,7 +11,8 @@ import {
 import { API_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
 
 export interface SendChatMessagePayload {
-  message: string;
+  content?: string;
+  message?: string;
   task?: ChatTask;
   session_id?: string;
   context?: Record<string, unknown>;
@@ -54,6 +55,13 @@ interface StreamHandlers {
 }
 
 class ChatService {
+  private toApiPayload(payload: SendChatMessagePayload) {
+    return {
+      ...payload,
+      content: payload.content ?? payload.message ?? '',
+    };
+  }
+
   async getSessions(limit = 20): Promise<ApiResponse<ChatSession[]>> {
     const response = await api.get(ENDPOINTS.chat.sessions, {
       params: { limit },
@@ -75,7 +83,7 @@ class ChatService {
   }
 
   async sendMessage(payload: SendChatMessagePayload): Promise<ApiResponse<SendChatMessageResult>> {
-    const response = await api.post(ENDPOINTS.chat.messages, payload);
+    const response = await api.post(ENDPOINTS.chat.messages, this.toApiPayload(payload));
     return {
       ...response.data,
       data: normalizeSendMessagePayload(response.data?.data),
@@ -91,7 +99,7 @@ class ChatService {
         Accept: 'text/event-stream',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(this.toApiPayload(payload)),
     });
 
     if (!response.ok || !response.body) {

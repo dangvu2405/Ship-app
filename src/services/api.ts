@@ -106,6 +106,12 @@ api.interceptors.response.use(
       }
     } else if (status === 403) {
       showDedupedErrorToast('403-forbidden', 'Permission denied');
+    } else if (status === 409) {
+      showDedupedErrorToast('409-conflict', 'Business conflict detected. Please refresh and retry.');
+    } else if (status === 422) {
+      const apiMessage =
+        (error.response?.data as { message?: string } | undefined)?.message || 'Validation failed. Please check your input.';
+      showDedupedErrorToast('422-validation', apiMessage);
     } else if (typeof status === 'number' && status >= 500) {
       showDedupedErrorToast(`5xx-${status}`, 'Server error. Please try again later.');
     } else if (isTimeoutError(error)) {

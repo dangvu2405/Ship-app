@@ -35,7 +35,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
   const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const isEdit = hasRecordId && !isViewMode;
   const dialogOpen = isControlled ? open : true;
-  const [permissionOptions, setPermissionOptions] = useState<{ label: string; value: number }[]>([]);
+  const [permissionOptions, setPermissionOptions] = useState<{ label: string; value: number; code: string }[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +47,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
             rows.map((p) => ({
               label: [p.code, p.name].filter(Boolean).join(' — ') || String(p.id),
               value: p.id,
+              code: p.code ?? String(p.id),
             }))
           );
         }
@@ -86,6 +87,9 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
   const handleSubmit = (values: RoleFormValues) => {
     const { permission_ids = [], name, description } = values;
     const roleFields = { name, description };
+    const selectedPermissionCodes = permission_ids
+      .map((id) => permissionOptions.find((opt) => opt.value === id)?.code)
+      .filter((code): code is string => Boolean(code));
 
     if (isEdit && resolvedId) {
       updateItem(
@@ -93,7 +97,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
         {
           onSuccess: async () => {
             try {
-              await syncRolePermissions(resolvedId, permission_ids);
+              await syncRolePermissions(resolvedId, selectedPermissionCodes);
             } catch (error) {
               toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('roles.permissions') }));
               return;
@@ -118,7 +122,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
           const newId = res?.data?.id;
           if (newId != null) {
             try {
-              await syncRolePermissions(newId, permission_ids);
+              await syncRolePermissions(newId, selectedPermissionCodes);
             } catch (error) {
               toast.error(getErrorMessage(error) || t('notifications.createError', { item: t('roles.permissions') }));
               return;

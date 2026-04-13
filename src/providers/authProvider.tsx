@@ -88,9 +88,10 @@ export const authProvider: AuthProvider = {
     const tryGetCurrentUser = async (): Promise<boolean> => {
       try {
         const response = await authService.getCurrentUser();
-        if (response.success && response.data) {
+        const user = authService.getUserFromMeResponse(response);
+        if (response.success && user) {
           // Update store with API response
-          useAuthStore.getState().setUser(response.data);
+          useAuthStore.getState().setUser(user);
           return true;
         }
         return false;
@@ -131,11 +132,11 @@ export const authProvider: AuthProvider = {
     // Fallback to API
     try {
       const response = await authService.getCurrentUser();
-      
-      if (response.success && response.data) {
+      const user = authService.getUserFromMeResponse(response);
+      if (response.success && user) {
         // Update store with API response
-        useAuthStore.getState().setUser(response.data);
-        return response.data as User;
+        useAuthStore.getState().setUser(user);
+        return user as User;
       }
       
       return null;

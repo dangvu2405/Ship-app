@@ -11,7 +11,7 @@ import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
 import toast from 'react-hot-toast';
 import type { VehicleAssignment } from '@/types';
-import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { getErrorMessage, getErrorStatus, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 interface VehicleAssignmentFormDialogProps {
   open?: boolean;
@@ -70,6 +70,10 @@ export function VehicleAssignmentFormDialog({ open, mode, recordId, onClose, onS
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
+            if (getErrorStatus(error) === 409) {
+              toast.error(getErrorMessage(error) || 'Assignment conflict detected. Please choose another driver/vehicle/time range.');
+              return;
+            }
             toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('vehicleAssignments.title') }));
           },
         }
@@ -85,6 +89,10 @@ export function VehicleAssignmentFormDialog({ open, mode, recordId, onClose, onS
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
+            if (getErrorStatus(error) === 409) {
+              toast.error(getErrorMessage(error) || 'Assignment conflict detected. Please choose another driver/vehicle/time range.');
+              return;
+            }
             toast.error(getErrorMessage(error) || t('notifications.createError', { item: t('vehicleAssignments.title') }));
           },
         }

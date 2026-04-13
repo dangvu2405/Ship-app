@@ -74,9 +74,10 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true });
           const response = await authService.getCurrentUser();
-          if (response.success && response.data) {
+          const user = authService.getUserFromMeResponse(response);
+          if (response.success && user) {
             set({
-              user: response.data,
+              user,
               isAuthenticated: true,
               isLoading: false,
             });

@@ -55,7 +55,7 @@ export function ProfessionalAntTable({ dataSource = PROFESSIONAL_TABLE_SAMPLE_DA
         dataIndex: 'id',
         key: 'id',
         width: 88,
-        align: 'right',
+        align: 'center',
         sorter: (a, b) => a.id - b.id,
         render: (id: number) => <Typography.Text type="secondary">{id}</Typography.Text>,
       },
@@ -109,7 +109,7 @@ export function ProfessionalAntTable({ dataSource = PROFESSIONAL_TABLE_SAMPLE_DA
         dataIndex: 'amount',
         key: 'amount',
         width: 150,
-        align: 'right',
+        align: 'center',
         sorter: (a, b) => a.amount - b.amount,
         render: (amount: number) => (
           <Typography.Text className="tabular-nums">{formatCurrencyVND(amount)}</Typography.Text>

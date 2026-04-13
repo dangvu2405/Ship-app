@@ -310,6 +310,7 @@ export interface Payroll {
   year: number;
   status: string;
   locked_at?: string;
+  company?: { id: number; name?: string };
   payroll_period_id?: number;
   notes?: string;
   calculated_at?: string;
@@ -333,12 +334,25 @@ export interface PayrollDetail {
   base_salary: number;
   working_days: number;
   overtime: number;
+  overtime_pay?: number;
+  overtime_hours?: number;
   bonus: number;
+  trip_bonus?: number;
+  night_shift_allowance?: number;
+  public_holiday_pay?: number;
   allowance: number;
   deduction: number;
+  leave_unpaid_deduction?: number;
+  violation_deduction?: number;
   fuel_cost: number;
   tax: number;
   net_salary: number;
+  leave_days_paid?: number;
+  leave_days_unpaid?: number;
+  trips_completed_count?: number;
+  total_distance_km?: number;
+  driver_id?: number;
+  driver?: { id: number; name?: string };
   meta_json?: Record<string, unknown>;
   created_by?: number;
   updated_by?: number;
@@ -347,6 +361,11 @@ export interface PayrollDetail {
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
+}
+
+export interface MySalaryPayload {
+  payroll: Payroll;
+  line: PayrollDetail;
 }
 
 export interface ApiResponse<T> {
@@ -436,6 +455,71 @@ export interface LateAttendanceNotification {
   late_after?: string;
   notified?: boolean;
   note?: string;
+}
+
+export interface DriverSchedule {
+  id: number;
+  driver_id: number;
+  office_id: number;
+  work_date: string;
+  shift_code?: string;
+  start_time?: string;
+  end_time?: string;
+  vehicle_id?: number;
+  status?: string;
+  notes?: string;
+  driver?: { id: number; name?: string };
+  vehicle?: { id: number; plate_number?: string };
+  override_reason?: string;
+}
+
+export interface LeaveRequest {
+  id: number;
+  driver_id: number;
+  leave_type_id: number;
+  from_date: string;
+  to_date: string;
+  total_days?: number;
+  status: string;
+  reason?: string;
+  rejection_reason?: string;
+  cancelled_at?: string;
+}
+
+export interface OvertimeRequest {
+  id: number;
+  driver_id: number;
+  company_id?: number;
+  work_date: string;
+  start_time: string;
+  end_time: string;
+  ot_hours?: number;
+  status: string;
+  reason?: string;
+}
+
+export interface ViolationRecord {
+  id: number;
+  driver_id: number;
+  company_id?: number;
+  trip_id?: number;
+  type: string;
+  occurred_at?: string;
+  status: string;
+  description?: string;
+  penalty_amount?: number;
+}
+
+export interface WorkforceAttendanceRecord {
+  id: number;
+  driver_id: number;
+  date: string;
+  check_in?: string | null;
+  check_out?: string | null;
+  work_hours?: number | null;
+  overtime_hours?: number | null;
+  status?: 'present' | 'late' | 'absent' | 'partial' | string;
+  adjust_reason?: string;
 }
 
 /**

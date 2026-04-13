@@ -23,6 +23,7 @@ export interface ApiErrorResponse {
 }
 
 const GLOBAL_TECHNICAL_STATUSES = new Set([401, 403]);
+const GLOBAL_POLICY_STATUSES = new Set([409, 422]);
 
 /**
  * Check if toast has already been shown for this error
@@ -162,7 +163,10 @@ export const shouldHandleGlobalErrorToast = (
   if (errorMode !== 'global') {
     return false;
   }
-
+  const status = getErrorStatus(error);
+  if (typeof status === 'number' && GLOBAL_POLICY_STATUSES.has(status)) {
+    return true;
+  }
   return isGlobalTechnicalError(error);
 };
 

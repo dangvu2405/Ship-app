@@ -16,6 +16,15 @@ export interface RegisterData {
 }
 
 class AuthService {
+  getUserFromMeResponse(response: ApiResponse<User | { user?: User }>): User | null {
+    const payload = response.data;
+    if (!payload) return null;
+    if ('user' in (payload as { user?: User })) {
+      return (payload as { user?: User }).user ?? null;
+    }
+    return payload as User;
+  }
+
   isForgotPasswordSendEnabled(): boolean {
     return AUTH_FORGOT_PASSWORD.sendEnabled;
   }
@@ -38,7 +47,7 @@ class AuthService {
     await api.post(ENDPOINTS.auth.logout);
   }
 
-  async getCurrentUser(): Promise<ApiResponse<User>> {
+  async getCurrentUser(): Promise<ApiResponse<User | { user?: User }>> {
     const response = await api.get(ENDPOINTS.auth.me);
     return response.data;
   }
