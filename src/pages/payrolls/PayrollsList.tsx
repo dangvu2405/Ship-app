@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useDelete, useInvalidate, useList, useNavigation, type CrudFilter } from '@refinedev/core';
-import { Button, Card, Flex, InputNumber, Select, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Flex, Input, InputNumber, Progress, Select, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
@@ -17,23 +17,28 @@ import { useAuth } from '@/hooks/useAuth';
 import { PayrollFormDialog } from './PayrollFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
+import { formatDate, formatMoney, formatStatusLabel } from '@/utils/displayFormat';
+import './payrolls-list.scss';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
-function payrollStatusText(status: string, t: Translate): string {
-  switch (status) {
-    case 'running':
-      return 'Running';
-    case 'locked':
-      return t('payrolls.statusLocked');
-    case 'approved':
-      return t('payrolls.statusApproved');
-    case 'generated':
-    case 'draft':
-      return t('payrolls.statusGenerated');
-    default:
-      return status;
+function toNumber(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
+  return 0;
+}
+
+function payrollStatusText(status: string, t: Translate): string {
+  return formatStatusLabel(status, {
+    running: 'Running',
+    locked: t('payrolls.statusLocked'),
+    approved: t('payrolls.statusApproved'),
+    generated: t('payrolls.statusGenerated'),
+    draft: t('payrolls.statusGenerated'),
+  });
 }
 
 function payrollStatusTagColor(status: string): string {
@@ -57,6 +62,7 @@ export function PayrollsList() {
   const [monthFilter, setMonthFilter] = useState<number | undefined>(undefined);
   const [yearFilter, setYearFilter] = useState<number | undefined>(new Date().getFullYear());
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [keywordFilter, setKeywordFilter] = useState<string>('');
   const [busy, setBusy] = useState<{ id: number; op: 'approve' | 'lock' | 'export' } | null>(null);
   const [previewedPayrollIds, setPreviewedPayrollIds] = useState<Set<number>>(new Set());
   const isAdmin = hasRole('admin');
@@ -309,6 +315,85 @@ export function PayrollsList() {
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
   const pageSize = 15;
+  const recentPayroll = listData[0];
+  const pendingPayrollCount = listData.filter((item) => ['draft', 'generated', 'running'].includes(item.status)).length;
+  const approvedPayrollCount = listData.filter((item) => item.status === 'approved').length;
+  const getPayrollAmount = useCallback(
+    (item: Payroll) =>
+      toNumber(
+        (item as Payroll & {
+          total_net_salary?: number | string;
+          net_salary?: number | string;
+          total_amount?: number | string;
+          amount?: number | string;
+        }).total_net_salary ??
+          (item as Payroll & { net_salary?: number | string }).net_salary ??
+          (item as Payroll & { total_amount?: number | string }).total_amount ??
+          (item as Payroll & { amount?: number | string }).amount,
+      ),
+    [],
+  );
+  const getPayrollDeduction = useCallback(
+    (item: Payroll) =>
+      toNumber(
+        (item as Payroll & {
+          total_deduction?: number | string;
+          deduction?: number | string;
+        }).total_deduction ?? (item as Payroll & { deduction?: number | string }).deduction,
+      ),
+    [],
+  );
+  const chartByMonth = Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1;
+    const inMonth = listData.filter((item) => item.month === month && (!yearFilter || item.year === yearFilter));
+    let net = inMonth.reduce((acc, item) => acc + getPayrollAmount(item), 0);
+    let deduction = inMonth.reduce((acc, item) => acc + getPayrollDeduction(item), 0);
+    // Backend list may omit aggregated salary fields; fallback to count-based bars.
+    if (net === 0 && deduction === 0) {
+      net = inMonth.filter((item) => item.status === 'approved' || item.status === 'locked').length;
+      deduction = inMonth.filter((item) => item.status === 'draft' || item.status === 'generated' || item.status === 'running').length;
+    }
+    return { month, net, deduction };
+  });
+  const maxBarValue = Math.max(1, ...chartByMonth.map((it) => Math.max(it.net, it.deduction)));
+  const filteredListData = listData.filter((item) => {
+    const keyword = keywordFilter.trim().toLowerCase();
+    if (!keyword) return true;
+    const companyName = item.company?.name?.toLowerCase() ?? '';
+    const notes = (item.notes || '').toLowerCase();
+    const status = (item.status || '').toLowerCase();
+    return (
+      companyName.includes(keyword) ||
+      notes.includes(keyword) ||
+      status.includes(keyword) ||
+      String(item.id).includes(keyword)
+    );
+  });
+  const totalLoans = useMemo(
+    () =>
+      filteredListData.reduce((acc, item) => {
+        const row = item as Payroll & {
+          total_loans?: number | string;
+          loan_total?: number | string;
+          loans_amount?: number | string;
+        };
+        return acc + toNumber(row.total_loans ?? row.loan_total ?? row.loans_amount);
+      }, 0),
+    [filteredListData],
+  );
+  const totalAdvances = useMemo(
+    () =>
+      filteredListData.reduce((acc, item) => {
+        const row = item as Payroll & {
+          total_advances?: number | string;
+          advance_total?: number | string;
+          salary_advance_amount?: number | string;
+        };
+        return acc + toNumber(row.total_advances ?? row.advance_total ?? row.salary_advance_amount);
+      }, 0),
+    [filteredListData],
+  );
+  const totalLoanAdvance = totalLoans + totalAdvances;
 
   return (
     <>
@@ -324,7 +409,90 @@ export function PayrollsList() {
       />
 
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
+        <div className="payroll-figma-layout">
+          <Alert
+            showIcon
+            type="warning"
+            className="payroll-alert-banner"
+            message="Payroll submission for the current pay period is due soon. Review and finalize all employee payroll details."
+          />
+
+          <Flex gap={12} wrap className="payroll-stats-grid">
+            <Card className="payroll-stat-card" size="small">
+              <Typography.Text type="secondary">Most recent payroll</Typography.Text>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                {recentPayroll ? `#${recentPayroll.id}` : '-'}
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                {recentPayroll ? `${String(recentPayroll.month).padStart(2, '0')}/${recentPayroll.year}` : t('common.noData')}
+              </Typography.Text>
+            </Card>
+            <Card className="payroll-stat-card" size="small">
+              <Typography.Text type="secondary">Payroll records</Typography.Text>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                {total}
+              </Typography.Title>
+              <Typography.Text type="secondary">Total records</Typography.Text>
+            </Card>
+            <Card className="payroll-stat-card" size="small">
+              <Typography.Text type="secondary">Pending salary approvals</Typography.Text>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                {pendingPayrollCount}
+              </Typography.Title>
+              <Typography.Text type="secondary">{approvedPayrollCount} approved</Typography.Text>
+            </Card>
+            <Card className="payroll-stat-card" size="small">
+              <Typography.Text type="secondary">Next salary date</Typography.Text>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                {formatDate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0))}
+              </Typography.Title>
+              <Typography.Text type="secondary">This month</Typography.Text>
+            </Card>
+          </Flex>
+
+          <Flex gap={12} wrap className="payroll-overview-grid">
+            <Card className="payroll-overview-card" title="Employee payroll overview" size="small">
+              <div className="payroll-overview-chart">
+                {chartByMonth.map((item) => (
+                  <div className="payroll-overview-bar-col" key={item.month}>
+                    <div className="payroll-overview-bars">
+                      <div
+                        className="bar-deduction"
+                        style={{ height: `${Math.max(6, (item.deduction / maxBarValue) * 120)}px` }}
+                      />
+                      <div
+                        className="bar-net"
+                        style={{ height: `${Math.max(6, (item.net / maxBarValue) * 120)}px` }}
+                      />
+                    </div>
+                    <Typography.Text type="secondary" className="bar-month-label">
+                      {item.month}
+                    </Typography.Text>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="payroll-overview-card payroll-loans-card" title="Loans & Salary Advances" size="small">
+              <Progress
+                type="dashboard"
+                percent={totalLoanAdvance ? Math.round((totalLoans / totalLoanAdvance) * 100) : 0}
+                format={() => formatMoney(totalLoanAdvance)}
+              />
+              <Flex justify="space-between">
+                <Typography.Text>{formatMoney(totalLoans)} Loans</Typography.Text>
+                <Typography.Text>{formatMoney(totalAdvances)} Advances</Typography.Text>
+              </Flex>
+            </Card>
+          </Flex>
+        </div>
+
         <Flex wrap="wrap" gap={12} style={{ marginBottom: 16 }}>
+          <Input
+            style={{ minWidth: 220 }}
+            placeholder="Search payroll id, company, status, notes"
+            value={keywordFilter}
+            onChange={(e) => setKeywordFilter(e.target.value)}
+          />
           <Select
             allowClear
             style={{ minWidth: 220 }}
@@ -381,7 +549,7 @@ export function PayrollsList() {
         ) : (
           <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
             <DataTable<Payroll>
-              data={listData}
+              data={filteredListData}
               columns={columns}
               onRowClick={(record) => {
                 markAsPreviewed(record.id);

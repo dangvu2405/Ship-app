@@ -13,10 +13,9 @@ import toast from 'react-hot-toast';
 import type { Payroll, PayrollDetail } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import payrollService from '@/services/payroll.service';
-import { formatCurrencyVND } from '@/utils/format';
+import { formatDateTime, formatDecimal, formatMoney, formatStatusLabel } from '@/utils/displayFormat';
 import { useAuth } from '@/hooks/useAuth';
-
-type Translate = ReturnType<typeof useTranslation>['t'];
+import './payroll-form-dialog.scss';
 
 interface PayrollFormDialogProps {
   open?: boolean;
@@ -26,28 +25,14 @@ interface PayrollFormDialogProps {
   onSuccess?: () => void;
 }
 
-function statusLabel(status: string, t: Translate): string {
-  switch (status) {
-    case 'running':
-      return 'Running';
-    case 'locked':
-      return t('payrolls.statusLocked');
-    case 'approved':
-      return t('payrolls.statusApproved');
-    case 'generated':
-    case 'draft':
-      return t('payrolls.statusGenerated');
-    default:
-      return status;
-  }
-}
 
-function formatDecimal(value?: number | null, digits = 1): string {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
-  return Number(value).toLocaleString('vi-VN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: digits,
-  });
+function toNumber(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 }
 
 export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: PayrollFormDialogProps = {}) {
@@ -63,6 +48,7 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
   const resolvedId = recordId ?? (id ? Number(id) : undefined);
   const hasRecordId = Boolean(resolvedId);
   const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
+  const isPreviewMode = isViewMode && hasRecordId;
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const isAdmin = hasRole('admin');
   const dialogOpen = isControlled ? open : true;
@@ -155,7 +141,7 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
 
   const title = isPayrollLoading || isPayrollDetail
     ? isViewMode
-      ? t('common.view')
+      ? `${t('common.view')} · ${t('payrolls.preview')}`
       : t('payrolls.editPayroll')
     : t('payrolls.createPayroll');
 
@@ -191,7 +177,39 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
 
   const footer = isPayrollLoading || isPayrollDetail ? backOnlyFooter : createFooter;
 
-  const lineItems = payroll?.details ?? [];
+  const lineItems: PayrollDetail[] = (payroll?.details ??
+    (payroll as Payroll & { lines?: PayrollDetail[] | Record<string, unknown>[] } | undefined)?.lines ??
+    []
+  ).map((line) => {
+    const raw = line as PayrollDetail & Record<string, unknown>;
+    return {
+      ...raw,
+      base_salary: toNumber(raw.base_salary),
+      bonus: toNumber(raw.bonus ?? raw.trip_bonus),
+      trip_bonus: toNumber(raw.trip_bonus),
+      overtime: toNumber(raw.overtime),
+      overtime_pay: toNumber(raw.overtime_pay),
+      overtime_hours: toNumber(raw.overtime_hours),
+      night_shift_allowance: toNumber(raw.night_shift_allowance),
+      public_holiday_pay: toNumber(raw.public_holiday_pay),
+      allowance: toNumber(raw.allowance),
+      deduction: toNumber(raw.deduction),
+      leave_unpaid_deduction: toNumber(raw.leave_unpaid_deduction),
+      violation_deduction: toNumber(raw.violation_deduction),
+      fuel_cost: toNumber(raw.fuel_cost),
+      tax: toNumber(raw.tax),
+      net_salary: toNumber(raw.net_salary),
+      trips_completed_count: toNumber(raw.trips_completed_count),
+      total_distance_km: toNumber(raw.total_distance_km),
+      working_days: toNumber(raw.working_days),
+      leave_days_paid: toNumber(raw.leave_days_paid),
+      leave_days_unpaid: toNumber(raw.leave_days_unpaid),
+      driver_id: raw.driver_id ? toNumber(raw.driver_id) : undefined,
+      employee_id: raw.employee_id ? toNumber(raw.employee_id) : 0,
+      driver: raw.driver as PayrollDetail['driver'],
+      employee: raw.employee as PayrollDetail['employee'],
+    };
+  });
   const totals = lineItems.reduce(
       (acc, line) => {
         const tripBonus = line.trip_bonus ?? line.bonus ?? 0;
@@ -228,19 +246,36 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
   const body = isPayrollLoading ? (
     <TableSkeleton rows={8} columns={1} />
   ) : isPayrollDetail && payroll ? (
-    <>
-      <Flex vertical gap={8} style={{ marginBottom: 12 }}>
+    <div className="payroll-form-dialog">
+      {isPreviewMode ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={t('payrolls.previewModeTitle')}
+          description={t('payrolls.previewModeDescription')}
+        />
+      ) : null}
+      <Flex vertical gap={8} className="payroll-summary">
         <Flex wrap="wrap" gap={8} align="center">
-          <Tag bordered={false}>{statusLabel(payroll.status, t)}</Tag>
-          <Typography.Text strong>{`${String(payroll.month).padStart(2, '0')}/${payroll.year}`}</Typography.Text>
+          <Tag bordered={false}>
+            {formatStatusLabel(payroll.status, {
+              running: t('payrolls.statusRunning'),
+              locked: t('payrolls.statusLocked'),
+              approved: t('payrolls.statusApproved'),
+              generated: t('payrolls.statusGenerated'),
+              draft: t('payrolls.statusGenerated'),
+            })}
+          </Tag>
+          <Typography.Text strong className="payroll-period">{`${String(payroll.month).padStart(2, '0')}/${payroll.year}`}</Typography.Text>
           <Typography.Text>{payroll.company?.name ?? `Company ID ${payroll.company_id}`}</Typography.Text>
-          <Typography.Text type="secondary">{`Approved: ${payroll.approved_at ?? '-'}`}</Typography.Text>
-          <Typography.Text type="secondary">{`Locked: ${payroll.locked_at ?? '-'}`}</Typography.Text>
+          <Typography.Text type="secondary">{`${t('payrolls.approvedAtLabel')}: ${formatDateTime(payroll.approved_at)}`}</Typography.Text>
+          <Typography.Text type="secondary">{`${t('payrolls.lockedAtLabel')}: ${formatDateTime(payroll.locked_at)}`}</Typography.Text>
         </Flex>
-        <Typography.Text>{`Notes: ${payroll.notes || '-'}`}</Typography.Text>
+        <Typography.Text>{`${t('payrolls.notesLabel')}: ${payroll.notes || '-'}`}</Typography.Text>
       </Flex>
 
-      <Flex wrap="wrap" gap={8} align="center" style={{ padding: '8px 0' }}>
+      <Flex wrap="wrap" gap={8} align="center" className="payroll-actions">
         {!isViewMode ? (
           <Flex wrap="wrap" gap={8} style={{ marginLeft: 'auto' }}>
             <Button
@@ -253,9 +288,9 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
               }
               title={
                 isRunning
-                  ? 'Batch is running'
+                  ? t('payrolls.batchRunning')
                   : cannotApproveBySoD
-                    ? 'SoD: creator cannot approve this payroll'
+                    ? t('payrolls.sodCreatorCannotApprove')
                     : t('payrolls.approve')
               }
               onClick={() => runPayrollAction('approve', () => payrollService.approve(resolvedId as number))}
@@ -270,7 +305,7 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
                 !isAdmin ||
                 isRunning
               }
-              title={isRunning ? 'Batch is running' : isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
+              title={isRunning ? t('payrolls.batchRunning') : isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
               onClick={() => runPayrollAction('lock', () => payrollService.lock(resolvedId as number))}
             >
               {actionLoading === 'lock' ? t('common.loading') : t('payrolls.lock')}
@@ -320,8 +355,12 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
         ) : null}
       </Flex>
 
-      <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, overflow: 'hidden' }}>
+      <div
+        className="payroll-lines-table-wrap"
+        style={{ borderColor: token.colorBorderSecondary, borderRadius: token.borderRadiusLG }}
+      >
         <Table<PayrollDetail>
+          className="payroll-lines-table"
           size="small"
           pagination={false}
           rowKey="id"
@@ -329,9 +368,9 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
           locale={{ emptyText: t('common.noData') }}
           scroll={{ x: 2400 }}
           columns={[
-            { title: 'Driver ID', key: 'driver_id', width: 96, render: (_, row) => row.driver_id ?? row.employee_id ?? '-' },
+            { title: t('payrolls.driverId'), key: 'driver_id', width: 96, render: (_, row) => row.driver_id ?? row.employee_id ?? '-' },
             {
-              title: 'Driver Name',
+              title: t('payrolls.driverName'),
               key: 'driver_name',
               width: 180,
               render: (_, row) => (
@@ -341,48 +380,48 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
               ),
             },
             {
-              title: 'Base Salary',
+              title: t('payrolls.baseSalary'),
               key: 'base_salary',
               align: 'right',
-              render: (_, row) => formatCurrencyVND(row.base_salary),
+              render: (_, row) => formatMoney(row.base_salary, { withCurrency: true }),
             },
-            { title: 'Trip Bonus', key: 'trip_bonus', align: 'right', render: (_, row) => formatCurrencyVND(row.trip_bonus ?? row.bonus) },
-            { title: 'Overtime Pay', key: 'overtime_pay', align: 'right', render: (_, row) => formatCurrencyVND(row.overtime_pay) },
-            { title: 'Night Shift Allowance', key: 'night_shift_allowance', align: 'right', render: (_, row) => formatCurrencyVND(row.night_shift_allowance) },
-            { title: 'Public Holiday Pay', key: 'public_holiday_pay', align: 'right', render: (_, row) => formatCurrencyVND(row.public_holiday_pay) },
-            { title: 'Allowance', key: 'allowance', align: 'right', render: (_, row) => formatCurrencyVND(row.allowance) },
-            { title: 'Deduction', key: 'deduction', align: 'right', render: (_, row) => formatCurrencyVND(row.deduction) },
-            { title: 'Unpaid Leave Deduction', key: 'leave_unpaid_deduction', align: 'right', render: (_, row) => formatCurrencyVND(row.leave_unpaid_deduction) },
-            { title: 'Violation Deduction', key: 'violation_deduction', align: 'right', render: (_, row) => formatCurrencyVND(row.violation_deduction) },
-            { title: 'Fuel Cost', key: 'fuel_cost', align: 'right', render: (_, row) => formatCurrencyVND(row.fuel_cost) },
-            { title: 'Tax', key: 'tax', align: 'right', render: (_, row) => formatCurrencyVND(row.tax) },
+            { title: t('payrolls.tripBonus'), key: 'trip_bonus', align: 'right', render: (_, row) => formatMoney(row.trip_bonus ?? row.bonus, { withCurrency: true }) },
+            { title: t('payrolls.overtimePay'), key: 'overtime_pay', align: 'right', render: (_, row) => formatMoney(row.overtime_pay, { withCurrency: true }) },
+            { title: t('payrolls.nightShiftAllowance'), key: 'night_shift_allowance', align: 'right', render: (_, row) => formatMoney(row.night_shift_allowance, { withCurrency: true }) },
+            { title: t('payrolls.publicHolidayPay'), key: 'public_holiday_pay', align: 'right', render: (_, row) => formatMoney(row.public_holiday_pay, { withCurrency: true }) },
+            { title: t('payrolls.allowanceLabel'), key: 'allowance', align: 'right', render: (_, row) => formatMoney(row.allowance, { withCurrency: true }) },
+            { title: t('payrolls.deductionLabel'), key: 'deduction', align: 'right', render: (_, row) => formatMoney(row.deduction, { withCurrency: true }) },
+            { title: t('payrolls.unpaidLeaveDeduction'), key: 'leave_unpaid_deduction', align: 'right', render: (_, row) => formatMoney(row.leave_unpaid_deduction, { withCurrency: true }) },
+            { title: t('payrolls.violationDeduction'), key: 'violation_deduction', align: 'right', render: (_, row) => formatMoney(row.violation_deduction, { withCurrency: true }) },
+            { title: t('payrolls.fuelCost'), key: 'fuel_cost', align: 'right', render: (_, row) => formatMoney(row.fuel_cost, { withCurrency: true }) },
+            { title: t('payrolls.taxLabel'), key: 'tax', align: 'right', render: (_, row) => formatMoney(row.tax, { withCurrency: true }) },
             {
-              title: 'Net Salary',
+              title: t('payrolls.netSalary'),
               key: 'net_salary',
               align: 'right',
-              render: (_, row) => <Typography.Text strong>{formatCurrencyVND(row.net_salary)}</Typography.Text>,
+              render: (_, row) => <Typography.Text strong>{formatMoney(row.net_salary, { withCurrency: true })}</Typography.Text>,
             },
-            { title: 'Working Days', key: 'working_days', align: 'right', render: (_, row) => row.working_days ?? '-' },
-            { title: 'Paid Leave Days', key: 'leave_days_paid', align: 'right', render: (_, row) => row.leave_days_paid ?? '-' },
-            { title: 'Unpaid Leave Days', key: 'leave_days_unpaid', align: 'right', render: (_, row) => row.leave_days_unpaid ?? '-' },
-            { title: 'Overtime Hours', key: 'overtime_hours', align: 'right', render: (_, row) => formatDecimal(row.overtime_hours ?? row.overtime, 2) },
-            { title: 'Trips Completed', key: 'trips_completed_count', align: 'right', render: (_, row) => row.trips_completed_count ?? '-' },
-            { title: 'Total Distance (km)', key: 'total_distance_km', align: 'right', render: (_, row) => formatDecimal(row.total_distance_km, 2) },
+            { title: t('payrolls.workingDays'), key: 'working_days', align: 'right', render: (_, row) => row.working_days ?? '-' },
+            { title: t('payrolls.paidLeaveDays'), key: 'leave_days_paid', align: 'right', render: (_, row) => row.leave_days_paid ?? '-' },
+            { title: t('payrolls.unpaidLeaveDays'), key: 'leave_days_unpaid', align: 'right', render: (_, row) => row.leave_days_unpaid ?? '-' },
+            { title: t('payrolls.overtimeHours'), key: 'overtime_hours', align: 'right', render: (_, row) => formatDecimal(row.overtime_hours ?? row.overtime, 2) },
+            { title: t('payrolls.tripsCompleted'), key: 'trips_completed_count', align: 'right', render: (_, row) => row.trips_completed_count ?? '-' },
+            { title: t('payrolls.totalDistanceKm'), key: 'total_distance_km', align: 'right', render: (_, row) => formatDecimal(row.total_distance_km, 2) },
           ]}
         />
       </div>
 
-      <Flex wrap="wrap" gap={12} style={{ marginTop: 12 }}>
-        <Typography.Text>{`Total Base Salary: ${formatCurrencyVND(totals.total_base_salary)}`}</Typography.Text>
-        <Typography.Text>{`Total Trip Bonus: ${formatCurrencyVND(totals.total_trip_bonus)}`}</Typography.Text>
-        <Typography.Text>{`Total Overtime Pay: ${formatCurrencyVND(totals.total_overtime_pay)}`}</Typography.Text>
-        <Typography.Text>{`Total Allowance: ${formatCurrencyVND(totals.total_allowance)}`}</Typography.Text>
-        <Typography.Text>{`Total Deduction: ${formatCurrencyVND(totals.total_deduction)}`}</Typography.Text>
-        <Typography.Text strong>{`Total Net Salary: ${formatCurrencyVND(totals.total_net_salary)}`}</Typography.Text>
-        <Typography.Text>{`Total Trips Completed: ${totals.total_trips_completed}`}</Typography.Text>
-        <Typography.Text>{`Total Distance: ${formatDecimal(totals.total_distance_km, 2)} km`}</Typography.Text>
+      <Flex wrap="wrap" gap={12} className="payroll-totals">
+        <Typography.Text>{`${t('payrolls.totalBaseSalary')}: ${formatMoney(totals.total_base_salary, { withCurrency: true })}`}</Typography.Text>
+        <Typography.Text>{`${t('payrolls.totalTripBonus')}: ${formatMoney(totals.total_trip_bonus, { withCurrency: true })}`}</Typography.Text>
+        <Typography.Text>{`${t('payrolls.totalOvertimePay')}: ${formatMoney(totals.total_overtime_pay, { withCurrency: true })}`}</Typography.Text>
+        <Typography.Text>{`${t('payrolls.totalAllowance')}: ${formatMoney(totals.total_allowance, { withCurrency: true })}`}</Typography.Text>
+        <Typography.Text>{`${t('payrolls.totalDeduction')}: ${formatMoney(totals.total_deduction, { withCurrency: true })}`}</Typography.Text>
+        <Typography.Text strong>{`${t('payrolls.totalNetSalary')}: ${formatMoney(totals.total_net_salary, { withCurrency: true })}`}</Typography.Text>
+        <Typography.Text>{`${t('payrolls.totalTripsCompleted')}: ${totals.total_trips_completed}`}</Typography.Text>
+        <Typography.Text>{`${t('payrolls.totalDistance')}: ${formatDecimal(totals.total_distance_km, 2)} km`}</Typography.Text>
       </Flex>
-    </>
+    </div>
   ) : (
     <>
       <Alert

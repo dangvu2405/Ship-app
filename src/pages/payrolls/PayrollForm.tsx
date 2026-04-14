@@ -1,4 +1,5 @@
 import { Form } from 'antd';
+import { useMemo } from 'react';
 import { useList } from '@refinedev/core';
 import { FormAccordionSections, FormItemSelect } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -10,8 +11,13 @@ interface PayrollFormProps {
 }
 
 export function PayrollForm(props: PayrollFormProps) {
-  void props;
+  const { form, initialValues } = props;
+  void initialValues;
   const { t } = useTranslation();
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const selectedYear = Form.useWatch('year', form) as number | undefined;
 
   const { data: companiesData, isLoading: companiesLoading } = useList<Company>({
     resource: 'companies',
@@ -24,19 +30,54 @@ export function PayrollForm(props: PayrollFormProps) {
     value: c.id,
   }));
 
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    label: [
-      t('payrolls.month1'), t('payrolls.month2'), t('payrolls.month3'), t('payrolls.month4'),
-      t('payrolls.month5'), t('payrolls.month6'), t('payrolls.month7'), t('payrolls.month8'),
-      t('payrolls.month9'), t('payrolls.month10'), t('payrolls.month11'), t('payrolls.month12'),
-    ][i],
-    value: i + 1,
-  }));
+  const monthLabels = useMemo(
+    () => [
+      t('payrolls.month1'),
+      t('payrolls.month2'),
+      t('payrolls.month3'),
+      t('payrolls.month4'),
+      t('payrolls.month5'),
+      t('payrolls.month6'),
+      t('payrolls.month7'),
+      t('payrolls.month8'),
+      t('payrolls.month9'),
+      t('payrolls.month10'),
+      t('payrolls.month11'),
+      t('payrolls.month12'),
+    ],
+    [t],
+  );
 
-  const yearOptions = Array.from({ length: 10 }, (_, i) => {
-    const year = new Date().getFullYear() - i;
-    return { label: year.toString(), value: year };
-  });
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => {
+        const month = i + 1;
+        return {
+          label: monthLabels[i],
+          value: month,
+          disabled: selectedYear === currentYear && month > currentMonth,
+        };
+      }),
+    [monthLabels, selectedYear, currentYear, currentMonth],
+  );
+
+  const yearOptions = useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, i) => {
+        const year = currentYear - i;
+        return { label: year.toString(), value: year };
+      }),
+    [currentYear],
+  );
+
+  const validatePayrollPeriod = async () => {
+    const month = form.getFieldValue('month') as number | undefined;
+    const year = form.getFieldValue('year') as number | undefined;
+    if (!month || !year) return;
+    if (year > currentYear || (year === currentYear && month > currentMonth)) {
+      throw new Error(t('validation.payrollPeriodMustNotBeFuture'));
+    }
+  };
 
   return (
     <FormAccordionSections
@@ -70,8 +111,10 @@ export function PayrollForm(props: PayrollFormProps) {
                 label={t('payrolls.month')}
                 required
                 options={monthOptions}
+                dependencies={['year']}
                 rules={[
                   { required: true, message: t('validation.required', { field: t('payrolls.month') }) },
+                  { validator: validatePayrollPeriod },
                 ]}
               />
 
@@ -80,8 +123,10 @@ export function PayrollForm(props: PayrollFormProps) {
                 label={t('payrolls.year')}
                 required
                 options={yearOptions}
+                dependencies={['month']}
                 rules={[
                   { required: true, message: t('validation.required', { field: t('payrolls.year') }) },
+                  { validator: validatePayrollPeriod },
                 ]}
               />
             </>

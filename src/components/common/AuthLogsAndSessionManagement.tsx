@@ -32,8 +32,10 @@ import authLogService, {
   type AuthSessionStatus,
 } from '@/services/auth-log.service';
 import { getErrorMessage } from '@/utils/errorHandler';
+import './auth-logs-and-session-management.scss';
 
 const PAGE_SIZE = 10;
+const AUDIT_PAGE_SIZE = 10;
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -41,6 +43,15 @@ function sessionStatusTagColor(status: AuthSessionStatus): string {
   if (status === 'active') return 'success';
   if (status === 'logged_out') return 'processing';
   return 'warning';
+}
+
+function actionClassName(action: string): string {
+  const normalized = action.toLowerCase();
+  if (normalized.includes('delete') || normalized.includes('remove')) return 'action-delete';
+  if (normalized.includes('update') || normalized.includes('edit')) return 'action-update';
+  if (normalized.includes('create') || normalized.includes('add')) return 'action-create';
+  if (normalized.includes('login') || normalized.includes('logout') || normalized.includes('auth')) return 'action-auth';
+  return 'action-default';
 }
 
 export const AuthLogsAndSessionManagement = () => {
@@ -57,6 +68,7 @@ export const AuthLogsAndSessionManagement = () => {
   const [logDate, setLogDate] = useState(todayIso);
   const [auditLogs, setAuditLogs] = useState<AuthLogAuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [auditCurrentPage, setAuditCurrentPage] = useState(1);
 
   const dateTimeFmt = useMemo(
     () =>
@@ -85,7 +97,12 @@ export const AuthLogsAndSessionManagement = () => {
     try {
       const res = await authLogService.getSummary();
       if (res.success) {
-        setSummary(res.data);
+        setSummary(
+          res.data ?? {
+            activeSessions: 0,
+            failedLogins: 0,
+          },
+        );
       }
     } catch (error) {
       toast.error(getErrorMessage(error) || tRef.current('notificationCenter.sessions.summaryError'));
@@ -101,8 +118,8 @@ export const AuthLogsAndSessionManagement = () => {
       if (!res.success) {
         throw new Error(res.message || tRef.current('notificationCenter.sessions.loadError'));
       }
-      setSessions(res.data.logs);
-      setTotalSessions(res.data.total);
+      setSessions(res.data?.logs ?? []);
+      setTotalSessions(res.data?.total ?? 0);
     } catch (error) {
       toast.error(getErrorMessage(error) || tRef.current('notificationCenter.sessions.loadError'));
       setSessions([]);
@@ -124,11 +141,15 @@ export const AuthLogsAndSessionManagement = () => {
     if (!date) return;
     setAuditLoading(true);
     try {
-      const res = await authLogService.listAuthLogs(date);
+      const res = await authLogService.listAuthLogs({
+        from: date,
+        to: date,
+      });
       if (!res.success) {
         throw new Error(res.message || tRef.current('notificationCenter.authLog.loadError'));
       }
-      setAuditLogs(res.data);
+      setAuditLogs(res.data ?? []);
+      setAuditCurrentPage(1);
     } catch (error) {
       toast.error(getErrorMessage(error) || tRef.current('notificationCenter.authLog.loadError'));
       setAuditLogs([]);
@@ -136,6 +157,11 @@ export const AuthLogsAndSessionManagement = () => {
       setAuditLoading(false);
     }
   }, []);
+
+  const paginatedAuditLogs = useMemo(() => {
+    const start = (auditCurrentPage - 1) * AUDIT_PAGE_SIZE;
+    return auditLogs.slice(start, start + AUDIT_PAGE_SIZE);
+  }, [auditLogs, auditCurrentPage]);
 
   useEffect(() => {
     void loadAuditLogs(logDate);
@@ -277,30 +303,64 @@ export const AuthLogsAndSessionManagement = () => {
         ),
       },
       {
-        title: t('notificationCenter.authLog.loginTime'),
-        dataIndex: 'loginTime',
-        key: 'loginTime',
-        width: 180,
-        render: (v: string | undefined) => (v ? formatInstant(v) : '—'),
-      },
-      {
-        title: t('notificationCenter.authLog.logoutTime'),
-        dataIndex: 'logoutTime',
-        key: 'logoutTime',
-        width: 180,
-        render: (v: string | null | undefined) => (v ? formatInstant(v) : '—'),
-      },
-      {
         title: t('notificationCenter.authLog.action'),
         dataIndex: 'action',
         key: 'action',
+        width: 180,
         ellipsis: true,
+        render: (v: string) => (
+          <span className={`auth-action-badge ${actionClassName(v)}`}>
+            {v}
+          </span>
+        ),
+      },
+      {
+        title: 'Resource',
+        dataIndex: 'resource',
+        key: 'resource',
+        width: 180,
+        render: (v: string | null | undefined) => v || '—',
+      },
+      {
+        title: 'Table',
+        dataIndex: 'tableName',
+        key: 'tableName',
+        width: 160,
+        render: (v: string | null | undefined) => v || '—',
+      },
+      {
+        title: 'Record ID',
+        dataIndex: 'recordId',
+        key: 'recordId',
+        width: 120,
+        render: (v: number | string | null | undefined) => (v == null ? '—' : String(v)),
+      },
+      {
+        title: 'Entity Type',
+        dataIndex: 'entityType',
+        key: 'entityType',
+        width: 140,
+        render: (v: string | null | undefined) => v || '—',
+      },
+      {
+        title: 'Status',
+        dataIndex: 'statusCode',
+        key: 'statusCode',
+        width: 120,
+        render: (v: number | null | undefined) => (v ? <Tag color={v >= 400 ? 'error' : 'success'}>{v}</Tag> : '—'),
       },
       {
         title: t('notificationCenter.authLog.performedBy'),
         dataIndex: 'performedBy',
         key: 'performedBy',
         ellipsis: true,
+      },
+      {
+        title: 'Created At',
+        dataIndex: 'createdAt',
+        key: 'createdAt',
+        width: 180,
+        render: (v: string) => formatInstant(v),
       },
     ],
     [t, formatInstant],
@@ -369,9 +429,16 @@ export const AuthLogsAndSessionManagement = () => {
             <Table<AuthLogAuditRow>
               rowKey="id"
               loading={auditLoading}
-              dataSource={auditLogs}
+              dataSource={paginatedAuditLogs}
               columns={auditColumns}
-              pagination={false}
+              pagination={{
+                current: auditCurrentPage,
+                pageSize: AUDIT_PAGE_SIZE,
+                total: auditLogs.length,
+                showSizeChanger: false,
+                hideOnSinglePage: auditLogs.length <= AUDIT_PAGE_SIZE,
+                onChange: (page) => setAuditCurrentPage(page),
+              }}
               locale={{
                 emptyText: t('notificationCenter.authLog.empty'),
               }}
@@ -386,12 +453,14 @@ export const AuthLogsAndSessionManagement = () => {
       sessions,
       sessionsLoading,
       auditLogs,
+      paginatedAuditLogs,
       auditLoading,
       sessionColumns,
       auditColumns,
       currentPage,
       totalSessions,
       logDate,
+      auditCurrentPage,
       loadSummary,
       loadSessionsPage,
       loadAuditLogs,
@@ -414,7 +483,7 @@ export const AuthLogsAndSessionManagement = () => {
 
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={24} sm={12}>
-          <Card size="small" bordered={false} className="bg-[rgba(0,0,0,0.02)]">
+          <Card size="small"  className="bg-[rgba(0,0,0,0.02)]">
             <Statistic
               title={t('notificationCenter.sessions.activeSessions')}
               value={summaryLoading ? '…' : summary.activeSessions}
@@ -423,7 +492,7 @@ export const AuthLogsAndSessionManagement = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12}>
-          <Card size="small" bordered={false} className="bg-[rgba(0,0,0,0.02)]">
+          <Card size="small" className="bg-[rgba(0,0,0,0.02)]">
             <Statistic
               title={t('notificationCenter.sessions.failedLoginsToday')}
               value={summaryLoading ? '…' : summary.failedLogins}

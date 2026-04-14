@@ -33,7 +33,12 @@ class AuthService {
     return AUTH_FORGOT_PASSWORD.verifyEnabled;
   }
 
-  async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: User; token?: string }>> {
+  async login(credentials: LoginCredentials): Promise<ApiResponse<{
+    user: User;
+    token?: string;
+    access_token?: string;
+    refresh_token?: string;
+  }>> {
     const response = await api.post(ENDPOINTS.auth.login, credentials);
     return response.data;
   }

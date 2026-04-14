@@ -3,7 +3,7 @@ import { RiseOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Flex, Spin, Tag, Typography, theme } from 'antd';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { DashboardStats } from '@/types';
-import { formatCurrencyVND } from '@/utils/format';
+import { formatMoney } from '@/utils/displayFormat';
 
 interface SectionCardsProps {
   stats?: DashboardStats;
@@ -45,6 +45,8 @@ function DashboardStatCard({
       style={{
         minHeight: '9.5rem',
         background: `linear-gradient(to top, ${token.colorPrimaryBg}, ${token.colorBgContainer})`,
+        border: 'none',
+        margin : 10
       }}
     >
       <Flex vertical gap={8} style={{ minHeight: '100%' }}>
@@ -154,7 +156,7 @@ export function SectionCards({ stats, loading, error, onRetry, revenue }: Sectio
               loading={!!revenue.loading}
               loadingLabel={loadingLabel}
               description={t('dashboard.cards.totalRevenue')}
-              value={formatCurrencyVND(revenue.total)}
+              value={formatMoney(revenue.total, { withCurrency: true })}
               badgeLabel={
                 revenue.fromApi
                   ? `${stats?.trips?.completed ?? 0} ${t('dashboard.cards.completed')}`

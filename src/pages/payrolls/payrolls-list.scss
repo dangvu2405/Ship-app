@@ -1,0 +1,65 @@
+.payroll-figma-layout {
+  margin-bottom: 16px;
+}
+
+.payroll-alert-banner {
+  margin-bottom: 12px;
+}
+
+.payroll-stats-grid {
+  margin-bottom: 12px;
+}
+
+.payroll-stat-card {
+  min-width: 220px;
+  flex: 1;
+}
+
+.payroll-overview-grid {
+  margin-bottom: 16px;
+}
+
+.payroll-overview-card {
+  flex: 1;
+  min-width: 320px;
+}
+
+.payroll-loans-card {
+  max-width: 340px;
+}
+
+.payroll-overview-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-height: 170px;
+}
+
+.payroll-overview-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.payroll-overview-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.bar-net {
+  width: 12px;
+  background: #4ea8de;
+  border-radius: 6px 6px 0 0;
+}
+
+.bar-deduction {
+  width: 12px;
+  background: #f4c7ab;
+  border-radius: 6px 6px 0 0;
+}
+
+.bar-month-label {
+  font-size: 11px;
+}

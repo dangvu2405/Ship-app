@@ -75,7 +75,6 @@ export const FormItemSelect = ({
   maxTagCount,
   maxTagPlaceholder,
   showArrow,
-  dropdownRender,
   tagRender,
   onChange,
   prefix,
@@ -143,7 +142,6 @@ export const FormItemSelect = ({
   };
 
   const resolvedPopupRender =
-    dropdownRender ||
     (selectPropsWithoutOptions as SelectProps).popupRender ||
     // Keep backward compatibility when callers still pass deprecated dropdownRender via selectProps.
     (selectPropsWithoutOptions as unknown as { dropdownRender?: SelectProps['popupRender'] }).dropdownRender;

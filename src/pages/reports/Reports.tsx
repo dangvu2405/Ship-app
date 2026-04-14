@@ -11,6 +11,7 @@ import type { Company } from '@/types';
 import type { PayrollSummaryData } from '@/services/reports.service';
 import { notifyErrorOnce } from '@/utils/errorToast';
 import { downloadCsvRows } from '@/utils/csvDownload';
+import { formatMoney } from '@/utils/displayFormat';
 import BuildingIcon from 'lucide-react/dist/esm/icons/building-2';
 import WalletIcon from 'lucide-react/dist/esm/icons/wallet';
 import UsersIcon from 'lucide-react/dist/esm/icons/users';
@@ -263,9 +264,6 @@ export function Reports() {
     { label: t('reports.title') },
   ];
 
-  const formatMoney = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
-
   const companySelectOptions = companies.map((c) => ({ value: String(c.id), label: c.name }));
 
   const handleExportCsv = useCallback(() => {
@@ -393,7 +391,9 @@ export function Reports() {
                 <WalletIcon className="h-8 w-8 text-muted-foreground" aria-hidden />
                 <div>
                   <p className="text-sm text-muted-foreground">{t('reports.totalNet')}</p>
-                  <p className="text-xl font-semibold tabular-nums">{formatMoney(payrollSummary.total_net)}</p>
+                  <p className="text-xl font-semibold tabular-nums">
+                    {formatMoney(payrollSummary.total_net, { withCurrency: true })}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-lg border bg-card p-4">

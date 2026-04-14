@@ -87,6 +87,7 @@ export const AUTH_FORGOT_PASSWORD = {
 // Versioned localStorage keys - bump version on schema changes
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth-token:v1',
+  REFRESH_TOKEN: 'refresh-token:v1',
 } as const;
 
 // Auto-login is opt-in only via env flag

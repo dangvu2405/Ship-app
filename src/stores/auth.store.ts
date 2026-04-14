@@ -4,7 +4,7 @@ import { createSafeStorage } from '@/lib/safe-storage';
 import { User } from '@/types';
 import authService from '@/services/auth.service';
 import toast from 'react-hot-toast';
-import { clearAuthToken, hasAuthToken, setAuthToken } from '@/lib/auth-session';
+import { clearAuthToken, hasAuthToken, setAuthToken, setRefreshToken } from '@/lib/auth-session';
 
 interface AuthState {
   user: User | null;
@@ -30,8 +30,13 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           const response = await authService.login({ email, password });
           if (response.success && response.data?.user) {
-            if (response.data.token) {
-              setAuthToken(response.data.token);
+            const accessToken = response.data.access_token || response.data.token;
+            const refreshToken = response.data.refresh_token;
+            if (accessToken) {
+              setAuthToken(accessToken);
+            }
+            if (refreshToken) {
+              setRefreshToken(refreshToken);
             }
             set({
               user: response.data.user,

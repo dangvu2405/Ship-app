@@ -145,7 +145,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
     <Dropdown
       open={open}
       onOpenChange={setOpen}
-      dropdownRender={() => panel}
+      popupRender={() => panel}
       trigger={['click']}
       placement="bottomRight"
     >

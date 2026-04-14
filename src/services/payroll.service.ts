@@ -39,7 +39,7 @@ class PayrollService {
     const response = await api.get(ENDPOINTS.payrolls.export(id), { responseType: 'blob' });
     const blob = response.data as Blob;
     const contentDisposition = response.headers['content-disposition'] as string | undefined;
-    const matchedFileName = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i)?.[1];
+    const matchedFileName = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];
     const fileName = matchedFileName ? decodeURIComponent(matchedFileName.replace(/"/g, '')) : `payroll-${id}-export.csv`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

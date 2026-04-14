@@ -1,10 +1,17 @@
+import api from './api';
+import type { ApiResponse } from '@/types';
+
 export type AuthLogAuditRow = {
   id: string;
   username: string;
-  loginTime?: string;
-  logoutTime?: string | null;
   action: string;
+  resource?: string | null;
+  tableName?: string | null;
+  recordId?: number | string | null;
+  entityType?: string | null;
+  statusCode?: number | null;
   performedBy: string;
+  createdAt: string;
 };
 
 export type AuthSessionStatus = 'active' | 'logged_out' | 'expired';
@@ -30,95 +37,43 @@ export type AuthSummary = {
 
 const PAGE_SIZE_DEFAULT = 10;
 
-const mockAuditLogs = (date: string): AuthLogAuditRow[] => {
-  void date;
-  return [
-  {
-    id: '1',
-    username: 'user1',
-    loginTime: '2026-04-13T08:00:00.000Z',
-    logoutTime: '2026-04-13T16:00:00.000Z',
-    action: 'Login',
-    performedBy: 'System',
-  },
-  {
-    id: '2',
-    username: 'user2',
-    loginTime: '2026-04-13T09:00:00.000Z',
-    logoutTime: null,
-    action: 'Account Locked',
-    performedBy: 'Admin',
-  },
-];
-};
-
-const mockSessions: AuthSessionRow[] = [
-  {
-    id: 's1',
-    device: 'Chrome on Windows',
-    ip: '192.168.1.10',
-    lastLogin: '2026-04-13T07:30:00.000Z',
-    logoutTime: null,
-    status: 'active',
-  },
-  {
-    id: 's2',
-    device: 'Safari on iPhone',
-    ip: '10.0.0.5',
-    lastLogin: '2026-04-12T18:00:00.000Z',
-    logoutTime: '2026-04-12T22:00:00.000Z',
-    status: 'logged_out',
-  },
-  {
-    id: 's3',
-    device: 'Firefox on Linux',
-    ip: '172.16.0.2',
-    lastLogin: '2026-04-11T09:15:00.000Z',
-    logoutTime: null,
-    status: 'expired',
-  },
-];
-
 const authLogService = {
-  async listAuthLogs(date: string) {
-    return {
-      success: true as const,
-      message: 'Logs fetched successfully',
-      data: mockAuditLogs(date),
-    };
+  async listAuthLogs(filters: {
+    username?: string;
+    action?: string;
+    from?: string;
+    to?: string;
+    status_code?: number;
+  }): Promise<ApiResponse<AuthLogAuditRow[]>> {
+    const response = await api.get('/auth/actions', {
+      params: filters,
+    });
+    return response.data;
   },
 
-  async listAuthLogsPaginated(page: number, pageSize: number = PAGE_SIZE_DEFAULT) {
-    const start = (page - 1) * pageSize;
-    const logs = mockSessions.slice(start, start + pageSize);
-    return {
-      success: true as const,
-      message: 'Sessions fetched successfully',
-      data: {
-        logs,
-        total: mockSessions.length,
-      } satisfies AuthLogsPaginatedPayload,
-    };
+  async listAuthLogsPaginated(page: number, pageSize: number = PAGE_SIZE_DEFAULT): Promise<ApiResponse<AuthLogsPaginatedPayload>> {
+    const response = await api.get('/auth/sessions', {
+      params: {
+        page,
+        per_page: pageSize,
+      },
+    });
+    return response.data;
   },
 
-  async getSummary() {
-    return {
-      success: true as const,
-      data: {
-        activeSessions: mockSessions.filter((s) => s.status === 'active').length,
-        failedLogins: 2,
-      } satisfies AuthSummary,
-    };
+  async getSummary(): Promise<ApiResponse<AuthSummary>> {
+    const response = await api.get('/auth/sessions/summary');
+    return response.data;
   },
 
-  async revokeSession(sessionId: string) {
-    void sessionId;
-    return { success: true as const, message: 'Session revoke requested' };
+  async revokeSession(sessionId: string): Promise<ApiResponse<null>> {
+    const response = await api.post(`/auth/sessions/${sessionId}/revoke`);
+    return response.data;
   },
 
-  async lockAccountForSession(sessionId: string) {
-    void sessionId;
-    return { success: true as const, message: 'Account lock requested' };
+  async lockAccountForSession(sessionId: string): Promise<ApiResponse<null>> {
+    const response = await api.post(`/auth/sessions/${sessionId}/lock-account`);
+    return response.data;
   },
 };
 

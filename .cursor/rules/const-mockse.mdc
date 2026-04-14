@@ -1,0 +1,30 @@
+---
+alwaysApply: true
+---
+
+const mockSessions: AuthSessionRow[] = [
+  {
+    id: 's1',
+    device: 'Chrome on Windows',
+    ip: '192.168.1.10',
+    lastLogin: '2026-04-13T07:30:00.000Z',
+    logoutTime: null,
+    status: 'active',
+  },
+  {
+    id: 's2',
+    device: 'Safari on iPhone',
+    ip: '10.0.0.5',
+    lastLogin: '2026-04-12T18:00:00.000Z',
+    logoutTime: '2026-04-12T22:00:00.000Z',
+    status: 'logged_out',
+  },
+  {
+    id: 's3',
+    device: 'Firefox on Linux',
+    ip: '172.16.0.2',
+    lastLogin: '2026-04-11T09:15:00.000Z',
+    logoutTime: null,
+    status: 'expired',
+  },
+];
