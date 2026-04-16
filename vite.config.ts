@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   const proxyTarget =
     env.VITE_API_ORIGIN?.trim() ||
     env.VITE_PROXY_TARGET?.trim() ||
-    'http://localhost:8080'
+    'https://ship-app-api.onrender.com'
 
   return {
   plugins: [react()],
@@ -69,7 +69,7 @@ export default defineConfig(({ mode }) => {
   preview: {
     port: Number(process.env.PORT) || 3000,
     host: true, // Listen on all addresses (0.0.0.0)
-    allowedHosts: ["ship-app-sghq.onrender.com"],
+    allowedHosts: ["dtv2405.id.vn"],
   },
   }
 })
