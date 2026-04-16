@@ -15,6 +15,7 @@ type CrudRouteConfig = {
   routes: CrudRouteGroup;
   List: ComponentType;
   Form: ComponentType;
+  Show?: ComponentType;
   requiredRole?: 'admin';
 };
 
@@ -55,6 +56,7 @@ const VehiclesList = lazyWithMinDelay(() => import('@/pages/vehicles/VehiclesLis
 const VehicleFormDialog = lazyWithMinDelay(() => import('@/pages/vehicles/VehicleFormDialog').then((m) => ({ default: m.VehicleFormDialog })));
 const TripsList = lazyWithMinDelay(() => import('@/pages/trips/TripsList').then((m) => ({ default: m.TripsList })));
 const TripFormDialog = lazyWithMinDelay(() => import('@/pages/trips/TripFormDialog').then((m) => ({ default: m.TripFormDialog })));
+const TripDetailPage = lazyWithMinDelay(() => import('@/pages/trips/TripDetailPage').then((m) => ({ default: m.TripDetailPage })));
 const TripBonusRulesList = lazyWithMinDelay(() => import('@/pages/trip_bonus_rules/TripBonusRulesList').then((m) => ({ default: m.TripBonusRulesList })));
 const TripBonusRuleFormDialog = lazyWithMinDelay(() => import('@/pages/trip_bonus_rules/TripBonusRuleFormDialog').then((m) => ({ default: m.TripBonusRuleFormDialog })));
 const CustomersList = lazyWithMinDelay(() => import('@/pages/customers/CustomersList').then((m) => ({ default: m.CustomersList })));
@@ -64,6 +66,7 @@ const DriverFormDialog = lazyWithMinDelay(() => import('@/pages/drivers/DriverFo
 const DriverSchedulePage = lazyWithMinDelay(() => import('@/pages/drivers/DriverSchedulePage').then((m) => ({ default: m.DriverSchedulePage })));
 const InvoicesList = lazyWithMinDelay(() => import('@/pages/invoices/InvoicesList').then((m) => ({ default: m.InvoicesList })));
 const InvoiceFormDialog = lazyWithMinDelay(() => import('@/pages/invoices/InvoiceFormDialog').then((m) => ({ default: m.InvoiceFormDialog })));
+const InvoiceDetailPage = lazyWithMinDelay(() => import('@/pages/invoices/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
 const VehicleAssignmentsList = lazyWithMinDelay(() => import('@/pages/vehicle_assignments/VehicleAssignmentsList').then((m) => ({ default: m.VehicleAssignmentsList })));
 const VehicleAssignmentFormDialog = lazyWithMinDelay(() => import('@/pages/vehicle_assignments/VehicleAssignmentFormDialog').then((m) => ({ default: m.VehicleAssignmentFormDialog })));
 const VehicleExpensesList = lazyWithMinDelay(() => import('@/pages/vehicle_expenses/VehicleExpensesList').then((m) => ({ default: m.VehicleExpensesList })));
@@ -74,6 +77,7 @@ const DeductionsList = lazyWithMinDelay(() => import('@/pages/deductions/Deducti
 const DeductionFormDialog = lazyWithMinDelay(() => import('@/pages/deductions/DeductionFormDialog').then((m) => ({ default: m.DeductionFormDialog })));
 const PayrollsList = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollsList').then((m) => ({ default: m.PayrollsList })));
 const PayrollFormDialog = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollFormDialog').then((m) => ({ default: m.PayrollFormDialog })));
+const PayrollDetailPage = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollDetailPage').then((m) => ({ default: m.PayrollDetailPage })));
 const Reports = lazyWithMinDelay(() => import('@/pages/reports/Reports').then((m) => ({ default: m.Reports })));
 const UsersList = lazyWithMinDelay(() => import('@/pages/users/UsersList').then((m) => ({ default: m.UsersList })));
 const UserFormDialog = lazyWithMinDelay(() => import('@/pages/users/UserFormDialog').then((m) => ({ default: m.UserFormDialog })));
@@ -92,7 +96,7 @@ export const crudRoutes: CrudRouteConfig[] = [
   { key: 'departments', routes: ROUTES.admin.departments, List: DepartmentsList, Form: DepartmentFormDialog },
   { key: 'positions', routes: ROUTES.admin.positions, List: PositionsList, Form: PositionFormDialog },
   { key: 'vehicles', routes: ROUTES.admin.vehicles, List: VehiclesList, Form: VehicleFormDialog, requiredRole: 'admin' },
-  { key: 'trips', routes: ROUTES.admin.trips, List: TripsList, Form: TripFormDialog, requiredRole: 'admin' },
+  { key: 'trips', routes: ROUTES.admin.trips, List: TripsList, Form: TripFormDialog, Show: TripDetailPage, requiredRole: 'admin' },
   {
     key: 'trip_bonus_rules',
     routes: ROUTES.admin.trip_bonus_rules,
@@ -102,12 +106,12 @@ export const crudRoutes: CrudRouteConfig[] = [
   },
   { key: 'customers', routes: ROUTES.admin.customers, List: CustomersList, Form: CustomerFormDialog },
   { key: 'drivers', routes: ROUTES.admin.drivers, List: DriversList, Form: DriverFormDialog, requiredRole: 'admin' },
-  { key: 'invoices', routes: ROUTES.admin.invoices, List: InvoicesList, Form: InvoiceFormDialog },
+  { key: 'invoices', routes: ROUTES.admin.invoices, List: InvoicesList, Form: InvoiceFormDialog, Show: InvoiceDetailPage },
   { key: 'vehicle_assignments', routes: ROUTES.admin.vehicle_assignments, List: VehicleAssignmentsList, Form: VehicleAssignmentFormDialog },
   { key: 'vehicle_expenses', routes: ROUTES.admin.vehicle_expenses, List: VehicleExpensesList, Form: VehicleExpenseFormDialog },
   { key: 'allowances', routes: ROUTES.admin.allowances, List: AllowancesList, Form: AllowanceFormDialog },
   { key: 'deductions', routes: ROUTES.admin.deductions, List: DeductionsList, Form: DeductionFormDialog },
-  { key: 'payrolls', routes: ROUTES.admin.payrolls, List: PayrollsList, Form: PayrollFormDialog },
+  { key: 'payrolls', routes: ROUTES.admin.payrolls, List: PayrollsList, Form: PayrollFormDialog, Show: PayrollDetailPage },
   { key: 'users', routes: ROUTES.admin.users, List: UsersList, Form: UserFormDialog, requiredRole: 'admin' },
   { key: 'roles', routes: ROUTES.admin.roles, List: RolesList, Form: RoleFormDialog, requiredRole: 'admin' },
 ];
@@ -139,15 +143,16 @@ export const singleRoutes: SingleRouteConfig[] = [
 ];
 
 export const renderCrudElement = (config: CrudRouteConfig, type: 'list' | 'create' | 'show' | 'edit') => {
-  const element =
-    type === 'list' ? (
-      <config.List />
-    ) : (
-      <>
-        <config.List />
-        <config.Form />
-      </>
-    );
+  const element = type === 'list'
+    ? <config.List />
+    : type === 'show' && config.Show
+      ? <config.Show />
+      : (
+        <>
+          <config.List />
+          <config.Form />
+        </>
+      );
 
   return withRoleGuard(element, config.requiredRole);
 };

@@ -157,7 +157,7 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
           validateTrigger={['onBlur', 'onSubmit']}
           disabled={isViewMode}
         >
-          <VehicleForm form={form} initialValues={data?.data} />
+          <VehicleForm form={form} initialValues={data?.data} isViewMode={isViewMode} />
         </Form>
       </>
     );

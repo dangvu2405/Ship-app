@@ -120,6 +120,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
   const [chatMessages, setChatMessages] = useState<ChatMessageView[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
+  const [chatSessionId, setChatSessionId] = useState<string>('');
   const model = DEFAULT_MODEL; // Fixed model
   const task: ChatTask = 'chat'; // Fixed task
   const contextJson = ''; // No context needed
@@ -137,6 +138,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
   useEffect(() => {
     if (!isAuthenticated || !hasAuthToken()) {
       setChatMessages([]);
+      setChatSessionId('');
       return;
     }
   }, [isAuthenticated]);
@@ -223,6 +225,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
         try {
           donePayload = await chatService.sendMessageStream({
             message: sanitizedMessage,
+            session_id: chatSessionId || undefined,
             task,
             context,
             model: model.trim() || DEFAULT_MODEL,
@@ -302,6 +305,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
 
           if (!donePayload && attemptHadChunk) {
             donePayload = {
+              session_id: streamSessionId || undefined,
               cached: streamMeta.cached,
               guarded: streamMeta.guarded,
             };
@@ -329,6 +333,9 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
       }
 
       setChatMessage('');
+      if (streamSessionId) {
+        setChatSessionId(streamSessionId);
+      }
       setChatMessages((prev) =>
         prev.map((item) =>
           item.id === optimisticAssistantId

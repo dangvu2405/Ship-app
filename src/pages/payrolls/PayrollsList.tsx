@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useDelete, useInvalidate, useList, useNavigation, type CrudFilter } from '@refinedev/core';
+import { useInvalidate, useList, useNavigation, type CrudFilter } from '@refinedev/core';
 import { Alert, Button, Card, Flex, Input, InputNumber, Progress, Select, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
+import { EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
@@ -10,10 +10,6 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Company, Payroll } from '@/types';
 import { ROUTES } from '@/routes';
-import payrollService from '@/services/payroll.service';
-import toast from 'react-hot-toast';
-import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
-import { useAuth } from '@/hooks/useAuth';
 import { PayrollFormDialog } from './PayrollFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
@@ -51,7 +47,6 @@ function payrollStatusTagColor(status: string): string {
 
 export function PayrollsList() {
   const { t } = useTranslation();
-  const { hasRole, user } = useAuth();
   const { show } = useNavigation();
   const invalidate = useInvalidate();
   const [formOpen, setFormOpen] = useState(false);
@@ -63,10 +58,6 @@ export function PayrollsList() {
   const [yearFilter, setYearFilter] = useState<number | undefined>(new Date().getFullYear());
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [keywordFilter, setKeywordFilter] = useState<string>('');
-  const [busy, setBusy] = useState<{ id: number; op: 'approve' | 'lock' | 'export' } | null>(null);
-  const [previewedPayrollIds, setPreviewedPayrollIds] = useState<Set<number>>(new Set());
-  const isAdmin = hasRole('admin');
-  const { mutate: deletePayroll } = useDelete();
 
   const filters = useMemo<CrudFilter[]>(() => {
     const items: CrudFilter[] = [];
@@ -96,77 +87,15 @@ export function PayrollsList() {
     await safeRefetch(true);
   }, [invalidate, safeRefetch]);
 
-  const run = useCallback(
-    async (id: number, op: 'approve' | 'lock' | 'export') => {
-      setBusy({ id, op });
-      try {
-        if (op === 'approve') {
-          await payrollService.approve(id);
-        } else if (op === 'lock') {
-          await payrollService.lock(id);
-        } else {
-          await payrollService.downloadExport(id);
-        }
-        toast.success(
-          op === 'export'
-            ? t('payrolls.exportJson')
-            : t('notifications.updateSuccess', { item: t('payrolls.title') })
-        );
-        if (op !== 'export') {
-          await afterMutation();
-        }
-      } catch (error) {
-        if (!shouldShowLocalErrorToast(error)) {
-          return;
-        }
-        toast.error(
-          getErrorMessage(error) || t('notifications.updateError', { item: t('payrolls.title') })
-        );
-      } finally {
-        setBusy(null);
-      }
-    },
-    [t, afterMutation]
-  );
-
-  const handleDelete = useCallback(
-    (id: number) => {
-      deletePayroll(
-        { resource: 'payrolls', id },
-        {
-          onSuccess: () => {
-            toast.success(t('notifications.deleteSuccess', { item: t('payrolls.title') }));
-            void afterMutation();
-          },
-          onError: (error) => {
-            if (!shouldShowLocalErrorToast(error)) return;
-            toast.error(getErrorMessage(error) || t('notifications.deleteError', { item: t('payrolls.title') }));
-          },
-        },
-      );
-    },
-    [afterMutation, deletePayroll, t],
-  );
-
   const handleCreate = () => {
     setFormMode('create');
     setEditingId(undefined);
     setFormOpen(true);
   };
 
-  const handleEdit = useCallback((id: number) => {
-    setFormMode('edit');
-    setEditingId(id);
-    setFormOpen(true);
-  }, []);
-
-  const markAsPreviewed = useCallback((id: number) => {
-    setPreviewedPayrollIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  }, []);
+  const handleView = useCallback((id: number) => {
+    show('payrolls', id);
+  }, [show]);
 
   const columns = useMemo<DataTableColumn<Payroll>[]>(
     () => [
@@ -216,95 +145,22 @@ export function PayrollsList() {
       key: 'actions',
       header: t('common.actions'),
       render: (record) => {
-        const isRunning = record.status === 'running';
-        const isCreator =
-          typeof user?.id === 'number' && typeof record.created_by === 'number' && user.id === record.created_by;
-        const hasPreviewed = previewedPayrollIds.has(record.id);
-        const isDraft = record.status === 'draft' || record.status === 'generated';
-        const canApprove =
-          isDraft &&
-          !isRunning &&
-          !isCreator &&
-          hasPreviewed;
-        const canLock = record.status === 'approved' && isAdmin && !isRunning;
-        const isBusy = busy?.id === record.id;
-        const approveTitle = isRunning
-          ? 'Batch is running'
-          : isCreator
-            ? 'SoD: creator cannot approve this payroll'
-            : !hasPreviewed
-              ? 'Open payroll detail to review preview before approve'
-              : t('payrolls.approve');
         return (
           <div role="presentation" className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
             <Button
               type="text"
               size="small"
               icon={<EyeOutlined aria-hidden />}
-              onClick={() => {
-                markAsPreviewed(record.id);
-                show('payrolls', record.id);
-              }}
+              onClick={() => handleView(record.id)}
               title={t('common.view')}
               aria-label={t('common.view')}
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined aria-hidden />}
-              disabled={!isDraft || isBusy}
-              onClick={() => handleEdit(record.id)}
-              title={t('common.edit')}
-              aria-label={t('common.edit')}
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={<CheckCircleOutlined aria-hidden />}
-              disabled={isBusy || !canApprove}
-              loading={isBusy && busy?.op === 'approve'}
-              title={approveTitle}
-              aria-label={approveTitle}
-              onClick={() => void run(record.id, 'approve')}
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={<LockOutlined aria-hidden />}
-              disabled={isBusy || !canLock}
-              loading={isBusy && busy?.op === 'lock'}
-              title={isRunning ? 'Batch is running' : isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
-              aria-label={isRunning ? 'Batch is running' : isAdmin ? t('payrolls.lock') : t('messages.accessDenied')}
-              onClick={() => void run(record.id, 'lock')}
-            />
-            {isDraft ? (
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined aria-hidden />}
-                disabled={isBusy}
-                title={t('common.delete')}
-                aria-label={t('common.delete')}
-                onClick={() => handleDelete(record.id)}
-              />
-            ) : null}
-            <Button
-              type="text"
-              size="small"
-              icon={<DownloadOutlined aria-hidden />}
-              disabled={isBusy}
-              loading={isBusy && busy?.op === 'export'}
-              title={t('payrolls.exportJson')}
-              aria-label={t('payrolls.exportJson')}
-              onClick={() => void run(record.id, 'export')}
             />
           </div>
         );
       },
     },
   ],
-    [t, show, isAdmin, busy, handleEdit, run, markAsPreviewed, previewedPayrollIds, user?.id, handleDelete]
+    [t, handleView]
   );
 
   const breadcrumb = [
@@ -551,10 +407,7 @@ export function PayrollsList() {
             <DataTable<Payroll>
               data={filteredListData}
               columns={columns}
-              onRowClick={(record) => {
-                markAsPreviewed(record.id);
-                show('payrolls', record.id);
-              }}
+              onRowClick={(record) => handleView(record.id)}
               emptyMessage={t('common.noData')}
               emptyDescription={t('emptyState.listDescription', { resource: t('payrolls.title') })}
               emptyAction={

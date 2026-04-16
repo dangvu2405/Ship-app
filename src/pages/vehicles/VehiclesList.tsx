@@ -1,13 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@refinedev/core';
-import { Button, Card, Dropdown, Select, Tabs, Tag } from 'antd';
-import type { MenuProps } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
+import { Avatar, Button, Card, List, Select, Space, Tabs, Tag } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
-import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { VehicleFormDialog } from './VehicleFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -126,72 +124,6 @@ export function VehiclesList() {
     );
   };
 
-  const rowMenu = useCallback(
-    (record: Vehicle): MenuProps => ({
-      items: [
-        {
-          key: 'view',
-          icon: <EyeOutlined />,
-          label: t('common.view'),
-          onClick: () => show('vehicles', record.id),
-        },
-        {
-          key: 'edit',
-          icon: <EditOutlined />,
-          label: t('common.edit'),
-          onClick: () => handleOpenDialog('edit', record.id),
-        },
-        { type: 'divider' },
-        {
-          key: 'delete',
-          icon: <DeleteOutlined />,
-          label: t('common.delete'),
-          danger: true,
-          onClick: () => handleDelete(record),
-        },
-      ],
-    }),
-    [t, show, handleDelete, handleOpenDialog],
-  );
-
-  const columns = useMemo<DataTableColumn<Vehicle>[]>(
-    () => [
-    { key: 'plate_number', header: t('vehicles.plateNumber'), dataIndex: 'plate_number' },
-    { key: 'type', header: t('vehicles.type'), dataIndex: 'type' },
-    { key: 'brand', header: t('vehicles.brand'), dataIndex: 'brand' },
-    { key: 'model', header: t('vehicles.model'), dataIndex: 'model' },
-    { key: 'year', header: t('vehicles.year'), dataIndex: 'year' },
-    {
-      key: 'capacity',
-      header: t('vehicles.capacity'),
-      dataIndex: 'capacity',
-      render: (item) => item.capacity ? `${item.capacity} ${t('vehicles.capacityUnit')}` : '-',
-    },
-    {
-      key: 'status',
-      header: t('common.status'),
-      dataIndex: 'status',
-      render: (item) => (
-        <Tag color={item.status === 'active' ? 'success' : 'default'}>
-          {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </Tag>
-      ),
-    },
-    {
-      key: 'actions',
-      header: t('common.actions'),
-      render: (record) => (
-        <div role="presentation" onClick={(e) => e.stopPropagation()}>
-          <Dropdown menu={rowMenu(record)} trigger={['click']}>
-            <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t('common.actions')} />
-          </Dropdown>
-        </div>
-      ),
-    },
-  ],
-    [t, rowMenu]
-  );
-
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
     { label: t('vehicles.title') },
@@ -199,7 +131,7 @@ export function VehiclesList() {
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
-  const pageSize = 15;
+  const pageSize = 3;
 
   return (
     <>
@@ -245,23 +177,64 @@ export function VehiclesList() {
             />
           ) : (
             <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-              <DataTable<Vehicle>
-                data={listData}
-                columns={columns}
-                onRowClick={(record) => show('vehicles', record.id)}
-                emptyMessage={t('common.noData')}
-                emptyDescription={t('emptyState.listDescription', { resource: t('vehicles.title') })}
-                emptyAction={
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
-                    {t('vehicles.createVehicle')}
-                  </Button>
-                }
+              <List
+                itemLayout="vertical"
+                size="large"
+                dataSource={listData}
+                locale={{
+                  emptyText: t('emptyState.listDescription', { resource: t('vehicles.title') }),
+                }}
                 pagination={{
                   current,
                   total,
                   pageSize,
-                  onPageChange: setCurrent,
+                  onChange: setCurrent,
                 }}
+                footer={(
+                  <div>
+                    <b>vehicles</b> footer part
+                  </div>
+                )}
+                renderItem={(item, index) => (
+                  <List.Item
+                    key={item.id}
+                    actions={[
+                      <Button key="view" type="text" size="small" icon={<EyeOutlined />} onClick={() => show('vehicles', item.id)} />,
+                      <Button key="edit" type="text" size="small" icon={<EditOutlined />} onClick={() => handleOpenDialog('edit', item.id)} />,
+                      <Button key="delete" type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(item)} />,
+                    ]}
+                    extra={(
+                      <img
+                        draggable={false}
+                        width={272}
+                        alt="vehicle"
+                        src="https://gw.alipayobjects.com/zos/rmsportal/mqaQswcyDLcXyDKnZfES.png"
+                      />
+                    )}
+                  >
+                    <List.Item.Meta
+                      avatar={<Avatar src={`https://api.dicebear.com/7.x/miniavs/svg?seed=${item.id ?? index}`} />}
+                      title={(
+                        <Button type="link" style={{ padding: 0 }} onClick={() => show('vehicles', item.id)}>
+                          {item.plate_number}
+                        </Button>
+                      )}
+                      description={(
+                        <Space wrap size={[8, 8]}>
+                          <span>{`${t('vehicles.type')}: ${item.type || '-'}`}</span>
+                          <span>{`${t('vehicles.brand')}: ${item.brand || '-'}`}</span>
+                          <span>{`${t('vehicles.model')}: ${item.model || '-'}`}</span>
+                          <span>{`${t('vehicles.year')}: ${item.year || '-'}`}</span>
+                          <span>{`${t('vehicles.capacity')}: ${item.capacity ? `${item.capacity} ${t('vehicles.capacityUnit')}` : '-'}`}</span>
+                          <Tag color={item.status === 'active' ? 'success' : 'default'}>
+                            {item.status === 'active' ? t('common.active') : t('common.inactive')}
+                          </Tag>
+                        </Space>
+                      )}
+                    />
+                    {t('vehicles.description')}
+                  </List.Item>
+                )}
               />
             </PageLoadingOverlay>
           )}

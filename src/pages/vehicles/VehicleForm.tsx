@@ -1,4 +1,5 @@
-import { Form } from 'antd';
+import { Badge, Descriptions, Form } from 'antd';
+import type { DescriptionsProps } from 'antd';
 import { FormAccordionSections, FormItemNumber, FormItemSelect, FormItemText } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Vehicle } from '@/types';
@@ -6,16 +7,77 @@ import type { Vehicle } from '@/types';
 interface VehicleFormProps {
   form: ReturnType<typeof Form.useForm>[0];
   initialValues?: Partial<Vehicle>;
+  isViewMode?: boolean;
 }
 
 export function VehicleForm(props: VehicleFormProps) {
-  void props;
+  const { initialValues, isViewMode } = props;
   const { t } = useTranslation();
 
   const statusOptions = [
     { label: t('common.active'), value: 'active' },
     { label: t('common.inactive'), value: 'inactive' },
   ];
+
+  if (isViewMode) {
+    const descriptionItems: DescriptionsProps['items'] = [
+      {
+        key: 'plate_number',
+        label: t('vehicles.plateNumber'),
+        children: initialValues?.plate_number || '-',
+      },
+      {
+        key: 'type',
+        label: t('vehicles.type'),
+        children: initialValues?.type || '-',
+      },
+      {
+        key: 'brand',
+        label: t('vehicles.brand'),
+        children: initialValues?.brand || '-',
+      },
+      {
+        key: 'model',
+        label: t('vehicles.model'),
+        children: initialValues?.model || '-',
+      },
+      {
+        key: 'year',
+        label: t('vehicles.year'),
+        children: initialValues?.year ?? '-',
+      },
+      {
+        key: 'capacity',
+        label: t('vehicles.capacity'),
+        children: initialValues?.capacity ? `${initialValues.capacity} ${t('vehicles.capacityUnit')}` : '-',
+      },
+      {
+        key: 'office',
+        label: t('offices.title'),
+        children: initialValues?.office_id ?? '-',
+      },
+      {
+        key: 'status',
+        label: t('common.status'),
+        span: 3,
+        children: (
+          <Badge
+            status={initialValues?.status === 'active' ? 'success' : 'default'}
+            text={initialValues?.status === 'active' ? t('common.active') : t('common.inactive')}
+          />
+        ),
+      },
+    ];
+
+    return (
+      <Descriptions
+        title={t('common.view')}
+        layout="vertical"
+        bordered
+        items={descriptionItems}
+      />
+    );
+  }
 
   return (
     <FormAccordionSections

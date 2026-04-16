@@ -1,15 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigation } from '@refinedev/core';
-import { Button, Card, Form, Tabs, Tag } from 'antd';
+import { Avatar, Button, Card, Form, List, Radio, Space, Tabs, Tag } from 'antd';
 import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
-import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
-import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Driver } from '@/types';
@@ -25,6 +23,12 @@ type DriverFilterForm = {
   available_status?: string;
 };
 
+type PaginationPosition = 'top' | 'bottom' | 'both';
+type PaginationAlign = 'start' | 'center' | 'end';
+
+const positionOptions: PaginationPosition[] = ['top', 'bottom', 'both'];
+const alignOptions: PaginationAlign[] = ['start', 'center', 'end'];
+
 export function DriversList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
@@ -36,6 +40,8 @@ export function DriversList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Driver | null>(null);
   const [current, setCurrent] = useState(1);
+  const [position, setPosition] = useState<PaginationPosition>('bottom');
+  const [align, setAlign] = useState<PaginationAlign>('center');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
@@ -126,80 +132,6 @@ export function DriversList() {
     );
   };
 
-  const columns = useMemo<DataTableColumn<Driver>[]>(
-    () => [
-    {
-      key: 'employee',
-      header: t('drivers.employee'),
-      render: (r) => r.employee?.name ?? `#${r.employee_id}`,
-    },
-    { key: 'license_no', header: t('drivers.licenseNo'), dataIndex: 'license_no' },
-    { key: 'license_class', header: t('drivers.licenseClass'), dataIndex: 'license_class' },
-    {
-      key: 'expired_date',
-      header: t('drivers.expiredDate'),
-      dataIndex: 'expired_date',
-      render: (r) => <DateTimeBadge value={r.expired_date} mode="date" />,
-    },
-    {
-      key: 'available_status',
-      header: t('drivers.availableStatus'),
-      dataIndex: 'available_status',
-      render: (r) => {
-        const label = r.available_status === 'available'
-          ? t('drivers.statusAvailable')
-          : r.available_status === 'on_trip'
-            ? t('drivers.statusOnTrip')
-            : t('drivers.statusOff');
-        const color =
-          r.available_status === 'available' ? 'success' : r.available_status === 'on_trip' ? 'processing' : undefined;
-        return <Tag color={color}>{label}</Tag>;
-      },
-    },
-    {
-      key: 'actions',
-      header: t('common.actions'),
-      render: (record) => (
-        <div className="flex gap-1">
-          <Button
-            type="text"
-            size="small"
-            icon={<EyeOutlined aria-hidden />}
-            aria-label={t('common.view')}
-            onClick={(e) => {
-              e.stopPropagation();
-              show('drivers', record.id);
-            }}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined aria-hidden />}
-            aria-label={t('common.edit')}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(record.id);
-            }}
-          />
-          <Button
-            type="text"
-            size="small"
-            danger
-            icon={<DeleteOutlined aria-hidden />}
-            aria-label={t('common.delete')}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelected(record);
-              setDeleteDialogOpen(true);
-            }}
-          />
-        </div>
-      ),
-    },
-  ],
-    [t, show, handleEdit]
-  );
-
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
   const pageSize = 15;
@@ -255,6 +187,40 @@ export function DriversList() {
               busy={isFetching && !isLoading}
             />
           </ListPageFilters>
+        <Space direction="vertical" style={{ marginBottom: '20px' }} size="middle">
+          <Space>
+            <span>Pagination Position:</span>
+            <Radio.Group
+              optionType="button"
+              value={position}
+              onChange={(e) => {
+                setPosition(e.target.value as PaginationPosition);
+              }}
+            >
+              {positionOptions.map((item) => (
+                <Radio.Button key={item} value={item}>
+                  {item}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+          </Space>
+          <Space>
+            <span>Pagination Align:</span>
+            <Radio.Group
+              optionType="button"
+              value={align}
+              onChange={(e) => {
+                setAlign(e.target.value as PaginationAlign);
+              }}
+            >
+              {alignOptions.map((item) => (
+                <Radio.Button key={item} value={item}>
+                  {item}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+          </Space>
+        </Space>
 
           {isError ? (
             <ErrorState
@@ -264,18 +230,77 @@ export function DriversList() {
             />
           ) : (
             <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-              <DataTable<Driver>
-                data={listData}
-                columns={columns}
-                onRowClick={(r) => show('drivers', r.id)}
-                emptyMessage={t('common.noData')}
-                emptyDescription={t('emptyState.listDescription', { resource: t('drivers.title') })}
-                emptyAction={
-                  <Button type="primary" icon={<PlusOutlined aria-hidden />} onClick={handleCreate}>
-                    {t('drivers.createDriver')}
-                  </Button>
-                }
-                pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+              <List
+                itemLayout="horizontal"
+                dataSource={listData}
+                locale={{
+                  emptyText: t('emptyState.listDescription', { resource: t('drivers.title') }),
+                }}
+                pagination={{ current, total, pageSize, onChange: setCurrent, position, align }}
+                renderItem={(item, index) => {
+                  const statusLabel =
+                    item.available_status === 'available'
+                      ? t('drivers.statusAvailable')
+                      : item.available_status === 'on_trip'
+                        ? t('drivers.statusOnTrip')
+                        : t('drivers.statusOff');
+                  const color =
+                    item.available_status === 'available'
+                      ? 'success'
+                      : item.available_status === 'on_trip'
+                        ? 'processing'
+                        : undefined;
+                  return (
+                    <List.Item
+                      actions={[
+                        <Button
+                          key="view"
+                          type="text"
+                          size="small"
+                          icon={<EyeOutlined aria-hidden />}
+                          aria-label={t('common.view')}
+                          onClick={() => show('drivers', item.id)}
+                        />,
+                        <Button
+                          key="edit"
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined aria-hidden />}
+                          aria-label={t('common.edit')}
+                          onClick={() => handleEdit(item.id)}
+                        />,
+                        <Button
+                          key="delete"
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined aria-hidden />}
+                          aria-label={t('common.delete')}
+                          onClick={() => {
+                            setSelected(item);
+                            setDeleteDialogOpen(true);
+                          }}
+                        />,
+                      ]}
+                    >
+                      <List.Item.Meta
+                        avatar={<Avatar src={`https://api.dicebear.com/7.x/miniavs/svg?seed=${index}`} />}
+                        title={
+                          <Button type="link" style={{ padding: 0 }} onClick={() => show('drivers', item.id)}>
+                            {item.employee?.name ?? `#${item.employee_id}`}
+                          </Button>
+                        }
+                        description={
+                          <Space wrap size={[8, 8]}>
+                            <span>{`${t('drivers.licenseNo')}: ${item.license_no || '-'}`}</span>
+                            <span>{`${t('drivers.licenseClass')}: ${item.license_class || '-'}`}</span>
+                            <Tag color={color}>{statusLabel}</Tag>
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  );
+                }}
               />
             </PageLoadingOverlay>
           )}

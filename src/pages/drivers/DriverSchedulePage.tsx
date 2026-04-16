@@ -1,82 +1,109 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useList } from '@refinedev/core';
-import { Button, Card, Flex, Space, Typography } from 'antd';
+import { Badge, Button, Calendar, Card, Flex, Modal, Select, Space, Typography, type CalendarProps } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Driver } from '@/types';
+import type { Driver, DriverSchedule } from '@/types';
 import toast from 'react-hot-toast';
-import {
-  addDays,
-  buildWeekDayColumns,
-  cellKey,
-  startOfWeekMonday,
-  toISODateString,
-} from '@/utils/driverScheduleGrid';
+import workforceOpsService from '@/services/workforce-ops.service';
+import { formatDateTime, formatStatusLabel } from '@/utils/displayFormat';
+import { WorkforceOps } from '@/pages/system/WorkforceOps';
+import { useAuth } from '@/hooks/useAuth';
 
 export function DriverSchedulePage() {
   const { t } = useTranslation();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const { data, isLoading } = useList<Driver>({
     resource: 'drivers',
     pagination: { current: 1, pageSize: 500 },
     sorters: [{ field: 'id', order: 'asc' }],
   });
-  const drivers = data?.data ?? [];
+  const drivers = useMemo(() => data?.data ?? [], [data?.data]);
+  const [selectedDriverId, setSelectedDriverId] = useState<number | undefined>(undefined);
+  const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [schedules, setSchedules] = useState<DriverSchedule[]>([]);
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
 
-  const [weekStart, setWeekStart] = useState(() => startOfWeekMonday(new Date()));
-  const dayColumns = useMemo(() => buildWeekDayColumns(weekStart), [weekStart]);
-  const [cells, setCells] = useState<Record<string, string>>({});
-
-  const exportPayload = useMemo(
-    () => ({
-      weekStartIso: toISODateString(weekStart),
-      cells,
-    }),
-    [weekStart, cells],
+  const driverOptions = useMemo(
+    () => drivers.map((driver) => ({ label: driver.employee?.name ?? `#${driver.id}`, value: driver.id })),
+    [drivers],
   );
 
-  const updateCell = useCallback((driverId: number, iso: string, value: string) => {
-    const key = cellKey(driverId, iso);
-    setCells((prev) => {
-      if (!value.trim()) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return { ...prev, [key]: value };
-    });
-  }, []);
-
-  const handleExportJson = () => {
-    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `driver-schedule-${exportPayload.weekStartIso}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleCopyJson = async () => {
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(exportPayload));
-      toast.success(t('drivers.scheduleCopied'));
-    } catch {
-      toast.error(t('drivers.scheduleCopyFailed'));
+  useEffect(() => {
+    if (!selectedDriverId && drivers.length > 0) {
+      setSelectedDriverId(drivers[0].id);
     }
+  }, [drivers, selectedDriverId]);
+
+  const loadSchedules = useCallback(async () => {
+    if (!selectedDriverId) {
+      setSchedules([]);
+      return;
+    }
+    setScheduleLoading(true);
+    try {
+      const monthStart = currentMonth.startOf('month').format('YYYY-MM-DD');
+      const monthEnd = currentMonth.endOf('month').format('YYYY-MM-DD');
+      const result = await workforceOpsService.listDriverSchedules({
+        driver_id: selectedDriverId,
+        from: monthStart,
+        to: monthEnd,
+        per_page: 200,
+      });
+      setSchedules(result.data);
+    } catch (error) {
+      toast.error(t('common.loadError'));
+      void error;
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [selectedDriverId, currentMonth, t]);
+
+  useEffect(() => {
+    void loadSchedules();
+  }, [loadSchedules]);
+
+  const scheduleByDate = useMemo(() => {
+    const map = new Map<string, DriverSchedule[]>();
+    schedules.forEach((item) => {
+      const dateKey = dayjs(item.work_date).format('YYYY-MM-DD');
+      const prev = map.get(dateKey) ?? [];
+      prev.push(item);
+      map.set(dateKey, prev);
+    });
+    return map;
+  }, [schedules]);
+
+  const onPanelChange = (value: Dayjs, mode: CalendarProps<Dayjs>['mode']) => {
+    if (mode === 'month') setCurrentMonth(value);
   };
 
-  const goPrevWeek = () => setWeekStart((w) => startOfWeekMonday(addDays(w, -7)));
-  const goNextWeek = () => setWeekStart((w) => startOfWeekMonday(addDays(w, 7)));
+  const dateCellRender = (value: Dayjs) => {
+    const items = scheduleByDate.get(value.format('YYYY-MM-DD')) ?? [];
+    if (!items.length) return null;
+    return (
+      <Space direction="vertical" size={2}>
+        {items.map((item) => (
+          <Badge
+            key={item.id}
+            status={item.status === 'approved' || item.status === 'locked' ? 'success' : item.status === 'rejected' ? 'error' : 'processing'}
+            text={`${formatStatusLabel(item.status)} · ${item.shift_code || '-'} · ${formatDateTime(item.start_time)}`}
+          />
+        ))}
+      </Space>
+    );
+  };
 
   return (
     <>
       <PageHeader title={t('drivers.scheduleTitle')} />
-      <Card
-        className="rounded-xl shadow-sm border"
-        styles={{ body: { padding: 24 } }}
-      >
-        <Flex vertical gap={16} className="sm:flex-row sm:items-center sm:justify-between">
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
+        <Flex vertical gap={16}>
           <div>
             <Typography.Title level={4} style={{ marginBottom: 4 }}>
               {t('drivers.scheduleTitle')}
@@ -84,59 +111,40 @@ export function DriverSchedulePage() {
             <Typography.Text type="secondary">{t('drivers.scheduleWeekHint')}</Typography.Text>
           </div>
           <Space wrap>
-            <Button onClick={goPrevWeek}>{t('drivers.schedulePrevWeek')}</Button>
-            <Button onClick={goNextWeek}>{t('drivers.scheduleNextWeek')}</Button>
-            <Button onClick={handleExportJson}>{t('drivers.scheduleExportJson')}</Button>
-            <Button type="primary" onClick={() => void handleCopyJson()}>
-              {t('drivers.scheduleCopyJson')}
-            </Button>
+            <Select
+              showSearch
+              placeholder={t('drivers.title')}
+              style={{ minWidth: 260 }}
+              options={driverOptions}
+              value={selectedDriverId}
+              onChange={(value) => setSelectedDriverId(value)}
+            />
+            {isAdmin ? (
+              <Button type="primary" onClick={() => setApprovalModalOpen(true)}>
+                Duyet don
+              </Button>
+            ) : null}
           </Space>
         </Flex>
-        <div className="mt-4 overflow-x-auto">
-          {isLoading ? (
-            <TableSkeleton rows={6} columns={4} />
+        <div className="mt-4">
+          {isLoading || scheduleLoading ? (
+            <TableSkeleton rows={6} columns={1} />
           ) : (
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="sticky left-0 z-20 min-w-[160px] bg-background px-2 py-3 text-left font-medium">
-                    {t('drivers.title')}
-                  </th>
-                  {dayColumns.map((col) => (
-                    <th key={col.iso} className="min-w-[140px] border-l px-2 py-3 text-left font-normal text-muted-foreground">
-                      <div className="font-medium text-foreground">{col.label}</div>
-                      <div className="text-xs">{col.iso}</div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {drivers.map((driver) => (
-                  <tr key={driver.id} className="border-b">
-                    <td className="sticky left-0 z-10 bg-background px-2 py-2 align-top font-medium">
-                      {driver.employee?.name ?? `#${driver.id}`}
-                    </td>
-                    {dayColumns.map((col) => {
-                      const key = cellKey(driver.id, col.iso);
-                      return (
-                        <td key={key} className="border-l p-1 align-top">
-                          <textarea
-                            className="box-border min-h-[88px] w-full resize-y rounded-md border border-input bg-background px-2 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            rows={3}
-                            value={cells[key] ?? ''}
-                            placeholder={t('drivers.scheduleCellPlaceholder')}
-                            onChange={(e) => updateCell(driver.id, col.iso, e.target.value)}
-                          />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Calendar value={currentMonth} onPanelChange={onPanelChange} cellRender={(value) => dateCellRender(value as Dayjs)} />
           )}
         </div>
       </Card>
+      <Modal
+        title="Duyet don Workforce Ops"
+        open={approvalModalOpen}
+        onCancel={() => setApprovalModalOpen(false)}
+        footer={null}
+        width="92vw"
+        style={{ top: 20 }}
+        destroyOnHidden
+      >
+        <WorkforceOps embedded />
+      </Modal>
     </>
   );
 }

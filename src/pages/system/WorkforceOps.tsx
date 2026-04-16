@@ -1,5 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Col, DatePicker, Descriptions, Flex, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Tabs, Tag, TimePicker, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Descriptions,
+  Flex,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  TimePicker,
+  Typography,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useList } from '@refinedev/core';
 import toast from 'react-hot-toast';
@@ -7,49 +26,313 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { FormItemSelect } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import workforceOpsService from '@/services/workforce-ops.service';
-import type { DriverSchedule, LeaveRequest, OvertimeRequest, ViolationRecord, WorkforceAttendanceRecord } from '@/types';
+import type {
+  DriverSchedule,
+  LeaveRequest,
+  OvertimeRequest,
+  ViolationRecord,
+  WorkforceAttendanceRecord,
+} from '@/types';
 import { formatDate, formatDateTime, formatMoney, formatStatusLabel } from '@/utils/displayFormat';
 import { getErrorMessage, getErrorStatus } from '@/utils/errorHandler';
 import { nonNegativeNumberRule, requiredRule } from '@/utils/validation';
 import dayjs from 'dayjs';
 
-type TabKey = 'schedule' | 'attendance' | 'leave' | 'overtime' | 'violations';
-type DetailKind = 'leave' | 'overtime' | 'violations';
+// ─── Status helpers ────────────────────────────────────────────────────────────
 
-export function WorkforceOps() {
+const SCHEDULE_STATUS_COLOR: Record<string, string> = {
+  draft: 'default',
+  submitted: 'processing',
+  approved: 'success',
+  locked: 'purple',
+};
+
+const LEAVE_STATUS_COLOR: Record<string, string> = {
+  pending: 'default',
+  submitted: 'processing',
+  approved: 'success',
+  rejected: 'error',
+  cancelled: 'warning',
+};
+
+const OT_STATUS_COLOR: Record<string, string> = {
+  draft: 'default',
+  submitted: 'processing',
+  approved: 'success',
+  rejected: 'error',
+  paid: 'purple',
+};
+
+const VIOLATION_STATUS_COLOR: Record<string, string> = {
+  pending: 'default',
+  pending_review: 'default',
+  confirmed: 'error',
+  disputed: 'warning',
+  resolved: 'success',
+  waived: 'default',
+  deducted: 'purple',
+};
+
+const ATTENDANCE_STATUS_COLOR: Record<string, string> = {
+  present: 'success',
+  late: 'warning',
+  absent: 'error',
+  partial: 'processing',
+};
+
+function StatusTag({ value, colorMap }: { value: string; colorMap: Record<string, string> }) {
+  return <Tag color={colorMap[value] ?? 'default'}>{formatStatusLabel(value)}</Tag>;
+}
+
+// ─── Action confirmation modal ─────────────────────────────────────────────────
+
+interface ActionConfirmState {
+  open: boolean;
+  title: string;
+  requireReason: boolean;
+  placeholder?: string;
+  onConfirm: (reason: string) => Promise<void>;
+}
+
+const DEFAULT_ACTION_CONFIRM: ActionConfirmState = {
+  open: false,
+  title: '',
+  requireReason: false,
+  onConfirm: async () => {},
+};
+
+function ActionConfirmModal({
+  state,
+  onClose,
+}: {
+  state: ActionConfirmState;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!state.open) setReason('');
+  }, [state.open]);
+
+  const handleOk = async () => {
+    if (state.requireReason && !reason.trim()) {
+      toast.error(t('validation.required' as never));
+      return;
+    }
+    setLoading(true);
+    try {
+      await state.onConfirm(reason.trim());
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      title={state.title}
+      open={state.open}
+      onCancel={onClose}
+      onOk={handleOk}
+      confirmLoading={loading}
+      okText={t('common.confirm' as never)}
+      cancelText={t('common.cancel' as never)}
+    >
+      {state.requireReason ? (
+        <Input.TextArea
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder={state.placeholder ?? t('common.reasonPlaceholder' as never)}
+        />
+      ) : (
+        <Typography.Text>{t('common.confirmAction' as never)}</Typography.Text>
+      )}
+    </Modal>
+  );
+}
+
+// ─── Detail modal ──────────────────────────────────────────────────────────────
+
+type DetailKind = 'leave' | 'overtime' | 'violations' | 'attendance';
+
+const DETAIL_LABELS: Record<DetailKind, Record<string, string>> = {
+  leave: {
+    id: 'workforce.detail.leave.id',
+    driver_id: 'workforce.detail.leave.driver_id',
+    driver: 'workforce.detail.leave.driver',
+    leave_type_id: 'workforce.detail.leave.leave_type_id',
+    leave_type: 'workforce.detail.leave.leave_type',
+    from_date: 'workforce.detail.leave.from_date',
+    to_date: 'workforce.detail.leave.to_date',
+    total_days: 'workforce.detail.leave.total_days',
+    status: 'workforce.detail.leave.status',
+    reason: 'workforce.detail.leave.reason',
+    rejection_reason: 'workforce.detail.leave.rejection_reason',
+    cancelled_at: 'workforce.detail.leave.cancelled_at',
+    created_at: 'workforce.detail.leave.created_at',
+    updated_at: 'workforce.detail.leave.updated_at',
+  },
+  overtime: {
+    id: 'workforce.detail.overtime.id',
+    driver_id: 'workforce.detail.overtime.driver_id',
+    driver: 'workforce.detail.overtime.driver',
+    company_id: 'workforce.detail.overtime.company_id',
+    work_date: 'workforce.detail.overtime.work_date',
+    start_time: 'workforce.detail.overtime.start_time',
+    end_time: 'workforce.detail.overtime.end_time',
+    ot_hours: 'workforce.detail.overtime.ot_hours',
+    ot_rate: 'workforce.detail.overtime.ot_rate',
+    ot_amount: 'workforce.detail.overtime.ot_amount',
+    status: 'workforce.detail.overtime.status',
+    reason: 'workforce.detail.overtime.reason',
+    rejection_reason: 'workforce.detail.overtime.rejection_reason',
+    approved_by: 'workforce.detail.overtime.approved_by',
+    approved_at: 'workforce.detail.overtime.approved_at',
+    created_at: 'workforce.detail.overtime.created_at',
+  },
+  violations: {
+    id: 'workforce.detail.violations.id',
+    driver_id: 'workforce.detail.violations.driver_id',
+    driver: 'workforce.detail.violations.driver',
+    company_id: 'workforce.detail.violations.company_id',
+    trip_id: 'workforce.detail.violations.trip_id',
+    type: 'workforce.detail.violations.type',
+    occurred_at: 'workforce.detail.violations.occurred_at',
+    status: 'workforce.detail.violations.status',
+    description: 'workforce.detail.violations.description',
+    penalty_amount: 'workforce.detail.violations.penalty_amount',
+    confirmed_by: 'workforce.detail.violations.confirmed_by',
+    confirmed_at: 'workforce.detail.violations.confirmed_at',
+    dispute_reason: 'workforce.detail.violations.dispute_reason',
+    resolution: 'workforce.detail.violations.resolution',
+    resolution_note: 'workforce.detail.violations.resolution_note',
+    waive_reason: 'workforce.detail.violations.waive_reason',
+    created_at: 'workforce.detail.violations.created_at',
+  },
+  attendance: {
+    id: 'workforce.detail.attendance.id',
+    driver_id: 'workforce.detail.attendance.driver_id',
+    driver: 'workforce.detail.attendance.driver',
+    date: 'workforce.detail.attendance.date',
+    check_in: 'workforce.detail.attendance.check_in',
+    check_out: 'workforce.detail.attendance.check_out',
+    work_hours: 'workforce.detail.attendance.work_hours',
+    overtime_hours: 'workforce.detail.attendance.overtime_hours',
+    status: 'workforce.detail.attendance.status',
+    late_minutes: 'workforce.detail.attendance.late_minutes',
+    note: 'workforce.detail.attendance.note',
+  },
+};
+
+const STATUS_FIELDS = new Set(['status']);
+const MONEY_FIELDS = new Set(['penalty_amount', 'ot_amount']);
+const DATETIME_FIELDS = new Set(['occurred_at', 'cancelled_at', 'approved_at', 'confirmed_at', 'check_in', 'check_out', 'created_at', 'updated_at']);
+const DATE_FIELDS = new Set(['from_date', 'to_date', 'work_date', 'date']);
+
+function formatDetailValue(key: string, value: unknown, colorMap?: Record<string, string>) {
+  if (value === null || value === undefined || value === '') return '-';
+  if (STATUS_FIELDS.has(key)) {
+    return colorMap
+      ? <StatusTag value={String(value)} colorMap={colorMap} />
+      : <Tag>{formatStatusLabel(value)}</Tag>;
+  }
+  if (MONEY_FIELDS.has(key)) return formatMoney(value);
+  if (DATETIME_FIELDS.has(key)) return formatDateTime(value);
+  if (DATE_FIELDS.has(key)) return formatDate(value);
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+function DetailDescriptions({
+  kind,
+  data,
+}: {
+  kind: DetailKind;
+  data: Record<string, unknown>;
+}) {
+  const { t } = useTranslation();
+  const labels = DETAIL_LABELS[kind];
+  const colorMap =
+    kind === 'leave'
+      ? LEAVE_STATUS_COLOR
+      : kind === 'overtime'
+        ? OT_STATUS_COLOR
+        : kind === 'violations'
+          ? VIOLATION_STATUS_COLOR
+          : ATTENDANCE_STATUS_COLOR;
+
+  const orderedKeys = Object.keys(labels).filter((k) => data[k] !== null && data[k] !== undefined && data[k] !== '');
+
+  return (
+    <Descriptions column={1} size="small" bordered>
+      {orderedKeys.map((key) => (
+        <Descriptions.Item key={key} label={t((labels[key] ?? key) as never)}>
+          {formatDetailValue(key, data[key], STATUS_FIELDS.has(key) ? colorMap : undefined)}
+        </Descriptions.Item>
+      ))}
+    </Descriptions>
+  );
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────────
+
+type TabKey = 'schedule' | 'attendance' | 'leave' | 'overtime' | 'violations';
+
+interface WorkforceOpsProps {
+  embedded?: boolean;
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────────
+
+export function WorkforceOps({ embedded = false }: WorkforceOpsProps = {}) {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [attendanceForm] = Form.useForm();
   const [leaveForm] = Form.useForm();
   const [overtimeForm] = Form.useForm();
   const [violationForm] = Form.useForm();
-  const [activeTab, setActiveTab] = useState<TabKey>('schedule');
+
+  const [activeTab, setActiveTab] = useState<TabKey>('leave');
   const [loading, setLoading] = useState(false);
-  const [reason, setReason] = useState('');
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
+
+  // ── Filter states per tab
   const [scheduleFilters, setScheduleFilters] = useState<Record<string, unknown>>({});
   const [attendanceFilters, setAttendanceFilters] = useState<Record<string, unknown>>({});
   const [leaveFilters, setLeaveFilters] = useState<Record<string, unknown>>({});
   const [overtimeFilters, setOvertimeFilters] = useState<Record<string, unknown>>({});
   const [violationFilters, setViolationFilters] = useState<Record<string, unknown>>({});
-  const [leaveTypeOptions, setLeaveTypeOptions] = useState<Array<{ label: string; value: number }>>([]);
+
+  // ── Modal open states
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
   const [overtimeModalOpen, setOvertimeModalOpen] = useState(false);
   const [violationModalOpen, setViolationModalOpen] = useState(false);
+
+  // ── Detail modal
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTitle, setDetailTitle] = useState('');
   const [detailKind, setDetailKind] = useState<DetailKind>('leave');
-  const [detailData, setDetailData] = useState<unknown>(null);
-  const scheduleFormOfficeId = Form.useWatch('office_id', form) as number | undefined;
+  const [detailData, setDetailData] = useState<Record<string, unknown> | null>(null);
 
+  // ── Action confirmation modal (replaces global reason field)
+  const [actionConfirm, setActionConfirm] = useState<ActionConfirmState>(DEFAULT_ACTION_CONFIRM);
+
+  // ── Data states
   const [schedules, setSchedules] = useState<DriverSchedule[]>([]);
   const [attendance, setAttendance] = useState<WorkforceAttendanceRecord[]>([]);
   const [leaveRows, setLeaveRows] = useState<LeaveRequest[]>([]);
   const [overtimeRows, setOvertimeRows] = useState<OvertimeRequest[]>([]);
   const [violationRows, setViolationRows] = useState<ViolationRecord[]>([]);
-  const requiredRules = (label: string) => [requiredRule(label)];
+  const [leaveTypeOptions, setLeaveTypeOptions] = useState<Array<{ label: string; value: number }>>([]);
+
+  const scheduleFormOfficeId = Form.useWatch('office_id', form) as number | undefined;
+
+  // ── Remote data
   const { data: driversData } = useList<{ id: number; name?: string; code?: string; office_id?: number; company_id?: number }>({
     resource: 'drivers',
     pagination: { current: 1, pageSize: 200 },
@@ -73,71 +356,76 @@ export function WorkforceOps() {
 
   const drivers = useMemo(() => driversData?.data ?? [], [driversData?.data]);
   const offices = useMemo(() => officesData?.data ?? [], [officesData?.data]);
+
   const driverOptions = useMemo(
-    () => drivers.map((item) => ({ value: item.id, label: item.name || item.code || `Driver #${item.id}` })),
+    () => drivers.map((d) => ({ value: d.id, label: d.name || d.code || `Driver #${d.id}` })),
     [drivers],
   );
   const officeOptions = useMemo(
-    () => offices.map((item) => ({ value: item.id, label: item.name || item.code || `Office #${item.id}` })),
+    () => offices.map((o) => ({ value: o.id, label: o.name || o.code || `Office #${o.id}` })),
     [offices],
   );
   const companyOptions = useMemo(
-    () => (companiesData?.data ?? []).map((item) => ({ value: item.id, label: item.name || item.code || `Company #${item.id}` })),
+    () => (companiesData?.data ?? []).map((c) => ({ value: c.id, label: c.name || c.code || `Company #${c.id}` })),
     [companiesData?.data],
   );
   const vehicleOptions = useMemo(
-    () => (vehiclesData?.data ?? []).map((item) => ({ value: item.id, label: item.plate_number || `Vehicle #${item.id}` })),
+    () => (vehiclesData?.data ?? []).map((v) => ({ value: v.id, label: v.plate_number || `Vehicle #${v.id}` })),
     [vehiclesData?.data],
   );
   const tripOptions = useMemo(
-    () => (tripsData?.data ?? []).map((item) => ({ value: item.id, label: item.code || `Trip #${item.id}` })),
+    () => (tripsData?.data ?? []).map((t) => ({ value: t.id, label: t.code || `Trip #${t.id}` })),
     [tripsData?.data],
   );
   const attendanceOptions = useMemo(
-    () => attendance.map((item) => ({ value: item.id, label: `#${item.id} - Driver ${item.driver_id} - ${item.date}` })),
+    () => attendance.map((a) => ({ value: a.id, label: `#${a.id} – Driver ${a.driver_id} – ${a.date}` })),
     [attendance],
   );
-  const filterOfficeOptions = useCallback((companyId?: number) => {
-    if (!companyId) return officeOptions;
-    return offices
-      .filter((office) => !office.company_id || office.company_id === companyId)
-      .map((office) => ({ value: office.id, label: office.name || office.code || `Office #${office.id}` }));
-  }, [officeOptions, offices]);
-  const filterDriverOptions = useCallback((companyId?: number, officeId?: number) => {
-    return drivers
-      .filter((driver) => {
-        if (companyId && driver.company_id && driver.company_id !== companyId) return false;
-        if (officeId && driver.office_id && driver.office_id !== officeId) return false;
-        return true;
-      })
-      .map((driver) => ({ value: driver.id, label: driver.name || driver.code || `Driver #${driver.id}` }));
-  }, [drivers]);
-  const sanitizeHierarchicalFilters = useCallback((raw: Record<string, unknown>) => {
-    const next = { ...raw } as Record<string, unknown>;
-    const companyId = typeof next.company_id === 'number' ? next.company_id : undefined;
-    const officeId = typeof next.office_id === 'number' ? next.office_id : undefined;
-    const driverId = typeof next.driver_id === 'number' ? next.driver_id : undefined;
 
-    if (officeId && companyId) {
-      const office = offices.find((item) => item.id === officeId);
-      if (office?.company_id && office.company_id !== companyId) {
-        delete next.office_id;
-      }
-    }
+  // ── Hierarchical filter helpers
+  const filterOfficeOptions = useCallback(
+    (companyId?: number) => {
+      if (!companyId) return officeOptions;
+      return offices
+        .filter((o) => !o.company_id || o.company_id === companyId)
+        .map((o) => ({ value: o.id, label: o.name || o.code || `Office #${o.id}` }));
+    },
+    [officeOptions, offices],
+  );
 
-    if (driverId) {
-      const driver = drivers.find((item) => item.id === driverId);
-      if (companyId && driver?.company_id && driver.company_id !== companyId) {
-        delete next.driver_id;
-      }
-      const effectiveOfficeId = typeof next.office_id === 'number' ? next.office_id : undefined;
-      if (effectiveOfficeId && driver?.office_id && driver.office_id !== effectiveOfficeId) {
-        delete next.driver_id;
-      }
-    }
+  const filterDriverOptions = useCallback(
+    (companyId?: number, officeId?: number) =>
+      drivers
+        .filter((d) => {
+          if (companyId && d.company_id && d.company_id !== companyId) return false;
+          if (officeId && d.office_id && d.office_id !== officeId) return false;
+          return true;
+        })
+        .map((d) => ({ value: d.id, label: d.name || d.code || `Driver #${d.id}` })),
+    [drivers],
+  );
 
-    return next;
-  }, [drivers, offices]);
+  const sanitizeHierarchicalFilters = useCallback(
+    (raw: Record<string, unknown>) => {
+      const next = { ...raw };
+      const companyId = typeof next.company_id === 'number' ? next.company_id : undefined;
+      const officeId = typeof next.office_id === 'number' ? next.office_id : undefined;
+      const driverId = typeof next.driver_id === 'number' ? next.driver_id : undefined;
+      if (officeId && companyId) {
+        const office = offices.find((o) => o.id === officeId);
+        if (office?.company_id && office.company_id !== companyId) delete next.office_id;
+      }
+      if (driverId) {
+        const driver = drivers.find((d) => d.id === driverId);
+        if (companyId && driver?.company_id && driver.company_id !== companyId) delete next.driver_id;
+        const eff = typeof next.office_id === 'number' ? next.office_id : undefined;
+        if (eff && driver?.office_id && driver.office_id !== eff) delete next.driver_id;
+      }
+      return next;
+    },
+    [drivers, offices],
+  );
+
   const sanitizeAndSyncFilters = useCallback(
     (setFilters: (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => void) => {
       setFilters((prev) => {
@@ -148,57 +436,59 @@ export function WorkforceOps() {
     [sanitizeHierarchicalFilters],
   );
 
-  const loadTab = useCallback(async (tab: TabKey) => {
+  // ── Data loading
+  const loadTab = useCallback(
+    async (tab: TabKey) => {
     setLoading(true);
     try {
       if (tab === 'schedule') {
-        const data = await workforceOpsService.listDriverSchedules({ per_page: 50, ...sanitizeHierarchicalFilters(scheduleFilters) });
-        setSchedules(data.data);
+          const d = await workforceOpsService.listDriverSchedules({ per_page: 50, ...sanitizeHierarchicalFilters(scheduleFilters) });
+          setSchedules(d.data);
       } else if (tab === 'attendance') {
-        const data = await workforceOpsService.listAttendance({ per_page: 50, ...sanitizeHierarchicalFilters(attendanceFilters) });
-        setAttendance(data.data);
+          const d = await workforceOpsService.listAttendance({ per_page: 50, ...sanitizeHierarchicalFilters(attendanceFilters) });
+          setAttendance(d.data);
       } else if (tab === 'leave') {
-        const data = await workforceOpsService.listLeave({ per_page: 50, ...sanitizeHierarchicalFilters(leaveFilters) });
-        setLeaveRows(data.data);
+          const d = await workforceOpsService.listLeave({ per_page: 50, ...sanitizeHierarchicalFilters(leaveFilters) });
+          setLeaveRows(d.data);
       } else if (tab === 'overtime') {
-        const data = await workforceOpsService.listOvertime({ per_page: 50, ...sanitizeHierarchicalFilters(overtimeFilters) });
-        setOvertimeRows(data.data);
+          const d = await workforceOpsService.listOvertime({ per_page: 50, ...sanitizeHierarchicalFilters(overtimeFilters) });
+          setOvertimeRows(d.data);
       } else {
-        const data = await workforceOpsService.listViolations({ per_page: 50, ...sanitizeHierarchicalFilters(violationFilters) });
-        setViolationRows(data.data);
+          const d = await workforceOpsService.listViolations({ per_page: 50, ...sanitizeHierarchicalFilters(violationFilters) });
+          setViolationRows(d.data);
       }
-    } catch (error) {
+      } catch {
       toast.error(t('common.loadError'));
-      void error;
     } finally {
       setLoading(false);
     }
-  }, [t, scheduleFilters, attendanceFilters, leaveFilters, overtimeFilters, violationFilters, sanitizeHierarchicalFilters]);
+    },
+    [t, scheduleFilters, attendanceFilters, leaveFilters, overtimeFilters, violationFilters, sanitizeHierarchicalFilters],
+  );
 
   useEffect(() => {
     const loadLeaveTypes = async () => {
       try {
-        const response = await workforceOpsService.listLeaveTypes();
-        const options = (response.data || []).map((item) => ({ label: item.name || `Type ${item.id}`, value: item.id }));
-        setLeaveTypeOptions(options);
-      } catch (error) {
-        void error;
+        const r = await workforceOpsService.listLeaveTypes();
+        setLeaveTypeOptions((r.data || []).map((item) => ({ label: item.name || `Type ${item.id}`, value: item.id })));
+      } catch {
+        // no-op
       }
     };
     void loadLeaveTypes();
   }, []);
 
-  useEffect(() => {
-    void loadTab(activeTab);
-  }, [activeTab, loadTab]);
+  useEffect(() => { void loadTab(activeTab); }, [activeTab, loadTab]);
+
   useEffect(() => {
     sanitizeAndSyncFilters(setScheduleFilters);
     sanitizeAndSyncFilters(setAttendanceFilters);
     sanitizeAndSyncFilters(setLeaveFilters);
     sanitizeAndSyncFilters(setOvertimeFilters);
     sanitizeAndSyncFilters(setViolationFilters);
-  }, [sanitizeAndSyncFilters, drivers, offices]);
+  }, [sanitizeAndSyncFilters]);
 
+  // ── Generic action runner
   const runAction = useCallback(
     async (action: () => Promise<unknown>, refreshTab: TabKey, successMessage: string) => {
       try {
@@ -206,146 +496,89 @@ export function WorkforceOps() {
         toast.success(successMessage);
         await loadTab(refreshTab);
       } catch (error) {
-        const status = getErrorStatus(error);
-        if (status === 409) {
-          toast.error(getErrorMessage(error) || 'Conflict detected. Please refresh and retry.');
+        if (getErrorStatus(error) === 409) {
+          toast.error(getErrorMessage(error) || t('common.conflictError' as never));
           return;
         }
         toast.error(getErrorMessage(error) || t('common.saveError'));
-        void error;
       }
     },
     [loadTab, t],
   );
 
-  const scheduleColumns: ColumnsType<DriverSchedule> = [
-    { title: 'ID', dataIndex: 'id', width: 72 },
-    { title: 'Driver', dataIndex: ['driver', 'name'], render: (_, row) => row.driver?.name || row.driver_id },
-    { title: 'Date', dataIndex: 'work_date', render: (value) => formatDate(value) },
-    { title: 'Office', dataIndex: 'office_id', render: (value) => value ?? '-' },
-    { title: 'Vehicle', dataIndex: 'vehicle_id', render: (_, row) => row.vehicle?.plate_number || row.vehicle_id || '-' },
-    { title: 'Start', dataIndex: 'start_time', render: (value) => formatDateTime(value) },
-    { title: 'End', dataIndex: 'end_time', render: (value) => formatDateTime(value) },
-    { title: 'Shift', dataIndex: 'shift_code' },
-    { title: 'Status', dataIndex: 'status', render: (v) => <Tag>{formatStatusLabel(v || 'draft')}</Tag> },
-    {
-      title: t('common.actions'),
-      render: (_, row) => (
-        <Space>
-          <Button
-            size="small"
-            disabled={row.status !== 'draft'}
-            onClick={async () => {
-            await runAction(() => workforceOpsService.submitDriverSchedule(row.id), 'schedule', 'Submitted');
-          }}
-          >
-            Submit
-          </Button>
-          <Button
-            size="small"
-            disabled={row.status !== 'submitted'}
-            onClick={async () => {
-            await runAction(async () => {
-              const hos = await workforceOpsService.checkDriverScheduleHos(row.id);
-              const allowed = hos.data?.allowed ?? true;
-              if (!allowed) {
-                throw new Error(hos.data?.reason || 'HOS check failed. Approval blocked.');
-              }
-              await workforceOpsService.approveDriverSchedule(row.id);
-            }, 'schedule', 'Approved');
-          }}
-          >
-            Approve
-          </Button>
-          <Button
-            size="small"
-            danger
-            disabled={row.status !== 'submitted'}
-            onClick={async () => {
-            await runAction(() => workforceOpsService.rejectDriverSchedule(row.id), 'schedule', 'Rejected');
-          }}
-          >
-            Reject
-          </Button>
-          <Button
-            size="small"
-            disabled={row.status !== 'approved'}
-            onClick={async () => {
-              await runAction(() => workforceOpsService.lockDriverSchedule(row.id), 'schedule', 'Locked');
-            }}
-          >
-            Lock
-          </Button>
-          <Button
-            size="small"
-            disabled={row.status !== 'locked'}
-            onClick={async () => {
-              await runAction(
-                () => workforceOpsService.overrideDriverSchedule(row.id, reason || 'Manual override by admin'),
-                'schedule',
-                'Overridden',
-              );
-            }}
-          >
-            Override
-          </Button>
-          <Button
-            size="small"
-            onClick={() => {
-              setEditingScheduleId(row.id);
-              form.setFieldsValue({
-                driver_id: row.driver_id,
-                office_id: row.office_id,
-                work_date: row.work_date ? dayjs(row.work_date) : undefined,
-                shift_code: row.shift_code,
-                start_time: row.start_time ? dayjs(row.start_time, 'HH:mm') : undefined,
-                end_time: row.end_time ? dayjs(row.end_time, 'HH:mm') : undefined,
-                vehicle_id: row.vehicle_id,
-                notes: row.notes,
-              });
-              setScheduleModalOpen(true);
-            }}
-          >
-            Edit
-          </Button>
-          <Button
-            size="small"
-            danger
-            disabled={row.status === 'locked'}
-            onClick={async () => {
-              await runAction(() => workforceOpsService.deleteDriverSchedule(row.id), 'schedule', 'Deleted');
-            }}
-          >
-            Delete
-          </Button>
-        </Space>
-      ),
+  // ── Action confirm helper: opens modal, executes on confirm
+  const confirmThenRun = useCallback(
+    (
+      title: string,
+      action: () => Promise<unknown>,
+      refreshTab: TabKey,
+      successMessage: string,
+      opts?: { requireReason?: boolean; placeholder?: string; actionWithReason?: (r: string) => Promise<unknown> },
+    ) => {
+      setActionConfirm({
+        open: true,
+        title,
+        requireReason: opts?.requireReason ?? false,
+        placeholder: opts?.placeholder,
+        onConfirm: async (reason) => {
+          const fn = opts?.actionWithReason ? () => opts.actionWithReason!(reason) : action;
+          await runAction(fn, refreshTab, successMessage);
+        },
+      });
     },
-  ];
-
-  const scheduleInitialValues = useMemo(
-    () => ({
-      shift_code: 'day',
-    }),
-    [],
+    [runAction],
   );
+
+  // ── Detail opener
+  const openDetail = useCallback(
+    async (type: DetailKind, id: number) => {
+      setLoading(true);
+      try {
+        let data: unknown;
+        if (type === 'leave') {
+          const r = await workforceOpsService.getLeaveById(id);
+          data = r.data;
+          setDetailTitle(`${t('workforce.leaveRequest' as never)} #${id}`);
+        } else if (type === 'overtime') {
+          const r = await workforceOpsService.getOvertimeById(id);
+          data = r.data;
+          setDetailTitle(`${t('workforce.overtimeRequest' as never)} #${id}`);
+        } else if (type === 'violations') {
+          const r = await workforceOpsService.getViolationById(id);
+          data = r.data;
+          setDetailTitle(`${t('workforce.violationRecord' as never)} #${id}`);
+        }
+        setDetailKind(type);
+        setDetailData((data as Record<string, unknown>) ?? null);
+        setDetailOpen(true);
+      } catch (error) {
+        toast.error(getErrorMessage(error) || t('common.loadError'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
+
+  // ── Form submits
+  const requiredRules = (label: string) => [requiredRule(label)];
 
   const submitScheduleForm = async () => {
     const values = await form.validateFields();
     const payload = {
-      driver_id: values.driver_id,
-      office_id: values.office_id,
-      work_date: values.work_date?.format('YYYY-MM-DD'),
-      shift_code: values.shift_code,
-      start_time: values.start_time?.format('HH:mm'),
-      end_time: values.end_time?.format('HH:mm'),
-      vehicle_id: values.vehicle_id,
-      notes: values.notes,
+      driver_id: values.driver_id as number,
+      office_id: values.office_id as number,
+      work_date: (values.work_date as dayjs.Dayjs).format('YYYY-MM-DD'),
+      shift_code: values.shift_code as string,
+      start_time: (values.start_time as dayjs.Dayjs).format('HH:mm'),
+      end_time: (values.end_time as dayjs.Dayjs).format('HH:mm'),
+      vehicle_id: values.vehicle_id as number | undefined,
+      notes: values.notes as string | undefined,
     };
     if (editingScheduleId) {
-      await runAction(() => workforceOpsService.updateDriverSchedule(editingScheduleId, payload), 'schedule', 'Updated');
+      await runAction(() => workforceOpsService.updateDriverSchedule(editingScheduleId, payload), 'schedule', t('notifications.updateSuccess' as never));
     } else {
-      await runAction(() => workforceOpsService.createDriverSchedule(payload), 'schedule', 'Created');
+      await runAction(() => workforceOpsService.createDriverSchedule(payload), 'schedule', t('notifications.createSuccess' as never));
     }
     setScheduleModalOpen(false);
     setEditingScheduleId(null);
@@ -355,48 +588,40 @@ export function WorkforceOps() {
   const submitAttendanceCheckIn = async () => {
     const values = await attendanceForm.validateFields(['driver_id', 'check_in_time']);
     await runAction(
-      () =>
-        workforceOpsService.checkIn({
-          driver_id: values.driver_id,
-          check_in_time: values.check_in_time.format('YYYY-MM-DD HH:mm:ss'),
-        }),
+      () => workforceOpsService.checkIn({ driver_id: values.driver_id as number, check_in_time: (values.check_in_time as dayjs.Dayjs).format('YYYY-MM-DD HH:mm:ss') }),
       'attendance',
-      'Check-in recorded',
+      t('workforce.checkInSuccess' as never),
     );
     setAttendanceModalOpen(false);
-    attendanceForm.resetFields(['check_in_time']);
+    attendanceForm.resetFields();
   };
 
   const submitAttendanceCheckOut = async () => {
     const values = await attendanceForm.validateFields(['driver_id', 'check_out_time']);
     await runAction(
-      () =>
-        workforceOpsService.checkOut({
-          driver_id: values.driver_id,
-          check_out_time: values.check_out_time.format('YYYY-MM-DD HH:mm:ss'),
-        }),
+      () => workforceOpsService.checkOut({ driver_id: values.driver_id as number, check_out_time: (values.check_out_time as dayjs.Dayjs).format('YYYY-MM-DD HH:mm:ss') }),
       'attendance',
-      'Check-out recorded',
+      t('workforce.checkOutSuccess' as never),
     );
     setAttendanceModalOpen(false);
-    attendanceForm.resetFields(['check_out_time']);
+    attendanceForm.resetFields();
   };
 
   const submitAttendanceAdjust = async () => {
     const values = await attendanceForm.validateFields(['attendance_id', 'adjust_reason']);
     await runAction(
       () =>
-        workforceOpsService.adjustAttendance(values.attendance_id, {
-          reason: values.adjust_reason,
-          check_in: values.adjust_check_in ? values.adjust_check_in.format('YYYY-MM-DD HH:mm:ss') : undefined,
-          check_out: values.adjust_check_out ? values.adjust_check_out.format('YYYY-MM-DD HH:mm:ss') : undefined,
-          status: values.adjust_status,
+        workforceOpsService.adjustAttendance(values.attendance_id as number, {
+          reason: values.adjust_reason as string,
+          check_in: values.adjust_check_in ? (values.adjust_check_in as dayjs.Dayjs).format('YYYY-MM-DD HH:mm:ss') : undefined,
+          check_out: values.adjust_check_out ? (values.adjust_check_out as dayjs.Dayjs).format('YYYY-MM-DD HH:mm:ss') : undefined,
+          status: values.adjust_status as string | undefined,
         }),
       'attendance',
-      'Attendance adjusted',
+      t('workforce.adjustAttendanceSuccess' as never),
     );
     setAttendanceModalOpen(false);
-    attendanceForm.resetFields(['attendance_id', 'adjust_check_in', 'adjust_check_out', 'adjust_status', 'adjust_reason']);
+    attendanceForm.resetFields();
   };
 
   const submitLeaveForm = async () => {
@@ -404,15 +629,15 @@ export function WorkforceOps() {
     await runAction(
       () =>
         workforceOpsService.createLeave({
-          driver_id: values.driver_id,
-          leave_type_id: values.leave_type_id,
-          from_date: values.from_date.format('YYYY-MM-DD'),
-          to_date: values.to_date.format('YYYY-MM-DD'),
-          total_days: values.total_days,
-          reason: values.reason,
+          driver_id: values.driver_id as number,
+          leave_type_id: values.leave_type_id as number,
+          from_date: (values.from_date as dayjs.Dayjs).format('YYYY-MM-DD'),
+          to_date: (values.to_date as dayjs.Dayjs).format('YYYY-MM-DD'),
+          total_days: values.total_days as number,
+          reason: values.reason as string,
         }),
       'leave',
-      'Leave request created',
+      t('workforce.createLeaveSuccess' as never),
     );
     setLeaveModalOpen(false);
     leaveForm.resetFields();
@@ -423,16 +648,16 @@ export function WorkforceOps() {
     await runAction(
       () =>
         workforceOpsService.createOvertime({
-          driver_id: values.driver_id,
-          company_id: values.company_id,
-          work_date: values.work_date.format('YYYY-MM-DD'),
-          start_time: values.start_time.format('HH:mm:ss'),
-          end_time: values.end_time.format('HH:mm:ss'),
-          ot_hours: values.ot_hours,
-          reason: values.reason,
+          driver_id: values.driver_id as number,
+          company_id: values.company_id as number,
+          work_date: (values.work_date as dayjs.Dayjs).format('YYYY-MM-DD'),
+          start_time: (values.start_time as dayjs.Dayjs).format('HH:mm:ss'),
+          end_time: (values.end_time as dayjs.Dayjs).format('HH:mm:ss'),
+          ot_hours: values.ot_hours as number,
+          reason: values.reason as string,
         }),
       'overtime',
-      'Overtime request created',
+      t('workforce.createOvertimeSuccess' as never),
     );
     setOvertimeModalOpen(false);
     overtimeForm.resetFields();
@@ -443,698 +668,1031 @@ export function WorkforceOps() {
     await runAction(
       () =>
         workforceOpsService.createViolation({
-          driver_id: values.driver_id,
-          company_id: values.company_id,
-          trip_id: values.trip_id,
-          type: values.type,
-          occurred_at: values.occurred_at.format('YYYY-MM-DD HH:mm:ss'),
-          description: values.description,
-          penalty_amount: values.penalty_amount,
+          driver_id: values.driver_id as number,
+          company_id: values.company_id as number,
+          trip_id: values.trip_id as number | undefined,
+          type: values.type as string,
+          occurred_at: (values.occurred_at as dayjs.Dayjs).format('YYYY-MM-DD HH:mm:ss'),
+          description: values.description as string,
+          penalty_amount: values.penalty_amount as number,
         }),
       'violations',
-      'Violation created',
+      t('workforce.createViolationSuccess' as never),
     );
     setViolationModalOpen(false);
     violationForm.resetFields();
   };
 
-  const openDetail = async (type: DetailKind, id: number) => {
-    setLoading(true);
-    try {
-      if (type === 'leave') {
-        const response = await workforceOpsService.getLeaveById(id);
-        setDetailTitle(`Leave #${id}`);
-        setDetailKind('leave');
-        setDetailData(response.data ?? null);
-      } else if (type === 'overtime') {
-        const response = await workforceOpsService.getOvertimeById(id);
-        setDetailTitle(`Overtime #${id}`);
-        setDetailKind('overtime');
-        setDetailData(response.data ?? null);
-      } else {
-        const response = await workforceOpsService.getViolationById(id);
-        setDetailTitle(`Violation #${id}`);
-        setDetailKind('violations');
-        setDetailData(response.data ?? null);
-      }
-      setDetailOpen(true);
-    } catch (error) {
-      toast.error(getErrorMessage(error) || t('common.loadError'));
-      void error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ─── Column definitions ──────────────────────────────────────────────────────
 
-  const detailLabels: Record<DetailKind, Record<string, string>> = {
-    leave: {
-      id: 'ID',
-      driver_id: 'Driver ID',
-      leave_type_id: 'Leave Type',
-      from_date: 'From Date',
-      to_date: 'To Date',
-      total_days: 'Total Days',
-      status: 'Status',
-      reason: 'Reason',
-      rejection_reason: 'Rejection Reason',
-      cancelled_at: 'Cancelled At',
+  const scheduleColumns: ColumnsType<DriverSchedule> = [
+    { title: 'ID', dataIndex: 'id', width: 64 },
+    {
+      title: t('drivers.title' as never),
+      dataIndex: 'driver_id',
+      render: (_, row) => row.driver?.name || `#${row.driver_id}`,
     },
-    overtime: {
-      id: 'ID',
-      driver_id: 'Driver ID',
-      company_id: 'Company ID',
-      work_date: 'Work Date',
-      start_time: 'Start Time',
-      end_time: 'End Time',
-      ot_hours: 'OT Hours',
-      status: 'Status',
-      reason: 'Reason',
+    { title: t('workforce.workDate' as never), dataIndex: 'work_date', render: (v) => formatDate(v) },
+    {
+      title: t('offices.title' as never),
+      dataIndex: 'office_id',
+      render: (v) => offices.find((o) => o.id === v)?.name || v || '-',
     },
-    violations: {
-      id: 'ID',
-      driver_id: 'Driver ID',
-      company_id: 'Company ID',
-      trip_id: 'Trip ID',
-      type: 'Type',
-      occurred_at: 'Occurred At',
-      status: 'Status',
-      description: 'Description',
-      penalty_amount: 'Penalty Amount',
+    {
+      title: t('vehicles.title' as never),
+      dataIndex: 'vehicle_id',
+      render: (_, row) => row.vehicle?.plate_number || (row.vehicle_id ? `#${row.vehicle_id}` : '-'),
     },
-  };
-
-  const statusFields = new Set(['status']);
-  const moneyFields = new Set(['penalty_amount']);
-  const dateTimeFields = new Set(['occurred_at', 'cancelled_at']);
-  const dateFields = new Set(['from_date', 'to_date', 'work_date']);
-
-  const formatDetailValue = (key: string, value: unknown) => {
-    if (value === null || value === undefined || value === '') {
-      return '-';
-    }
-    if (statusFields.has(key)) {
-      return <Tag>{formatStatusLabel(value)}</Tag>;
-    }
-    if (moneyFields.has(key)) {
-      return formatMoney(value);
-    }
-    if (dateTimeFields.has(key)) {
-      return formatDateTime(value);
-    }
-    if (dateFields.has(key)) {
-      return formatDate(value);
-    }
-    if (typeof value === 'object') {
-      return JSON.stringify(value);
-    }
-    return String(value);
-  };
-
-  const leaveColumns: ColumnsType<LeaveRequest> = [
-    { title: 'ID', dataIndex: 'id', width: 72 },
-    { title: 'Driver', dataIndex: 'driver_id' },
-    { title: 'From', dataIndex: 'from_date', render: (value) => formatDate(value) },
-    { title: 'To', dataIndex: 'to_date', render: (value) => formatDate(value) },
-    { title: 'Status', dataIndex: 'status', render: (v) => <Tag>{formatStatusLabel(v)}</Tag> },
+    { title: t('workforce.shift' as never), dataIndex: 'shift_code' },
+    { title: t('workforce.startTime' as never), dataIndex: 'start_time' },
+    { title: t('workforce.endTime' as never), dataIndex: 'end_time' },
+    {
+      title: t('common.status'),
+      dataIndex: 'status',
+      render: (v: string) => <StatusTag value={v ?? 'draft'} colorMap={SCHEDULE_STATUS_COLOR} />,
+    },
     {
       title: t('common.actions'),
-      render: (_, row) => (
-        <Space>
-          <Button size="small" onClick={() => void openDetail('leave', row.id)}>View</Button>
-          <Button size="small" onClick={async () => {
-            await runAction(() => workforceOpsService.approveLeave(row.id), 'leave', 'Approved');
-          }}>Approve</Button>
-          <Button size="small" danger onClick={async () => {
-            await runAction(() => workforceOpsService.rejectLeave(row.id, reason || 'Rejected by admin'), 'leave', 'Rejected');
-          }}>Reject</Button>
-          <Button size="small" onClick={async () => {
-            await runAction(() => workforceOpsService.cancelLeave(row.id), 'leave', 'Cancelled');
-          }}>Cancel</Button>
-        </Space>
-      ),
-    },
-  ];
+      width: 420,
+      render: (_, row) => {
+        const s = row.status;
+        return (
+          <Space wrap>
+            {/* Submit: draft only */}
+            <Button size="small" disabled={s !== 'draft'} onClick={() => void runAction(() => workforceOpsService.submitDriverSchedule(row.id), 'schedule', t('workforce.scheduleSubmitted' as never))}>
+              {t('workforce.submit' as never)}
+            </Button>
 
-  const overtimeColumns: ColumnsType<OvertimeRequest> = [
-    { title: 'ID', dataIndex: 'id', width: 72 },
-    { title: 'Driver', dataIndex: 'driver_id' },
-    { title: 'Date', dataIndex: 'work_date', render: (value) => formatDate(value) },
-    { title: 'Hours', dataIndex: 'ot_hours' },
-    { title: 'Status', dataIndex: 'status', render: (v) => <Tag>{formatStatusLabel(v)}</Tag> },
-    {
-      title: t('common.actions'),
-      render: (_, row) => (
-        <Space>
-          <Button size="small" onClick={() => void openDetail('overtime', row.id)}>View</Button>
-          <Button size="small" onClick={async () => {
-            await runAction(() => workforceOpsService.approveOvertime(row.id), 'overtime', 'Approved');
-          }}>Approve</Button>
-          <Button size="small" danger onClick={async () => {
-            await runAction(() => workforceOpsService.rejectOvertime(row.id, reason || 'Rejected by admin'), 'overtime', 'Rejected');
-          }}>Reject</Button>
-        </Space>
-      ),
-    },
-  ];
+            {/* Approve: submitted only with HOS check */}
+            <Button
+              size="small"
+              disabled={s !== 'submitted'}
+              onClick={async () => {
+                await runAction(async () => {
+                  const hos = await workforceOpsService.checkDriverScheduleHos(row.id);
+                  if (!(hos.data?.allowed ?? true)) throw new Error(hos.data?.reason || t('workforce.hosCheckFailed' as never));
+            await workforceOpsService.approveDriverSchedule(row.id);
+                }, 'schedule', t('workforce.scheduleApproved' as never));
+              }}
+            >
+              {t('common.approve' as never)}
+            </Button>
 
-  const violationColumns: ColumnsType<ViolationRecord> = [
-    { title: 'ID', dataIndex: 'id', width: 72 },
-    { title: 'Driver', dataIndex: 'driver_id' },
-    { title: 'Type', dataIndex: 'type' },
-    { title: 'Penalty', dataIndex: 'penalty_amount' },
-    { title: 'Status', dataIndex: 'status', render: (v) => <Tag>{formatStatusLabel(v)}</Tag> },
-    {
-      title: t('common.actions'),
-      render: (_, row) => (
-        <Space>
-          <Button size="small" onClick={() => void openDetail('violations', row.id)}>View</Button>
-          <Button size="small" onClick={async () => {
-            await runAction(() => workforceOpsService.confirmViolation(row.id), 'violations', 'Confirmed');
-          }}>Confirm</Button>
-          <Button size="small" onClick={async () => {
-            await runAction(
-              () => workforceOpsService.disputeViolation(row.id, { reason: reason || 'Disputed by admin' }),
-              'violations',
-              'Disputed',
-            );
-          }}>Dispute</Button>
-          <Button size="small" onClick={async () => {
-            await runAction(
-              () =>
-                workforceOpsService.resolveViolationDispute(row.id, {
-                  resolution: 'upheld',
-                  resolution_note: reason || 'Resolved by admin',
-                }),
-              'violations',
-              'Dispute resolved',
-            );
-          }}>Resolve</Button>
-          <Button size="small" danger onClick={async () => {
-            await runAction(() => workforceOpsService.waiveViolation(row.id, reason || 'Waived by admin'), 'violations', 'Waived');
-          }}>Waive</Button>
+            {/* Reject: submitted only */}
+            <Button
+              size="small"
+              danger
+              disabled={s !== 'submitted'}
+              onClick={() =>
+                confirmThenRun(t('workforce.rejectSchedule' as never), () => workforceOpsService.rejectDriverSchedule(row.id), 'schedule', t('workforce.scheduleRejected' as never), {
+                  requireReason: true,
+                  placeholder: t('workforce.rejectReasonPlaceholder' as never),
+                  actionWithReason: () => workforceOpsService.rejectDriverSchedule(row.id),
+                })
+              }
+            >
+              {t('common.reject' as never)}
+            </Button>
+
+            {/* Lock: approved only */}
+            <Button size="small" disabled={s !== 'approved'} onClick={() => void runAction(() => workforceOpsService.lockDriverSchedule(row.id), 'schedule', t('workforce.scheduleLocked' as never))}>
+              {t('common.lock' as never)}
+            </Button>
+
+            {/* Override: locked only, reason required */}
+            <Button
+              size="small"
+              disabled={s !== 'locked'}
+              onClick={() =>
+                confirmThenRun(t('workforce.overrideLockedSchedule' as never), () => workforceOpsService.overrideDriverSchedule(row.id, ''), 'schedule', t('workforce.scheduleOverridden' as never), {
+                  requireReason: true,
+                  placeholder: t('workforce.overrideReasonPlaceholder' as never),
+                  actionWithReason: (r) => workforceOpsService.overrideDriverSchedule(row.id, r || t('workforce.manualOverride' as never)),
+                })
+              }
+            >
+              Override
+            </Button>
+
+            {/* Edit: disabled when locked */}
+            <Button
+              size="small"
+              disabled={s === 'locked'}
+              onClick={() => {
+                setEditingScheduleId(row.id);
+                form.setFieldsValue({
+                  driver_id: row.driver_id,
+                  office_id: row.office_id,
+                  work_date: row.work_date ? dayjs(row.work_date) : undefined,
+                  shift_code: row.shift_code,
+                  start_time: row.start_time ? dayjs(row.start_time, 'HH:mm') : undefined,
+                  end_time: row.end_time ? dayjs(row.end_time, 'HH:mm') : undefined,
+                  vehicle_id: row.vehicle_id,
+                  notes: row.notes,
+                });
+                setScheduleModalOpen(true);
+              }}
+            >
+              {t('common.edit')}
+            </Button>
+
+            {/* Delete: disabled when locked */}
+            <Button
+              size="small"
+              danger
+              disabled={s === 'locked'}
+              onClick={() =>
+                confirmThenRun(t('workforce.deleteSchedule' as never), () => workforceOpsService.deleteDriverSchedule(row.id), 'schedule', t('workforce.scheduleDeleted' as never))
+              }
+            >
+              {t('common.delete')}
+            </Button>
         </Space>
-      ),
+        );
+      },
     },
   ];
 
   const attendanceColumns: ColumnsType<WorkforceAttendanceRecord> = [
-    { title: 'ID', dataIndex: 'id', width: 72 },
-    { title: 'Driver', dataIndex: 'driver_id' },
-    { title: 'Date', dataIndex: 'date', render: (value) => formatDate(value) },
-    { title: 'Check-in', dataIndex: 'check_in', render: (value) => formatDateTime(value) },
-    { title: 'Check-out', dataIndex: 'check_out', render: (value) => formatDateTime(value) },
-    { title: 'Work Hours', dataIndex: 'work_hours' },
-    { title: 'OT Hours', dataIndex: 'overtime_hours' },
-    { title: 'Status', dataIndex: 'status', render: (v) => <Tag>{formatStatusLabel(String(v || ''))}</Tag> },
+    { title: 'ID', dataIndex: 'id', width: 64 },
+    { title: t('drivers.title' as never), dataIndex: 'driver_id', render: (v) => drivers.find((d) => d.id === v)?.name || `#${v}` },
+    { title: t('common.date' as never), dataIndex: 'date', render: (v) => formatDate(v) },
+    { title: 'Check-in', dataIndex: 'check_in', render: (v) => formatDateTime(v) },
+    { title: 'Check-out', dataIndex: 'check_out', render: (v) => formatDateTime(v) },
+    { title: t('workforce.workHours' as never), dataIndex: 'work_hours' },
+    { title: t('workforce.otHours' as never), dataIndex: 'overtime_hours' },
+    {
+      title: t('common.status'),
+      dataIndex: 'status',
+      render: (v: string) => <StatusTag value={v || ''} colorMap={ATTENDANCE_STATUS_COLOR} />,
+    },
     {
       title: t('common.actions'),
       render: (_, row) => (
+        // Open attendance modal with pre-filled row data
         <Button
           size="small"
-          onClick={async () => {
-            await runAction(
-              () =>
-                workforceOpsService.adjustAttendance(row.id, {
-                  reason: reason || 'Manual attendance adjustment',
-                  check_in: row.check_in || undefined,
-                  check_out: row.check_out || undefined,
-                  status: row.status || 'present',
-                }),
-              'attendance',
-              'Adjusted',
-            );
+          onClick={() => {
+            attendanceForm.setFieldsValue({
+              attendance_id: row.id,
+              adjust_check_in: row.check_in ? dayjs(row.check_in) : undefined,
+              adjust_check_out: row.check_out ? dayjs(row.check_out) : undefined,
+              adjust_status: row.status,
+              adjust_reason: '',
+            });
+            setAttendanceModalOpen(true);
           }}
         >
-          Adjust
+          {t('common.adjust' as never)}
         </Button>
       ),
     },
   ];
 
-  const scheduleCompanyId = typeof scheduleFilters.company_id === 'number' ? scheduleFilters.company_id : undefined;
-  const scheduleOfficeId = typeof scheduleFilters.office_id === 'number' ? scheduleFilters.office_id : undefined;
-  const attendanceCompanyId = typeof attendanceFilters.company_id === 'number' ? attendanceFilters.company_id : undefined;
-  const attendanceOfficeId = typeof attendanceFilters.office_id === 'number' ? attendanceFilters.office_id : undefined;
-  const leaveCompanyId = typeof leaveFilters.company_id === 'number' ? leaveFilters.company_id : undefined;
-  const leaveOfficeId = typeof leaveFilters.office_id === 'number' ? leaveFilters.office_id : undefined;
-  const overtimeCompanyId = typeof overtimeFilters.company_id === 'number' ? overtimeFilters.company_id : undefined;
-  const overtimeOfficeId = typeof overtimeFilters.office_id === 'number' ? overtimeFilters.office_id : undefined;
-  const violationCompanyId = typeof violationFilters.company_id === 'number' ? violationFilters.company_id : undefined;
-  const violationOfficeId = typeof violationFilters.office_id === 'number' ? violationFilters.office_id : undefined;
-  const scheduleOfficeOptions = useMemo(() => filterOfficeOptions(scheduleCompanyId), [filterOfficeOptions, scheduleCompanyId]);
-  const scheduleDriverOptions = useMemo(() => filterDriverOptions(scheduleCompanyId, scheduleOfficeId), [filterDriverOptions, scheduleCompanyId, scheduleOfficeId]);
-  const attendanceOfficeOptions = useMemo(() => filterOfficeOptions(attendanceCompanyId), [filterOfficeOptions, attendanceCompanyId]);
-  const attendanceDriverOptions = useMemo(() => filterDriverOptions(attendanceCompanyId, attendanceOfficeId), [filterDriverOptions, attendanceCompanyId, attendanceOfficeId]);
-  const leaveOfficeOptions = useMemo(() => filterOfficeOptions(leaveCompanyId), [filterOfficeOptions, leaveCompanyId]);
-  const leaveDriverOptions = useMemo(() => filterDriverOptions(leaveCompanyId, leaveOfficeId), [filterDriverOptions, leaveCompanyId, leaveOfficeId]);
-  const overtimeOfficeOptions = useMemo(() => filterOfficeOptions(overtimeCompanyId), [filterOfficeOptions, overtimeCompanyId]);
-  const overtimeDriverOptions = useMemo(() => filterDriverOptions(overtimeCompanyId, overtimeOfficeId), [filterDriverOptions, overtimeCompanyId, overtimeOfficeId]);
-  const violationOfficeOptions = useMemo(() => filterOfficeOptions(violationCompanyId), [filterOfficeOptions, violationCompanyId]);
-  const violationDriverOptions = useMemo(() => filterDriverOptions(violationCompanyId, violationOfficeId), [filterDriverOptions, violationCompanyId, violationOfficeId]);
-  const scheduleFormDriverOptions = useMemo(
+  const leaveColumns: ColumnsType<LeaveRequest> = [
+    { title: 'ID', dataIndex: 'id', width: 64 },
+    { title: t('drivers.title' as never), dataIndex: 'driver_id', render: (v) => drivers.find((d) => d.id === v)?.name || `#${v}` },
+    { title: t('workforce.leaveType' as never), dataIndex: 'leave_type', render: (_, row) => (row as LeaveRequest & { leave_type?: { name: string } }).leave_type?.name || row.leave_type_id },
+    { title: t('workforce.fromDate' as never), dataIndex: 'from_date', render: (v) => formatDate(v) },
+    { title: t('workforce.toDate' as never), dataIndex: 'to_date', render: (v) => formatDate(v) },
+    { title: t('workforce.totalDays' as never), dataIndex: 'total_days' },
+    {
+      title: t('common.status'),
+      dataIndex: 'status',
+      render: (v: string) => <StatusTag value={v} colorMap={LEAVE_STATUS_COLOR} />,
+    },
+    {
+      title: t('common.actions'),
+      render: (_, row) => {
+        const s = row.status;
+        const canApprove = ['pending', 'submitted'].includes(s);
+        const canReject = ['pending', 'submitted'].includes(s);
+        const canCancel = ['pending', 'submitted', 'approved'].includes(s);
+        return (
+        <Space>
+            <Button size="small" onClick={() => void openDetail('leave', row.id)}>
+              {t('common.view')}
+            </Button>
+            <Button
+              size="small"
+              disabled={!canApprove}
+              onClick={() => void runAction(() => workforceOpsService.approveLeave(row.id), 'leave', t('workforce.leaveApproved' as never))}
+            >
+              {t('common.approve' as never)}
+            </Button>
+            <Button
+              size="small"
+              danger
+              disabled={!canReject}
+              onClick={() =>
+                confirmThenRun(t('workforce.rejectLeave' as never), () => workforceOpsService.rejectLeave(row.id, ''), 'leave', t('workforce.rejected' as never), {
+                  requireReason: true,
+                  placeholder: t('workforce.rejectReasonPlaceholder' as never),
+                  actionWithReason: (r) => workforceOpsService.rejectLeave(row.id, r || t('workforce.rejectedByManager' as never)),
+                })
+              }
+            >
+              {t('common.reject' as never)}
+            </Button>
+            <Button
+              size="small"
+              disabled={!canCancel}
+              onClick={() => void runAction(() => workforceOpsService.cancelLeave(row.id), 'leave', t('workforce.leaveCancelled' as never))}
+            >
+              {t('common.cancel' as never)}
+            </Button>
+        </Space>
+        );
+      },
+    },
+  ];
+
+  const overtimeColumns: ColumnsType<OvertimeRequest> = [
+    { title: 'ID', dataIndex: 'id', width: 64 },
+    { title: t('drivers.title' as never), dataIndex: 'driver_id', render: (v) => drivers.find((d) => d.id === v)?.name || `#${v}` },
+    { title: t('common.date' as never), dataIndex: 'work_date', render: (v) => formatDate(v) },
+    { title: t('workforce.otHours' as never), dataIndex: 'ot_hours' },
+    { title: t('workforce.startTime' as never), dataIndex: 'start_time' },
+    { title: t('workforce.endTime' as never), dataIndex: 'end_time' },
+    { title: t('common.reason' as never), dataIndex: 'reason', ellipsis: true },
+    {
+      title: t('common.status'),
+      dataIndex: 'status',
+      render: (v: string) => <StatusTag value={v} colorMap={OT_STATUS_COLOR} />,
+    },
+    {
+      title: t('common.actions'),
+      render: (_, row) => {
+        const s = row.status;
+        const canApprove = ['submitted', 'pending', 'draft'].includes(s);
+        const canReject = ['submitted', 'pending', 'draft'].includes(s);
+        return (
+        <Space>
+            <Button size="small" onClick={() => void openDetail('overtime', row.id)}>
+              {t('common.view')}
+            </Button>
+            <Button
+              size="small"
+              disabled={!canApprove}
+              onClick={() => void runAction(() => workforceOpsService.approveOvertime(row.id), 'overtime', t('workforce.overtimeApproved' as never))}
+            >
+              {t('common.approve' as never)}
+            </Button>
+            <Button
+              size="small"
+              danger
+              disabled={!canReject}
+              onClick={() =>
+                confirmThenRun(t('workforce.rejectOvertime' as never), () => workforceOpsService.rejectOvertime(row.id, ''), 'overtime', t('workforce.rejected' as never), {
+                  requireReason: true,
+                  placeholder: t('workforce.rejectReasonPlaceholder' as never),
+                  actionWithReason: (r) => workforceOpsService.rejectOvertime(row.id, r || t('workforce.rejectedByManager' as never)),
+                })
+              }
+            >
+              {t('common.reject' as never)}
+            </Button>
+        </Space>
+        );
+      },
+    },
+  ];
+
+  const violationColumns: ColumnsType<ViolationRecord> = [
+    { title: 'ID', dataIndex: 'id', width: 64 },
+    { title: t('drivers.title' as never), dataIndex: 'driver_id', render: (v) => drivers.find((d) => d.id === v)?.name || `#${v}` },
+    { title: t('workforce.violationType' as never), dataIndex: 'type' },
+    { title: t('workforce.occurredAt' as never), dataIndex: 'occurred_at', render: (v) => formatDateTime(v) },
+    { title: t('workforce.penaltyAmount' as never), dataIndex: 'penalty_amount', render: (v) => formatMoney(v) },
+    {
+      title: t('common.status'),
+      dataIndex: 'status',
+      render: (v: string) => <StatusTag value={v} colorMap={VIOLATION_STATUS_COLOR} />,
+    },
+    {
+      title: t('common.actions'),
+      width: 380,
+      render: (_, row) => {
+        const s = row.status;
+        // Workflow: pending/pending_review → confirmed → deducted
+        //                                 ↘ disputed → resolved
+        // Waive: confirmed or pending
+        const canConfirm = ['pending', 'pending_review'].includes(s);
+        const canDispute = s === 'confirmed';
+        const canResolve = s === 'disputed';
+        const canWaive = ['confirmed', 'pending', 'pending_review'].includes(s);
+        return (
+          <Space wrap>
+            <Button size="small" onClick={() => void openDetail('violations', row.id)}>
+              {t('common.view')}
+            </Button>
+
+            {/* Confirm: SoD required - recorder must differ from approver */}
+            <Button
+              size="small"
+              disabled={!canConfirm}
+              onClick={() =>
+                confirmThenRun(t('workforce.confirmViolation' as never), () => workforceOpsService.confirmViolation(row.id), 'violations', t('workforce.violationConfirmed' as never))
+              }
+            >
+              {t('workforce.confirm' as never)}
+            </Button>
+
+            {/* Dispute: driver or admin can submit dispute */}
+            <Button
+              size="small"
+              disabled={!canDispute}
+              onClick={() =>
+                confirmThenRun(t('workforce.disputeViolation' as never), () => workforceOpsService.disputeViolation(row.id, { reason: '' }), 'violations', t('workforce.disputeRecorded' as never), {
+                  requireReason: true,
+                  placeholder: t('workforce.disputeReasonPlaceholder' as never),
+                  actionWithReason: (r) => workforceOpsService.disputeViolation(row.id, { reason: r }),
+                })
+              }
+            >
+              {t('workforce.dispute' as never)}
+            </Button>
+
+            {/* Resolve: process dispute */}
+            <Button
+              size="small"
+              disabled={!canResolve}
+              onClick={() =>
+                confirmThenRun(t('workforce.resolveDispute' as never), () => workforceOpsService.resolveViolationDispute(row.id, { resolution: 'upheld', resolution_note: '' }), 'violations', t('workforce.disputeResolved' as never), {
+                  requireReason: true,
+                  placeholder: t('workforce.resolutionNotePlaceholder' as never),
+                  actionWithReason: (r) => workforceOpsService.resolveViolationDispute(row.id, { resolution: 'upheld', resolution_note: r }),
+                })
+              }
+            >
+              {t('workforce.resolve' as never)}
+            </Button>
+
+            {/* Waive: exempt violation */}
+            <Button
+              size="small"
+              danger
+              disabled={!canWaive}
+              onClick={() =>
+                confirmThenRun(t('workforce.waiveViolation' as never), () => workforceOpsService.waiveViolation(row.id, ''), 'violations', t('workforce.violationWaived' as never), {
+                  requireReason: true,
+                  placeholder: t('workforce.waiveReasonPlaceholder' as never),
+                  actionWithReason: (r) => workforceOpsService.waiveViolation(row.id, r || t('workforce.waivedByManager' as never)),
+                })
+              }
+            >
+              {t('workforce.waive' as never)}
+            </Button>
+          </Space>
+        );
+      },
+    },
+  ];
+
+  // ─── Derived filter values ───────────────────────────────────────────────────
+
+  const scheduleCompanyId = scheduleFilters.company_id as number | undefined;
+  const scheduleOfficeId = scheduleFilters.office_id as number | undefined;
+  const attendanceCompanyId = attendanceFilters.company_id as number | undefined;
+  const attendanceOfficeId = attendanceFilters.office_id as number | undefined;
+  const leaveCompanyId = leaveFilters.company_id as number | undefined;
+  const leaveOfficeId = leaveFilters.office_id as number | undefined;
+  const overtimeCompanyId = overtimeFilters.company_id as number | undefined;
+  const overtimeOfficeId = overtimeFilters.office_id as number | undefined;
+  const violationCompanyId = violationFilters.company_id as number | undefined;
+  const violationOfficeId = violationFilters.office_id as number | undefined;
+
+  const scheduleOfficeOpts = useMemo(() => filterOfficeOptions(scheduleCompanyId), [filterOfficeOptions, scheduleCompanyId]);
+  const scheduleDriverOpts = useMemo(() => filterDriverOptions(scheduleCompanyId, scheduleOfficeId), [filterDriverOptions, scheduleCompanyId, scheduleOfficeId]);
+  const attendanceOfficeOpts = useMemo(() => filterOfficeOptions(attendanceCompanyId), [filterOfficeOptions, attendanceCompanyId]);
+  const attendanceDriverOpts = useMemo(() => filterDriverOptions(attendanceCompanyId, attendanceOfficeId), [filterDriverOptions, attendanceCompanyId, attendanceOfficeId]);
+  const leaveOfficeOpts = useMemo(() => filterOfficeOptions(leaveCompanyId), [filterOfficeOptions, leaveCompanyId]);
+  const leaveDriverOpts = useMemo(() => filterDriverOptions(leaveCompanyId, leaveOfficeId), [filterDriverOptions, leaveCompanyId, leaveOfficeId]);
+  const overtimeOfficeOpts = useMemo(() => filterOfficeOptions(overtimeCompanyId), [filterOfficeOptions, overtimeCompanyId]);
+  const overtimeDriverOpts = useMemo(() => filterDriverOptions(overtimeCompanyId, overtimeOfficeId), [filterDriverOptions, overtimeCompanyId, overtimeOfficeId]);
+  const violationOfficeOpts = useMemo(() => filterOfficeOptions(violationCompanyId), [filterOfficeOptions, violationCompanyId]);
+  const violationDriverOpts = useMemo(() => filterDriverOptions(violationCompanyId, violationOfficeId), [filterDriverOptions, violationCompanyId, violationOfficeId]);
+  const scheduleFormDriverOpts = useMemo(
     () => filterDriverOptions(undefined, typeof scheduleFormOfficeId === 'number' ? scheduleFormOfficeId : undefined),
     [filterDriverOptions, scheduleFormOfficeId],
   );
 
+  const scheduleInitialValues = useMemo(() => ({ shift_code: 'day' }), []);
+
+  // ─── Filter panel renderers ──────────────────────────────────────────────────
+
+  function HierarchicalFilters({
+    filters,
+    setFilters,
+    officeOpts,
+    driverOpts,
+    extra,
+  }: {
+    filters: Record<string, unknown>;
+    setFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+    officeOpts: { value: number; label: string }[];
+    driverOpts: { value: number; label: string }[];
+    extra?: React.ReactNode;
+  }) {
+    return (
+      <Flex wrap="wrap" gap={8}>
+        <Select
+          allowClear showSearch placeholder={t('companies.title' as never)} style={{ width: 180 }}
+          value={filters.company_id as number | undefined}
+          options={companyOptions}
+          onChange={(v) => setFilters((p) => ({ ...p, company_id: v ?? undefined, office_id: undefined, driver_id: undefined }))}
+        />
+        <Select
+          allowClear showSearch placeholder={t('offices.title' as never)} style={{ width: 180 }}
+          value={filters.office_id as number | undefined}
+          options={officeOpts}
+          onChange={(v) => setFilters((p) => ({ ...p, office_id: v ?? undefined, driver_id: undefined }))}
+        />
+        <Select
+          allowClear showSearch placeholder={t('drivers.title' as never)} style={{ width: 180 }}
+          value={filters.driver_id as number | undefined}
+          options={driverOpts}
+          onChange={(v) => setFilters((p) => ({ ...p, driver_id: v ?? undefined }))}
+        />
+        {extra}
+      </Flex>
+    );
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
   return (
     <>
-      <PageHeader title="Workforce Ops" />
+      {!embedded && <PageHeader title={t('workforce.title' as never)} />}
+
       <Card>
         <Flex vertical gap={12}>
-          <Typography.Text type="secondary">
-            Driver schedules, attendance, leave, overtime, and violations powered by new backend APIs.
-          </Typography.Text>
-          <Row gutter={12}>
-            <Col xs={24} md={12}>
-              <Input
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Reason used for reject actions"
-              />
-            </Col>
-          </Row>
-          {activeTab === 'schedule' ? (
+          {/* Filter card per tab */}
+          {activeTab === 'schedule' && (
             <Card size="small">
               <Flex vertical gap={10}>
-                <Flex wrap="wrap" gap={8}>
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Company"
-                    style={{ width: 180 }}
-                    value={scheduleCompanyId}
-                    options={companyOptions}
-                    onChange={(value) => setScheduleFilters((prev) => ({ ...prev, company_id: value ?? undefined, office_id: undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Office"
-                    style={{ width: 180 }}
-                    value={scheduleOfficeId}
-                    options={scheduleOfficeOptions}
-                    onChange={(value) => setScheduleFilters((prev) => ({ ...prev, office_id: value ?? undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Driver"
-                    style={{ width: 180 }}
-                    options={scheduleDriverOptions}
-                    value={typeof scheduleFilters.driver_id === 'number' ? scheduleFilters.driver_id : undefined}
-                    onChange={(value) => setScheduleFilters((prev) => ({ ...prev, driver_id: value ?? undefined }))}
-                  />
-                  <DatePicker
-                    placeholder="Work date"
-                    onChange={(value) =>
-                      setScheduleFilters((prev) => ({ ...prev, work_date: value ? value.format('YYYY-MM-DD') : undefined }))
-                    }
-                  />
-                  <Select
-                    allowClear
-                    placeholder="Status"
-                    style={{ width: 160 }}
-                    options={[
-                      { label: 'draft', value: 'draft' },
-                      { label: 'submitted', value: 'submitted' },
-                      { label: 'approved', value: 'approved' },
-                      { label: 'locked', value: 'locked' },
-                    ]}
-                    onChange={(value) => setScheduleFilters((prev) => ({ ...prev, status: value }))}
-                  />
-                </Flex>
-
+                <HierarchicalFilters
+                  filters={scheduleFilters}
+                  setFilters={setScheduleFilters}
+                  officeOpts={scheduleOfficeOpts}
+                  driverOpts={scheduleDriverOpts}
+                  extra={
+                    <>
+                      <DatePicker
+                        placeholder={t('workforce.workDate' as never)}
+                        onChange={(v) => setScheduleFilters((p) => ({ ...p, work_date: v ? v.format('YYYY-MM-DD') : undefined }))}
+                      />
+                      <Select
+                        allowClear placeholder={t('common.status' as never)} style={{ width: 160 }}
+                        options={[
+                          { label: 'draft', value: 'draft' },
+                          { label: 'submitted', value: 'submitted' },
+                          { label: 'approved', value: 'approved' },
+                          { label: 'locked', value: 'locked' },
+                        ]}
+                        onChange={(v) => setScheduleFilters((p) => ({ ...p, status: v }))}
+                      />
+                    </>
+                  }
+                />
                 <Button
                   type="primary"
+                  style={{ alignSelf: 'flex-start' }}
                   onClick={() => {
                     form.resetFields();
-                    form.setFieldsValue({ ...scheduleInitialValues });
+                    form.setFieldsValue(scheduleInitialValues);
                     setEditingScheduleId(null);
                     setScheduleModalOpen(true);
                   }}
                 >
-                  Create Schedule
+                  {t('workforce.createSchedule' as never)}
                 </Button>
               </Flex>
             </Card>
-          ) : null}
-          {activeTab === 'attendance' ? (
-            <Card size="small">
-              <Flex vertical gap={10}>
-                <Flex wrap="wrap" gap={8}>
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Company"
-                    style={{ width: 180 }}
-                    value={attendanceCompanyId}
-                    options={companyOptions}
-                    onChange={(value) => setAttendanceFilters((prev) => ({ ...prev, company_id: value ?? undefined, office_id: undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Office"
-                    style={{ width: 180 }}
-                    value={attendanceOfficeId}
-                    options={attendanceOfficeOptions}
-                    onChange={(value) => setAttendanceFilters((prev) => ({ ...prev, office_id: value ?? undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Driver"
-                    style={{ width: 180 }}
-                    options={attendanceDriverOptions}
-                    value={typeof attendanceFilters.driver_id === 'number' ? attendanceFilters.driver_id : undefined}
-                    onChange={(value) => setAttendanceFilters((prev) => ({ ...prev, driver_id: value ?? undefined }))}
-                  />
-                  <DatePicker
-                    placeholder="Date"
-                    onChange={(value) => setAttendanceFilters((prev) => ({ ...prev, date: value ? value.format('YYYY-MM-DD') : undefined }))}
-                  />
-                  <DatePicker.RangePicker
-                    onChange={(value) =>
-                      setAttendanceFilters((prev) => ({
-                        ...prev,
-                        from: value?.[0] ? value[0].format('YYYY-MM-DD') : undefined,
-                        to: value?.[1] ? value[1].format('YYYY-MM-DD') : undefined,
-                      }))
-                    }
-                  />
-                  <Select
-                    allowClear
-                    placeholder="Status"
-                    style={{ width: 160 }}
-                    options={[
-                      { label: 'present', value: 'present' },
-                      { label: 'late', value: 'late' },
-                      { label: 'absent', value: 'absent' },
-                      { label: 'partial', value: 'partial' },
-                    ]}
-                    onChange={(value) => setAttendanceFilters((prev) => ({ ...prev, status: value }))}
-                  />
-                </Flex>
+          )}
 
-                <Button type="primary" onClick={() => setAttendanceModalOpen(true)}>
-                  Attendance Actions
+          {activeTab === 'attendance' && (
+            <Card size="small">
+              <Flex vertical gap={10}>
+                <HierarchicalFilters
+                  filters={attendanceFilters}
+                  setFilters={setAttendanceFilters}
+                  officeOpts={attendanceOfficeOpts}
+                  driverOpts={attendanceDriverOpts}
+                  extra={
+                    <>
+                      <DatePicker
+                        placeholder={t('common.date' as never)}
+                        onChange={(v) => setAttendanceFilters((p) => ({ ...p, date: v ? v.format('YYYY-MM-DD') : undefined }))}
+                      />
+                      <DatePicker.RangePicker
+                        onChange={(v) =>
+                          setAttendanceFilters((p) => ({
+                            ...p,
+                            from: v?.[0] ? v[0].format('YYYY-MM-DD') : undefined,
+                            to: v?.[1] ? v[1].format('YYYY-MM-DD') : undefined,
+                          }))
+                        }
+                      />
+                      <Select
+                        allowClear placeholder={t('common.status' as never)} style={{ width: 160 }}
+                        options={[
+                          { label: t('workforce.present' as never), value: 'present' },
+                          { label: t('workforce.late' as never), value: 'late' },
+                          { label: t('workforce.absent' as never), value: 'absent' },
+                          { label: t('workforce.partial' as never), value: 'partial' },
+                        ]}
+                        onChange={(v) => setAttendanceFilters((p) => ({ ...p, status: v }))}
+                      />
+                    </>
+                  }
+                />
+                <Button
+                  type="primary"
+                  style={{ alignSelf: 'flex-start' }}
+                  onClick={() => { attendanceForm.resetFields(); setAttendanceModalOpen(true); }}
+                >
+                  {t('workforce.attendanceActions' as never)}
                 </Button>
               </Flex>
             </Card>
-          ) : null}
-          {activeTab === 'leave' ? (
+          )}
+
+          {activeTab === 'leave' && (
             <Card size="small">
               <Flex vertical gap={10}>
-                <Flex wrap="wrap" gap={8}>
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Company"
-                    style={{ width: 180 }}
-                    value={leaveCompanyId}
-                    options={companyOptions}
-                    onChange={(value) => setLeaveFilters((prev) => ({ ...prev, company_id: value ?? undefined, office_id: undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Office"
-                    style={{ width: 180 }}
-                    value={leaveOfficeId}
-                    options={leaveOfficeOptions}
-                    onChange={(value) => setLeaveFilters((prev) => ({ ...prev, office_id: value ?? undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Driver"
-                    style={{ width: 180 }}
-                    options={leaveDriverOptions}
-                    value={typeof leaveFilters.driver_id === 'number' ? leaveFilters.driver_id : undefined}
-                    onChange={(value) => setLeaveFilters((prev) => ({ ...prev, driver_id: value ?? undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    placeholder="Status"
-                    style={{ width: 160 }}
-                    options={[
-                      { label: 'pending', value: 'pending' },
-                      { label: 'approved', value: 'approved' },
-                      { label: 'rejected', value: 'rejected' },
-                      { label: 'cancelled', value: 'cancelled' },
-                    ]}
-                    onChange={(value) => setLeaveFilters((prev) => ({ ...prev, status: value }))}
-                  />
-                  <DatePicker.RangePicker
-                    onChange={(value) =>
-                      setLeaveFilters((prev) => ({
-                        ...prev,
-                        from: value?.[0] ? value[0].format('YYYY-MM-DD') : undefined,
-                        to: value?.[1] ? value[1].format('YYYY-MM-DD') : undefined,
-                      }))
-                    }
-                  />
-                </Flex>
-                <Button type="primary" onClick={() => setLeaveModalOpen(true)}>Create Leave</Button>
+                <HierarchicalFilters
+                  filters={leaveFilters}
+                  setFilters={setLeaveFilters}
+                  officeOpts={leaveOfficeOpts}
+                  driverOpts={leaveDriverOpts}
+                  extra={
+                    <>
+                      <Select
+                        allowClear placeholder={t('common.status' as never)} style={{ width: 160 }}
+                        options={[
+                          { label: 'pending', value: 'pending' },
+                          { label: 'submitted', value: 'submitted' },
+                          { label: 'approved', value: 'approved' },
+                          { label: 'rejected', value: 'rejected' },
+                          { label: 'cancelled', value: 'cancelled' },
+                        ]}
+                        onChange={(v) => setLeaveFilters((p) => ({ ...p, status: v }))}
+                      />
+                      <DatePicker.RangePicker
+                        onChange={(v) =>
+                          setLeaveFilters((p) => ({
+                            ...p,
+                            from: v?.[0] ? v[0].format('YYYY-MM-DD') : undefined,
+                            to: v?.[1] ? v[1].format('YYYY-MM-DD') : undefined,
+                          }))
+                        }
+                      />
+                    </>
+                  }
+                />
+                <Button type="primary" style={{ alignSelf: 'flex-start' }} onClick={() => setLeaveModalOpen(true)}>
+                  {t('workforce.createLeave' as never)}
+                </Button>
               </Flex>
             </Card>
-          ) : null}
-          {activeTab === 'overtime' ? (
+          )}
+
+          {activeTab === 'overtime' && (
             <Card size="small">
               <Flex vertical gap={10}>
-                <Flex wrap="wrap" gap={8}>
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Company"
-                    style={{ width: 180 }}
-                    value={overtimeCompanyId}
-                    options={companyOptions}
-                    onChange={(value) => setOvertimeFilters((prev) => ({ ...prev, company_id: value ?? undefined, office_id: undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Office"
-                    style={{ width: 180 }}
-                    value={overtimeOfficeId}
-                    options={overtimeOfficeOptions}
-                    onChange={(value) => setOvertimeFilters((prev) => ({ ...prev, office_id: value ?? undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Driver"
-                    style={{ width: 180 }}
-                    options={overtimeDriverOptions}
-                    value={typeof overtimeFilters.driver_id === 'number' ? overtimeFilters.driver_id : undefined}
-                    onChange={(value) => setOvertimeFilters((prev) => ({ ...prev, driver_id: value ?? undefined }))}
-                  />
-                  <DatePicker.RangePicker
-                    onChange={(value) =>
-                      setOvertimeFilters((prev) => ({
-                        ...prev,
-                        from: value?.[0] ? value[0].format('YYYY-MM-DD') : undefined,
-                        to: value?.[1] ? value[1].format('YYYY-MM-DD') : undefined,
-                      }))
-                    }
-                  />
-                </Flex>
-                <Button type="primary" onClick={() => setOvertimeModalOpen(true)}>Create Overtime</Button>
+                <HierarchicalFilters
+                  filters={overtimeFilters}
+                  setFilters={setOvertimeFilters}
+                  officeOpts={overtimeOfficeOpts}
+                  driverOpts={overtimeDriverOpts}
+                  extra={
+                    <>
+                      <Select
+                        allowClear placeholder={t('common.status' as never)} style={{ width: 160 }}
+                        options={[
+                          { label: 'draft', value: 'draft' },
+                          { label: 'submitted', value: 'submitted' },
+                          { label: 'approved', value: 'approved' },
+                          { label: 'rejected', value: 'rejected' },
+                          { label: 'paid', value: 'paid' },
+                        ]}
+                        onChange={(v) => setOvertimeFilters((p) => ({ ...p, status: v }))}
+                      />
+                      <DatePicker.RangePicker
+                        onChange={(v) =>
+                          setOvertimeFilters((p) => ({
+                            ...p,
+                            from: v?.[0] ? v[0].format('YYYY-MM-DD') : undefined,
+                            to: v?.[1] ? v[1].format('YYYY-MM-DD') : undefined,
+                          }))
+                        }
+                      />
+                    </>
+                  }
+                />
+                <Button type="primary" style={{ alignSelf: 'flex-start' }} onClick={() => setOvertimeModalOpen(true)}>
+                  {t('workforce.createOvertime' as never)}
+                </Button>
               </Flex>
             </Card>
-          ) : null}
-          {activeTab === 'violations' ? (
+          )}
+
+          {activeTab === 'violations' && (
             <Card size="small">
               <Flex vertical gap={10}>
-                <Flex wrap="wrap" gap={8}>
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Company"
-                    style={{ width: 180 }}
-                    value={violationCompanyId}
-                    options={companyOptions}
-                    onChange={(value) => setViolationFilters((prev) => ({ ...prev, company_id: value ?? undefined, office_id: undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Office"
-                    style={{ width: 180 }}
-                    value={violationOfficeId}
-                    options={violationOfficeOptions}
-                    onChange={(value) => setViolationFilters((prev) => ({ ...prev, office_id: value ?? undefined, driver_id: undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    showSearch
-                    placeholder="Driver"
-                    style={{ width: 180 }}
-                    options={violationDriverOptions}
-                    value={typeof violationFilters.driver_id === 'number' ? violationFilters.driver_id : undefined}
-                    onChange={(value) => setViolationFilters((prev) => ({ ...prev, driver_id: value ?? undefined }))}
-                  />
-                  <Select
-                    allowClear
-                    placeholder="Status"
-                    style={{ width: 160 }}
-                    options={[
-                      { label: 'pending', value: 'pending' },
-                      { label: 'confirmed', value: 'confirmed' },
-                      { label: 'disputed', value: 'disputed' },
-                      { label: 'resolved', value: 'resolved' },
-                    ]}
-                    onChange={(value) => setViolationFilters((prev) => ({ ...prev, status: value }))}
-                  />
-                  <DatePicker.RangePicker
-                    onChange={(value) =>
-                      setViolationFilters((prev) => ({
-                        ...prev,
-                        from: value?.[0] ? value[0].format('YYYY-MM-DD') : undefined,
-                        to: value?.[1] ? value[1].format('YYYY-MM-DD') : undefined,
-                      }))
-                    }
-                  />
-                </Flex>
-                <Button type="primary" onClick={() => setViolationModalOpen(true)}>Create Violation</Button>
+                <HierarchicalFilters
+                  filters={violationFilters}
+                  setFilters={setViolationFilters}
+                  officeOpts={violationOfficeOpts}
+                  driverOpts={violationDriverOpts}
+                  extra={
+                    <>
+                      <Select
+                        allowClear placeholder={t('common.status' as never)} style={{ width: 160 }}
+                        options={[
+                          { label: 'pending', value: 'pending' },
+                          { label: 'pending_review', value: 'pending_review' },
+                          { label: 'confirmed', value: 'confirmed' },
+                          { label: 'disputed', value: 'disputed' },
+                          { label: 'resolved', value: 'resolved' },
+                          { label: 'waived', value: 'waived' },
+                          { label: 'deducted', value: 'deducted' },
+                        ]}
+                        onChange={(v) => setViolationFilters((p) => ({ ...p, status: v }))}
+                      />
+                      <DatePicker.RangePicker
+                        onChange={(v) =>
+                          setViolationFilters((p) => ({
+                            ...p,
+                            from: v?.[0] ? v[0].format('YYYY-MM-DD') : undefined,
+                            to: v?.[1] ? v[1].format('YYYY-MM-DD') : undefined,
+                          }))
+                        }
+                      />
+                    </>
+                  }
+                />
+                <Button type="primary" style={{ alignSelf: 'flex-start' }} onClick={() => setViolationModalOpen(true)}>
+                  {t('workforce.recordViolation' as never)}
+                </Button>
               </Flex>
             </Card>
-          ) : null}
+          )}
+
+          {/* Tab navigation */}
           <Tabs
             activeKey={activeTab}
             onChange={(k) => setActiveTab(k as TabKey)}
             items={[
-              { key: 'schedule', label: 'Driver Schedules' },
-              { key: 'attendance', label: 'Attendance' },
-              { key: 'leave', label: 'Leave' },
-              { key: 'overtime', label: 'Overtime' },
-              { key: 'violations', label: 'Violations' },
+              { key: 'leave', label: t('workforce.tabs.leave' as never) },
+              { key: 'overtime', label: t('workforce.tabs.overtime' as never) },
+              { key: 'violations', label: t('workforce.tabs.violations' as never) },
             ]}
           />
 
-          {activeTab === 'schedule' && <Table rowKey="id" loading={loading} columns={scheduleColumns} dataSource={schedules} />}
-          {activeTab === 'attendance' && <Table rowKey="id" loading={loading} columns={attendanceColumns} dataSource={attendance} />}
-          {activeTab === 'leave' && <Table rowKey="id" loading={loading} columns={leaveColumns} dataSource={leaveRows} />}
-          {activeTab === 'overtime' && <Table rowKey="id" loading={loading} columns={overtimeColumns} dataSource={overtimeRows} />}
-          {activeTab === 'violations' && <Table rowKey="id" loading={loading} columns={violationColumns} dataSource={violationRows} />}
-          <Modal
-            title={editingScheduleId ? 'Update Schedule' : 'Create Schedule'}
-            open={scheduleModalOpen}
-            onCancel={() => {
-              setScheduleModalOpen(false);
-              setEditingScheduleId(null);
-              form.resetFields();
-            }}
-            onOk={() => void submitScheduleForm()}
-            okText={editingScheduleId ? 'Update' : 'Create'}
-            width={900}
-          >
-            <Form
-              form={form}
-              layout="vertical"
-              initialValues={scheduleInitialValues}
-              onValuesChange={(changedValues) => {
-                if (Object.prototype.hasOwnProperty.call(changedValues, 'office_id')) {
-                  form.setFieldValue('driver_id', undefined);
-                }
-              }}
-            >
-              <Row gutter={12}>
-                <Col xs={24} md={12}><FormItemSelect name="driver_id" label="Driver ID" options={scheduleFormDriverOptions} showSearch rules={requiredRules('Driver ID')} /></Col>
-                <Col xs={24} md={12}><FormItemSelect name="office_id" label="Office ID" options={officeOptions} showSearch rules={requiredRules('Office ID')} /></Col>
-                <Col xs={24} md={12}><Form.Item name="work_date" label="Work date" rules={requiredRules('Work date')}><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={12}><FormItemSelect name="shift_code" label="Shift code" options={[{ label: 'day', value: 'day' }, { label: 'night', value: 'night' }, { label: 'split', value: 'split' }, { label: 'custom', value: 'custom' }]} /></Col>
-                <Col xs={24} md={12}><Form.Item name="start_time" label="Start time" rules={requiredRules('Start time')}><TimePicker style={{ width: '100%' }} format="HH:mm" /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="end_time" label="End time" rules={[...requiredRules('End time'), { validator: async (_, value) => { const start = form.getFieldValue('start_time'); if (!start || !value) return; if (value.isSameOrBefore?.(start, 'minute')) throw new Error(t('validation.checkOutAfterCheckIn')); } }]}><TimePicker style={{ width: '100%' }} format="HH:mm" /></Form.Item></Col>
-                <Col xs={24} md={12}><FormItemSelect name="vehicle_id" label="Vehicle ID" options={vehicleOptions} showSearch /></Col>
-                <Col xs={24} md={12}><Form.Item name="notes" label="Notes"><Input /></Form.Item></Col>
-              </Row>
-            </Form>
-          </Modal>
-          <Modal
-            title="Attendance Actions"
-            open={attendanceModalOpen}
-            onCancel={() => setAttendanceModalOpen(false)}
-            footer={null}
-            width={900}
-          >
-            <Form form={attendanceForm} layout="vertical">
-              <Row gutter={12}>
-                <Col xs={24} md={6}><FormItemSelect name="driver_id" label="Driver ID" options={driverOptions} showSearch rules={requiredRules('Driver ID')} /></Col>
-                <Col xs={24} md={9}><Form.Item name="check_in_time" label="Check-in time"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={9}><Form.Item name="check_out_time" label="Check-out time"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={8}><Button onClick={() => void submitAttendanceCheckIn()}>Check-in</Button></Col>
-                <Col xs={24} md={8}><Button onClick={() => void submitAttendanceCheckOut()}>Check-out</Button></Col>
-                <Col xs={24} md={8}></Col>
-                <Col xs={24} md={6}><FormItemSelect name="attendance_id" label="Attendance ID" options={attendanceOptions} showSearch rules={requiredRules('Attendance ID')} /></Col>
-                <Col xs={24} md={6}><Form.Item name="adjust_check_in" label="Adjust check-in"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={6}><Form.Item name="adjust_check_out" label="Adjust check-out"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={6}><FormItemSelect name="adjust_status" label="Adjust status" options={[{ label: 'present', value: 'present' }, { label: 'late', value: 'late' }, { label: 'absent', value: 'absent' }, { label: 'partial', value: 'partial' }]} /></Col>
-                <Col xs={24} md={12}><Form.Item name="adjust_reason" label="Adjust reason" rules={requiredRules('Adjust reason')}><Input /></Form.Item></Col>
-                <Col xs={24} md={12}><Button type="primary" onClick={() => void submitAttendanceAdjust()}>Adjust Attendance</Button></Col>
-              </Row>
-            </Form>
-          </Modal>
-          <Modal title="Create Leave" open={leaveModalOpen} onCancel={() => setLeaveModalOpen(false)} onOk={() => void submitLeaveForm()} width={900}>
-            <Form form={leaveForm} layout="vertical">
-              <Row gutter={12}>
-                <Col xs={24} md={12}><FormItemSelect name="driver_id" label="Driver ID" options={driverOptions} showSearch rules={requiredRules('Driver ID')} /></Col>
-                <Col xs={24} md={12}><FormItemSelect name="leave_type_id" label="Leave Type" options={leaveTypeOptions} rules={requiredRules('Leave Type')} /></Col>
-                <Col xs={24} md={12}><Form.Item name="from_date" label="From date" rules={requiredRules('From date')}><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="to_date" label="To date" rules={[...requiredRules('To date'), { validator: async (_, value) => { const from = leaveForm.getFieldValue('from_date'); if (!from || !value) return; if (value.isBefore?.(from, 'day')) throw new Error(t('validation.dueDateAfterIssuedAt')); } }]}><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="total_days" label="Total days" rules={[nonNegativeNumberRule('Total days')]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="reason" label="Reason"><Input /></Form.Item></Col>
-              </Row>
-            </Form>
-          </Modal>
-          <Modal title="Create Overtime" open={overtimeModalOpen} onCancel={() => setOvertimeModalOpen(false)} onOk={() => void submitOvertimeForm()} width={900}>
-            <Form form={overtimeForm} layout="vertical">
-              <Row gutter={12}>
-                <Col xs={24} md={12}><FormItemSelect name="driver_id" label="Driver ID" options={driverOptions} showSearch rules={requiredRules('Driver ID')} /></Col>
-                <Col xs={24} md={12}><FormItemSelect name="company_id" label="Company ID" options={companyOptions} showSearch /></Col>
-                <Col xs={24} md={12}><Form.Item name="work_date" label="Work date" rules={requiredRules('Work date')}><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="ot_hours" label="OT Hours" rules={[nonNegativeNumberRule('OT Hours')]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="start_time" label="Start time" rules={requiredRules('Start time')}><TimePicker style={{ width: '100%' }} format="HH:mm" /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="end_time" label="End time" rules={[...requiredRules('End time'), { validator: async (_, value) => { const start = overtimeForm.getFieldValue('start_time'); if (!start || !value) return; if (value.isSameOrBefore?.(start, 'minute')) throw new Error(t('validation.checkOutAfterCheckIn')); } }]}><TimePicker style={{ width: '100%' }} format="HH:mm" /></Form.Item></Col>
-                <Col xs={24}><Form.Item name="reason" label="Reason"><Input /></Form.Item></Col>
-              </Row>
-            </Form>
-          </Modal>
-          <Modal title="Create Violation" open={violationModalOpen} onCancel={() => setViolationModalOpen(false)} onOk={() => void submitViolationForm()} width={900}>
-            <Form form={violationForm} layout="vertical">
-              <Row gutter={12}>
-                <Col xs={24} md={12}><FormItemSelect name="driver_id" label="Driver ID" options={driverOptions} showSearch rules={requiredRules('Driver ID')} /></Col>
-                <Col xs={24} md={12}><FormItemSelect name="company_id" label="Company ID" options={companyOptions} showSearch /></Col>
-                <Col xs={24} md={12}><FormItemSelect name="trip_id" label="Trip ID" options={tripOptions} showSearch /></Col>
-                <Col xs={24} md={12}><Form.Item name="type" label="Type" rules={requiredRules('Type')}><Input /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="occurred_at" label="Occurred at" rules={requiredRules('Occurred at')}><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="penalty_amount" label="Penalty amount" rules={[nonNegativeNumberRule('Penalty amount')]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item></Col>
-                <Col xs={24}><Form.Item name="description" label="Description"><Input /></Form.Item></Col>
-              </Row>
-            </Form>
-          </Modal>
-          <Modal
-            title={detailTitle}
-            open={detailOpen}
-            onCancel={() => setDetailOpen(false)}
-            footer={<Button onClick={() => setDetailOpen(false)}>Close</Button>}
-          >
-            {detailData && typeof detailData === 'object' ? (
-              <Descriptions column={1} size="small">
-                {Object.entries(detailData as Record<string, unknown>)
-                  .filter(([, value]) => value !== null && value !== undefined && value !== '')
-                  .map(([key, value]) => (
-                  <Descriptions.Item key={key} label={detailLabels[detailKind][key] || key}>
-                    {formatDetailValue(key, value)}
-                  </Descriptions.Item>
-                  ))}
-              </Descriptions>
-            ) : null}
-          </Modal>
+          {activeTab === 'schedule' && <Table rowKey="id" loading={loading} columns={scheduleColumns} dataSource={schedules} scroll={{ x: 'max-content' }} />}
+          {activeTab === 'attendance' && <Table rowKey="id" loading={loading} columns={attendanceColumns} dataSource={attendance} scroll={{ x: 'max-content' }} />}
+          {activeTab === 'leave' && <Table rowKey="id" loading={loading} columns={leaveColumns} dataSource={leaveRows} scroll={{ x: 'max-content' }} />}
+          {activeTab === 'overtime' && <Table rowKey="id" loading={loading} columns={overtimeColumns} dataSource={overtimeRows} scroll={{ x: 'max-content' }} />}
+          {activeTab === 'violations' && <Table rowKey="id" loading={loading} columns={violationColumns} dataSource={violationRows} scroll={{ x: 'max-content' }} />}
         </Flex>
       </Card>
+
+      {/* ── Action confirmation modal ─────────────────────────────────── */}
+      <ActionConfirmModal state={actionConfirm} onClose={() => setActionConfirm(DEFAULT_ACTION_CONFIRM)} />
+
+      {/* ── Schedule modal ────────────────────────────────────────────── */}
+      <Modal
+        title={editingScheduleId ? t('workforce.updateSchedule' as never) : t('workforce.createSchedule' as never)}
+        open={scheduleModalOpen}
+        onCancel={() => { setScheduleModalOpen(false); setEditingScheduleId(null); form.resetFields(); }}
+        onOk={() => void submitScheduleForm()}
+        okText={editingScheduleId ? t('common.update' as never) : t('common.create' as never)}
+        width={840}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={scheduleInitialValues}
+          onValuesChange={(changed) => {
+            if (Object.prototype.hasOwnProperty.call(changed, 'office_id')) {
+              form.setFieldValue('driver_id', undefined);
+            }
+          }}
+        >
+          <Row gutter={12}>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="office_id" label={t('offices.title' as never)} options={officeOptions} showSearch rules={requiredRules(t('offices.title' as never))} />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="driver_id" label={t('drivers.title' as never)} options={scheduleFormDriverOpts} showSearch rules={requiredRules(t('drivers.title' as never))} />
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="work_date" label={t('workforce.workDate' as never)} rules={requiredRules(t('workforce.workDate' as never))}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <FormItemSelect
+                name="shift_code"
+                label={t('workforce.shift' as never)}
+                options={[
+                  { label: t('workforce.shiftDay' as never), value: 'day' },
+                  { label: t('workforce.shiftNight' as never), value: 'night' },
+                  { label: t('workforce.shiftSplit' as never), value: 'split' },
+                  { label: t('workforce.shiftCustom' as never), value: 'custom' },
+                ]}
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="start_time" label={t('workforce.startTime' as never)} rules={requiredRules(t('workforce.startTime' as never))}>
+                <TimePicker style={{ width: '100%' }} format="HH:mm" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="end_time"
+                label={t('workforce.endTime' as never)}
+                rules={[
+                  ...requiredRules(t('workforce.endTime' as never)),
+                  {
+                    validator: async (_, value) => {
+                      const start = form.getFieldValue('start_time') as dayjs.Dayjs | undefined;
+                      if (!start || !value) return;
+                      if (!(value as dayjs.Dayjs).isAfter(start, 'minute'))
+                        throw new Error(t('validation.checkOutAfterCheckIn'));
+                    },
+                  },
+                ]}
+              >
+                <TimePicker style={{ width: '100%' }} format="HH:mm" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="vehicle_id" label={t('workforce.vehicleOptional' as never)} options={vehicleOptions} showSearch />
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="notes" label={t('workforce.notes' as never)}>
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* ── Attendance modal ──────────────────────────────────────────── */}
+      <Modal
+        title={t('workforce.tabs.attendance' as never)}
+        open={attendanceModalOpen}
+        onCancel={() => { setAttendanceModalOpen(false); attendanceForm.resetFields(); }}
+        footer={null}
+        width={840}
+      >
+        <Form form={attendanceForm} layout="vertical">
+          <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+            {t('workforce.checkInOut' as never)}
+          </Typography.Text>
+          <Row gutter={12}>
+            <Col xs={24} md={8}>
+              <FormItemSelect name="driver_id" label={t('drivers.title' as never)} options={driverOptions} showSearch rules={requiredRules(t('drivers.title' as never))} />
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="check_in_time" label={t('workforce.checkInTime' as never)}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="check_out_time" label={t('workforce.checkOutTime' as never)}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Button block onClick={() => void submitAttendanceCheckIn()}>Check-in</Button>
+            </Col>
+            <Col xs={24} md={8}>
+              <Button block onClick={() => void submitAttendanceCheckOut()}>Check-out</Button>
+            </Col>
+          </Row>
+
+          <Typography.Text type="secondary" style={{ display: 'block', margin: '16px 0 8px' }}>
+            {t('workforce.adjustAttendance' as never)}
+          </Typography.Text>
+          <Row gutter={12}>
+            <Col xs={24} md={8}>
+              <FormItemSelect name="attendance_id" label={t('workforce.attendanceRecord' as never)} options={attendanceOptions} showSearch rules={requiredRules(t('workforce.attendanceRecord' as never))} />
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="adjust_check_in" label={t('workforce.adjustCheckIn' as never)}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="adjust_check_out" label={t('workforce.adjustCheckOut' as never)}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <FormItemSelect
+                name="adjust_status"
+                label={t('common.status' as never)}
+                options={[
+                  { label: t('workforce.present' as never), value: 'present' },
+                  { label: t('workforce.late' as never), value: 'late' },
+                  { label: t('workforce.absent' as never), value: 'absent' },
+                  { label: t('workforce.partial' as never), value: 'partial' },
+                ]}
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="adjust_reason"
+                label={t('workforce.adjustReasonRequired' as never)}
+                rules={requiredRules(t('workforce.adjustReason' as never))}
+              >
+                <Input placeholder={t('workforce.adjustReasonPlaceholder' as never)} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={4} style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+              <Button type="primary" block onClick={() => void submitAttendanceAdjust()}>
+                {t('workforce.saveAdjustment' as never)}
+              </Button>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* ── Leave modal ───────────────────────────────────────────────── */}
+      <Modal
+        title={t('workforce.createLeave' as never)}
+        open={leaveModalOpen}
+        onCancel={() => { setLeaveModalOpen(false); leaveForm.resetFields(); }}
+        onOk={() => void submitLeaveForm()}
+        okText={t('workforce.createRequest' as never)}
+        width={720}
+      >
+        <Form form={leaveForm} layout="vertical">
+          <Row gutter={12}>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="driver_id" label={t('drivers.title' as never)} options={driverOptions} showSearch rules={requiredRules(t('drivers.title' as never))} />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="leave_type_id" label={t('workforce.leaveType' as never)} options={leaveTypeOptions} rules={requiredRules(t('workforce.leaveType' as never))} />
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="from_date" label={t('workforce.fromDate' as never)} rules={requiredRules(t('workforce.fromDate' as never))}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="to_date"
+                label={t('workforce.toDate' as never)}
+                rules={[
+                  ...requiredRules(t('workforce.toDate' as never)),
+                  {
+                    validator: async (_, value) => {
+                      const from = leaveForm.getFieldValue('from_date') as dayjs.Dayjs | undefined;
+                      if (!from || !value) return;
+                      if ((value as dayjs.Dayjs).isBefore(from, 'day')) throw new Error(t('validation.dueDateAfterIssuedAt'));
+                    },
+                  },
+                ]}
+              >
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="total_days" label={t('workforce.totalDays' as never)} rules={[nonNegativeNumberRule(t('workforce.totalDays' as never))]}>
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="reason" label={t('common.reason' as never)}>
+                <Input placeholder={t('workforce.leaveReasonPlaceholder' as never)} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* ── Overtime modal ────────────────────────────────────────────── */}
+      <Modal
+        title={t('workforce.createOvertime' as never)}
+        open={overtimeModalOpen}
+        onCancel={() => { setOvertimeModalOpen(false); overtimeForm.resetFields(); }}
+        onOk={() => void submitOvertimeForm()}
+        okText={t('workforce.createRequest' as never)}
+        width={720}
+      >
+        <Form form={overtimeForm} layout="vertical">
+          <Row gutter={12}>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="driver_id" label={t('drivers.title' as never)} options={driverOptions} showSearch rules={requiredRules(t('drivers.title' as never))} />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="company_id" label={t('companies.title' as never)} options={companyOptions} showSearch />
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="work_date" label={t('workforce.overtimeDate' as never)} rules={requiredRules(t('common.date' as never))}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="ot_hours" label={t('workforce.overtimeHours' as never)} rules={[nonNegativeNumberRule(t('workforce.overtimeHours' as never))]}>
+                <InputNumber min={0} max={24} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="start_time" label={t('workforce.startTimeOt' as never)} rules={requiredRules(t('workforce.startTime' as never))}>
+                <TimePicker style={{ width: '100%' }} format="HH:mm" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="end_time"
+                label={t('workforce.endTimeOt' as never)}
+                rules={[
+                  ...requiredRules(t('workforce.endTime' as never)),
+                  {
+                    validator: async (_, value) => {
+                      const start = overtimeForm.getFieldValue('start_time') as dayjs.Dayjs | undefined;
+                      if (!start || !value) return;
+                      if (!(value as dayjs.Dayjs).isAfter(start, 'minute')) throw new Error(t('validation.checkOutAfterCheckIn'));
+                    },
+                  },
+                ]}
+              >
+                <TimePicker style={{ width: '100%' }} format="HH:mm" />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="reason" label={t('workforce.overtimeReason' as never)}>
+                <Input placeholder={t('workforce.overtimeReasonPlaceholder' as never)} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* ── Violation modal ───────────────────────────────────────────── */}
+      <Modal
+        title={t('workforce.recordViolation' as never)}
+        open={violationModalOpen}
+        onCancel={() => { setViolationModalOpen(false); violationForm.resetFields(); }}
+        onOk={() => void submitViolationForm()}
+        okText={t('workforce.record' as never)}
+        width={720}
+      >
+        <Form form={violationForm} layout="vertical">
+          <Row gutter={12}>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="driver_id" label={t('drivers.title' as never)} options={driverOptions} showSearch rules={requiredRules(t('drivers.title' as never))} />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="company_id" label={t('companies.title' as never)} options={companyOptions} showSearch />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormItemSelect name="trip_id" label={t('workforce.tripOptional' as never)} options={tripOptions} showSearch />
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="type" label={t('workforce.violationType' as never)} rules={requiredRules(t('workforce.violationType' as never))}>
+                <Input placeholder="vd: speeding, harsh_brake, route_deviation..." />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="occurred_at" label={t('workforce.occurredAt' as never)} rules={requiredRules(t('workforce.occurredAt' as never))}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="penalty_amount" label={t('workforce.penaltyAmountVnd' as never)} rules={[nonNegativeNumberRule(t('workforce.penaltyAmount' as never))]}>
+                <InputNumber min={0} style={{ width: '100%' }} formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="description" label={t('workforce.detailDescription' as never)}>
+                <Input.TextArea rows={3} placeholder={t('workforce.violationDescriptionPlaceholder' as never)} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* ── Detail modal ──────────────────────────────────────────────── */}
+      <Modal
+        title={detailTitle}
+        open={detailOpen}
+        onCancel={() => setDetailOpen(false)}
+        footer={<Button onClick={() => setDetailOpen(false)}>{t('common.close' as never)}</Button>}
+        width={600}
+      >
+        {detailData ? (
+          <DetailDescriptions kind={detailKind} data={detailData} />
+        ) : (
+          <Typography.Text type="secondary">{t('common.noData' as never)}</Typography.Text>
+        )}
+      </Modal>
     </>
   );
 }
-
