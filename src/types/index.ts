@@ -473,6 +473,22 @@ export interface DriverSchedule {
   override_reason?: string;
 }
 
+export type DayKind = 'working' | 'leave' | 'noleave' | 'holiday' | 'weekend' | 'unknown';
+
+export interface PublicHoliday {
+  id: number;
+  date: string;
+  name: string;
+  holiday_type: 'national' | 'regional' | 'compensatory';
+}
+
+export interface AbsenceRecord {
+  id: number;
+  driver_id: number;
+  date: string;
+  reason: string | null;
+}
+
 export interface LeaveRequest {
   id: number;
   driver_id: number;

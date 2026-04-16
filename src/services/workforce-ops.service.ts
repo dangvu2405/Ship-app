@@ -3,10 +3,12 @@ import { ENDPOINTS } from './endpoints';
 import { unwrapEnvelope } from './http';
 import type { ApiListPayload } from './http/types';
 import type {
+  AbsenceRecord,
   ApiResponse,
   DriverSchedule,
   LeaveRequest,
   OvertimeRequest,
+  PublicHoliday,
   ViolationRecord,
   WorkforceAttendanceRecord,
 } from '@/types';
@@ -19,6 +21,16 @@ const getListData = <T>(body: unknown): ListResult<T> => {
     throw new Error('Invalid API list payload.');
   }
   return { data: payload.data, total: payload.meta?.total ?? payload.data.length };
+};
+
+const getListDataCompat = <T>(body: unknown): ListResult<T> => {
+  try {
+    return getListData<T>(body);
+  } catch {
+    const direct = body as { data?: T[]; meta?: { total?: number } } | undefined;
+    const rows = Array.isArray(direct?.data) ? direct.data : [];
+    return { data: rows, total: direct?.meta?.total ?? rows.length };
+  }
 };
 
 class WorkforceOpsService {
@@ -38,8 +50,8 @@ class WorkforceOpsService {
   }
 
   async listDriverSchedules(params: Record<string, unknown> = {}): Promise<ListResult<DriverSchedule>> {
-    const response = await api.get(ENDPOINTS.driverSchedules.base, { params });
-    return getListData<DriverSchedule>(response.data);
+    const response = await api.get(ENDPOINTS.workforce.driverSchedules, { params });
+    return getListDataCompat<DriverSchedule>(response.data);
   }
 
   async submitDriverSchedule(id: number): Promise<ApiResponse<DriverSchedule>> {
@@ -48,7 +60,7 @@ class WorkforceOpsService {
   }
 
   async approveDriverSchedule(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const response = await api.post(ENDPOINTS.driverSchedules.approve(id));
+    const response = await api.put(ENDPOINTS.workforce.approveDriverSchedule(id));
     return response.data;
   }
 
@@ -58,7 +70,7 @@ class WorkforceOpsService {
   }
 
   async lockDriverSchedule(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const response = await api.post(ENDPOINTS.driverSchedules.lock(id));
+    const response = await api.put(ENDPOINTS.workforce.lockDriverSchedule(id));
     return response.data;
   }
 
@@ -100,6 +112,35 @@ class WorkforceOpsService {
   async listLeave(params: Record<string, unknown> = {}): Promise<ListResult<LeaveRequest>> {
     const response = await api.get(ENDPOINTS.leaveOps.base, { params });
     return getListData<LeaveRequest>(response.data);
+  }
+
+  async listPublicHolidays(params: { year: number; country_code?: string }): Promise<{ data: PublicHoliday[] }> {
+    const response = await api.get(ENDPOINTS.publicHolidays.list, { params });
+    const body = response.data as { data?: PublicHoliday[] };
+    return { data: Array.isArray(body?.data) ? body.data : [] };
+  }
+
+  async listLeaveRequests(params: {
+    driver_id?: number;
+    from: string;
+    to: string;
+    status: 'approved';
+    per_page: number;
+  }): Promise<{ data: LeaveRequest[] }> {
+    const response = await api.get(ENDPOINTS.workforce.leaveRequests, { params });
+    const result = getListDataCompat<LeaveRequest>(response.data);
+    return { data: result.data };
+  }
+
+  async listAbsences(params: {
+    driver_id?: number;
+    from: string;
+    to: string;
+    per_page: number;
+  }): Promise<{ data: AbsenceRecord[] }> {
+    const response = await api.get(ENDPOINTS.workforce.absences, { params });
+    const result = getListDataCompat<AbsenceRecord>(response.data);
+    return { data: result.data };
   }
 
   async listLeaveTypes(): Promise<ApiResponse<Array<{ id: number; name: string; code?: string }>>> {

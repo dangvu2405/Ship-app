@@ -22,6 +22,7 @@ export const PageHeader = ({ title, description, breadcrumb, actions }: PageHead
   const breadcrumbItems = breadcrumb
     ? [
         {
+          key: 'crumb__home',
           title: (
             <Link to={ROUTES.dashboard}>
               <HomeOutlined /> Home
@@ -29,7 +30,7 @@ export const PageHeader = ({ title, description, breadcrumb, actions }: PageHead
           ),
         },
         ...breadcrumb.map((item, index) => ({
-          key: index,
+          key: `crumb__${index}__${item.path ?? item.label}`,
           title: item.path ? <Link to={item.path}>{item.label}</Link> : item.label,
         })),
       ]

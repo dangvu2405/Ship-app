@@ -74,8 +74,18 @@ export function DriverForm(props: DriverFormProps) {
         children: <Badge status={statusColor} text={statusLabel} />,
       },
       { key: 'id_card_no', label: t('drivers.idCardNo'), children: initialValues?.id_card_no || '-' },
-      { key: 'id_card_issue_date', label: t('drivers.idCardIssueDate'), children: initialValues?.id_card_issue_date?.slice(0, 10) || '-' },
-      { key: 'permanent_address', label: t('drivers.permanentAddress'), span: 3, children: initialValues?.permanent_address || '-' },
+      {
+        key: 'id_card_issue_date',
+        label: t('drivers.idCardIssueDate'),
+        span: 2,
+        children: initialValues?.id_card_issue_date?.slice(0, 10) || '-',
+      },
+      {
+        key: 'permanent_address',
+        label: t('drivers.permanentAddress'),
+        span: 3,
+        children: initialValues?.permanent_address || '-',
+      },
       {
         key: 'id_card_front_url',
         label: t('drivers.idCardFront'),
@@ -88,6 +98,7 @@ export function DriverForm(props: DriverFormProps) {
       {
         key: 'id_card_back_url',
         label: t('drivers.idCardBack'),
+        span: 2,
         children: initialValues?.id_card_back_url ? (
           <a href={initialValues.id_card_back_url} target="_blank" rel="noreferrer">
             {initialValues.id_card_back_url}
@@ -100,19 +111,25 @@ export function DriverForm(props: DriverFormProps) {
       {
         key: 'insurance_doc_url',
         label: t('drivers.insuranceDoc'),
+        span: 3,
         children: initialValues?.insurance_doc_url ? (
           <a href={initialValues.insurance_doc_url} target="_blank" rel="noreferrer">
             {initialValues.insurance_doc_url}
           </a>
         ) : '-',
       },
-      { key: 'profile_notes', label: t('drivers.profileNotes'), span: 3, children: initialValues?.profile_notes || '-' },
+      {
+        key: 'profile_notes',
+        label: t('drivers.profileNotes'),
+        span: 3,
+        children: initialValues?.profile_notes || '-',
+      },
       { key: 'created_at', label: 'Created at', children: initialValues?.created_at?.slice(0, 19).replace('T', ' ') || '-' },
       { key: 'updated_at', label: 'Updated at', children: initialValues?.updated_at?.slice(0, 19).replace('T', ' ') || '-' },
       { key: 'deleted_at', label: 'Deleted at', children: initialValues?.deleted_at?.slice(0, 19).replace('T', ' ') || '-' },
     ];
 
-    return <Descriptions title={t('common.view')} layout="vertical" bordered items={items} />;
+    return <Descriptions title={t('common.view')} layout="vertical" bordered column={3} items={items} />;
   }
 
   const requireUploadUnlessUrl = (urlField: keyof Driver) => ({

@@ -76,6 +76,16 @@ export const ENDPOINTS = {
     override: (id: Id) => `/driver-schedules/${id}/override`,
     hosCheck: (id: Id) => `/driver-schedules/${id}/hos-check`,
   },
+  workforce: {
+    driverSchedules: '/workforce/driver-schedules',
+    approveDriverSchedule: (id: Id) => `/workforce/driver-schedules/${id}/approve`,
+    lockDriverSchedule: (id: Id) => `/workforce/driver-schedules/${id}/lock`,
+    leaveRequests: '/workforce/leave-requests',
+    absences: '/workforce/absences',
+  },
+  publicHolidays: {
+    list: '/public-holidays',
+  },
   attendanceOps: {
     list: '/attendance',
     checkIn: '/attendance/check-in',
