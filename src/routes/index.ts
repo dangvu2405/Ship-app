@@ -17,6 +17,7 @@ export const ROUTES = {
   register: '/register',
   forgotPassword: '/forgot-password',
   forgotPasswordVerify: '/forgot-password/verify',
+  selectTenant: '/select-tenant',
   dashboard: '/dashboard',
   admin: {
     root: ADMIN_PREFIX,
@@ -40,6 +41,7 @@ export const ROUTES = {
     vehicle_assignments: createCrudRoutes('vehicle_assignments'),
     vehicle_expenses: createCrudRoutes('vehicle_expenses'),
     payrolls: createCrudRoutes('payrolls'),
+    payroll_adjustments: createCrudRoutes('payroll_adjustments'),
     reports: {
       list: `${ADMIN_PREFIX}/reports`,
     },
@@ -88,6 +90,8 @@ const RESOURCE_ALIASES = {
   roles: 'roles',
   payroll: 'payrolls',
   payrolls: 'payrolls',
+  payroll_adjustment: 'payroll_adjustments',
+  payroll_adjustments: 'payroll_adjustments',
   user: 'users',
   users: 'users',
 } as const;
@@ -106,6 +110,7 @@ const RESOURCE_ROUTE_GROUPS = {
   vehicle_assignments: ROUTES.admin.vehicle_assignments,
   vehicle_expenses: ROUTES.admin.vehicle_expenses,
   payrolls: ROUTES.admin.payrolls,
+  payroll_adjustments: ROUTES.admin.payroll_adjustments,
   users: ROUTES.admin.users,
   allowances: ROUTES.admin.allowances,
   deductions: ROUTES.admin.deductions,

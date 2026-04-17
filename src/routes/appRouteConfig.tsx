@@ -40,6 +40,9 @@ export const AppPages = {
   ForgotPasswordVerifyForm: lazyWithMinDelay(() =>
     import('@/pages/auth/forgot-password-verify-form').then((m) => ({ default: m.ForgotPasswordVerifyForm })),
   ),
+  TenantSelector: lazyWithMinDelay(() =>
+    import('@/pages/auth/tenant-selector').then((m) => ({ default: m.TenantSelector })),
+  ),
   Dashboard: lazyWithMinDelay(() => import('@/pages/dashboard/dashboard')),
   NotFound: lazyWithMinDelay(() => import('@/pages/404').then((m) => ({ default: m.NotFound }))),
 };
@@ -78,6 +81,7 @@ const DeductionFormDialog = lazyWithMinDelay(() => import('@/pages/deductions/De
 const PayrollsList = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollsList').then((m) => ({ default: m.PayrollsList })));
 const PayrollFormDialog = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollFormDialog').then((m) => ({ default: m.PayrollFormDialog })));
 const PayrollDetailPage = lazyWithMinDelay(() => import('@/pages/payrolls/PayrollDetailPage').then((m) => ({ default: m.PayrollDetailPage })));
+const AdjustmentsList = lazyWithMinDelay(() => import('@/pages/payroll-adjustments/AdjustmentsList').then((m) => ({ default: m.AdjustmentsList })));
 const Reports = lazyWithMinDelay(() => import('@/pages/reports/Reports').then((m) => ({ default: m.Reports })));
 const UsersList = lazyWithMinDelay(() => import('@/pages/users/UsersList').then((m) => ({ default: m.UsersList })));
 const UserFormDialog = lazyWithMinDelay(() => import('@/pages/users/UserFormDialog').then((m) => ({ default: m.UserFormDialog })));
@@ -115,6 +119,7 @@ export const crudRoutes: CrudRouteConfig[] = [
   { key: 'allowances', routes: ROUTES.admin.allowances, List: AllowancesList, Form: AllowanceFormDialog },
   { key: 'deductions', routes: ROUTES.admin.deductions, List: DeductionsList, Form: DeductionFormDialog },
   { key: 'payrolls', routes: ROUTES.admin.payrolls, List: PayrollsList, Form: PayrollFormDialog, Show: PayrollDetailPage },
+  { key: 'payroll_adjustments', routes: ROUTES.admin.payroll_adjustments, List: AdjustmentsList, Form: AdjustmentsList },
   { key: 'users', routes: ROUTES.admin.users, List: UsersList, Form: UserFormDialog, requiredRole: 'admin' },
   { key: 'roles', routes: ROUTES.admin.roles, List: RolesList, Form: RoleFormDialog, requiredRole: 'admin' },
 ];

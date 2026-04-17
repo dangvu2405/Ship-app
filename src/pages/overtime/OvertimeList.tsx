@@ -79,7 +79,10 @@ export function OvertimeList({ companyId, officeId, embedded = false }: Overtime
   const filteredDrivers = useMemo(
     () => (driversData?.data ?? []).filter((d) => {
       if (officeId && d.employee?.office_id !== officeId) return false;
-      if (companyId && d.employee?.company_id !== companyId) return false;
+      if (companyId) {
+        const driverCompanyId = d.employee?.office?.company_id;
+        if (driverCompanyId != null && driverCompanyId !== companyId) return false;
+      }
       return true;
     }),
     [driversData?.data, officeId, companyId],

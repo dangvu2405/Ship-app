@@ -10,6 +10,7 @@ import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
 import { AppLayout } from './layouts/AppLayout';
 import { useAppStore } from './stores/app.store';
+import { useAuthStore } from './stores/auth.store';
 import { ROUTES } from '@/routes';
 import { appNotificationProvider } from './providers/notificationProvider';
 import {
@@ -20,6 +21,15 @@ import {
   singleRoutes,
 } from './routes/appRouteConfig';
 import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
+
+/** Redirect về /select-tenant nếu user đã đăng nhập nhưng chưa chọn tenant (multi-tenant). */
+function TenantGuard({ children }: { children: ReactNode }) {
+  const { currentTenantId, pendingTenants } = useAuthStore();
+  if (!currentTenantId && pendingTenants.length > 1) {
+    return <Navigate to={ROUTES.selectTenant} replace />;
+  }
+  return <>{children}</>;
+}
 
 const suspensePage = (node: ReactNode) => (
   <Suspense fallback={<AppLoadingSpin variant="page" />}>{node}</Suspense>

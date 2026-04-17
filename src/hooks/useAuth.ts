@@ -29,7 +29,6 @@ export const useAuth = () => {
   };
 
   const hasPermission = (permission: string): boolean => {
-    if (hasRole('admin')) return true;
     return user?.roles?.some((r) =>
       r.permissions?.some((p) => p.code === permission || p.name === permission)
     ) ?? false;

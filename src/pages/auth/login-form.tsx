@@ -31,13 +31,18 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
       .catch(() => {});
   }, []);
 
+  const navigateAfterLogin = () => {
+    const { currentTenantId } = useAuthStore.getState();
+    navigate(currentTenantId ? ROUTES.dashboard : ROUTES.selectTenant);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isBusy) return;
     try {
       setIsSubmitting(true);
       await login(email.trim(), password);
-      navigate(ROUTES.dashboard);
+      navigateAfterLogin();
     } catch {
       toast.error(t('auth.loginFailed'));
     } finally {
@@ -50,7 +55,7 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
     try {
       setIsSubmitting(true);
       await login(accEmail, 'password');
-      navigate(ROUTES.dashboard);
+      navigateAfterLogin();
     } catch {
       toast.error(t('auth.loginFailed'));
     } finally {

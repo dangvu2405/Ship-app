@@ -11,6 +11,7 @@ export const ENDPOINTS = {
     root: '/',
     health: '/health',
     docs: '/documentation',
+    upload: '/upload',
   },
   auth: {
     login: '/auth/login',
@@ -64,6 +65,11 @@ export const ENDPOINTS = {
     mySalary: '/payrolls/my-salary',
     driverHistory: (driverId: Id) => `/payrolls/driver/${driverId}`,
   },
+  payrollAdjustments: {
+    ...crud('/payroll-adjustments'),
+    approve: (id: Id) => `/payroll-adjustments/${id}/approve`,
+    reject: (id: Id) => `/payroll-adjustments/${id}/reject`,
+  },
   reports: {
     dashboard: '/reports/dashboard',
     payrollSummary: '/reports/payroll-summary',
@@ -98,6 +104,7 @@ export const ENDPOINTS = {
   leaveOps: {
     types: '/leave/types',
     base: '/leave',
+    balance: '/leave/balance',
     byId: (id: Id) => `/leave/${id}`,
     approve: (id: Id) => `/leave/${id}/approve`,
     reject: (id: Id) => `/leave/${id}/reject`,

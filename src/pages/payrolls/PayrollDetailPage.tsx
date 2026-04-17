@@ -217,6 +217,28 @@ export function PayrollDetailPage() {
                 { title: t('payrolls.netSalary'), align: 'right', render: (_, row) => <Typography.Text strong>{formatMoney(row.net_salary, { withCurrency: true })}</Typography.Text> },
                 { title: t('payrolls.tripsCompleted'), align: 'right', render: (_, row) => formatDecimal(row.trips_completed_count, 0) },
               ]}
+              expandable={{
+                expandedRowRender: (record) => {
+                  if (!record.adjustments || record.adjustments.length === 0) {
+                    return <Typography.Text type="secondary">Không có điều chỉnh nào.</Typography.Text>;
+                  }
+                  return (
+                    <Table
+                      dataSource={record.adjustments}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                      columns={[
+                        { title: 'Loại', dataIndex: 'type', render: v => <Tag color={v === 'deduction' ? 'red' : 'green'}>{v === 'deduction' ? 'Khấu trừ' : 'Phụ cấp'}</Tag> },
+                        { title: 'Số tiền', dataIndex: 'amount', render: v => <strong>{formatMoney(v || 0, { withCurrency: true })}</strong> },
+                        { title: 'Trạng thái', dataIndex: 'status', render: v => <Tag>{v}</Tag> },
+                        { title: 'Diễn giải', dataIndex: 'description' },
+                      ]}
+                    />
+                  );
+                },
+                rowExpandable: (record) => !!record.adjustments && record.adjustments.length > 0,
+              }}
             />
           </Card>
 

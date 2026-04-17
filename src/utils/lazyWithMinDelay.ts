@@ -1,7 +1,7 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
 /** Thời gian tối thiểu hiển thị spinner Suspense (ms), song song với import. */
-export const LAZY_ROUTE_SPIN_MIN_MS = 1000;
+export const LAZY_ROUTE_SPIN_MIN_MS = 300;
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 

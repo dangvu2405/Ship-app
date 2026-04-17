@@ -143,6 +143,13 @@ class WorkforceOpsService {
     return { data: result.data };
   }
 
+  async getLeaveBalance(driverId: number, leaveTypeId: number): Promise<ApiResponse<{ total: number; used: number; pending: number; available: number }>> {
+    const response = await api.get(ENDPOINTS.leaveOps.balance, {
+      params: { driver_id: driverId, leave_type_id: leaveTypeId },
+    });
+    return response.data;
+  }
+
   async listLeaveTypes(): Promise<ApiResponse<Array<{ id: number; name: string; code?: string }>>> {
     const response = await api.get(ENDPOINTS.leaveOps.types);
     return response.data;

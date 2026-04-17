@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Button,
   Card,
   Form,
@@ -26,6 +27,7 @@ import { formatMoney } from '@/utils/displayFormat';
 import { ROUTES } from '@/routes';
 import toast from 'react-hot-toast';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { FileUploader } from '@/components/common/FileUploader';
 
 const VIOLATION_TYPES = [
   { label: 'Vượt tốc độ', value: 'speeding' },
@@ -55,6 +57,35 @@ function violationStatusLabel(status: string): string {
     deducted: 'Đã trừ lương',
   };
   return map[status] ?? status;
+}
+
+/** Dispute phải trong 3 ngày kể từ khi confirmed. */
+const DISPUTE_WINDOW_DAYS = 3;
+
+function getDisputeDeadline(confirmedAt: string | null | undefined): Date | null {
+  if (!confirmedAt) return null;
+  const d = new Date(confirmedAt);
+  if (isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + DISPUTE_WINDOW_DAYS);
+  return d;
+}
+
+function canStillDispute(record: ViolationRecord): boolean {
+  if (record.status !== 'confirmed') return false;
+  const deadline = getDisputeDeadline(record.confirmed_at);
+  if (!deadline) return true; // nếu thiếu confirmed_at, cho phép (backend tự validate)
+  return new Date() < deadline;
+}
+
+function formatTimeRemaining(deadline: Date): string {
+  const diff = deadline.getTime() - Date.now();
+  if (diff <= 0) return 'Hết hạn';
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (days > 0) return `${days} ngày ${hours} giờ`;
+  if (hours > 0) return `${hours} giờ ${mins} phút`;
+  return `${mins} phút`;
 }
 
 interface ViolationsListProps {
@@ -91,7 +122,10 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
   const filteredDrivers = useMemo(
     () => (driversData?.data ?? []).filter((d) => {
       if (officeId && d.employee?.office_id !== officeId) return false;
-      if (companyId && d.employee?.company_id !== companyId) return false;
+      if (companyId) {
+        const driverCompanyId = d.employee?.office?.company_id;
+        if (driverCompanyId != null && driverCompanyId !== companyId) return false;
+      }
       return true;
     }),
     [driversData?.data, officeId, companyId],
@@ -207,10 +241,18 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
                 Xác nhận
               </Button>
             )}
-            {r.status === 'confirmed' && (
+            {r.status === 'confirmed' && canStillDispute(r) && (
               <Button size="small" onClick={() => { setActiveRecord(r); disputeForm.resetFields(); setDisputeOpen(true); }}>
                 Khiếu nại
+                {r.confirmed_at && (() => {
+                  const deadline = getDisputeDeadline(r.confirmed_at);
+                  if (!deadline) return null;
+                  return <Typography.Text type="secondary" style={{ fontSize: 10, marginLeft: 4 }}>({formatTimeRemaining(deadline)})</Typography.Text>;
+                })()}
               </Button>
+            )}
+            {r.status === 'confirmed' && !canStillDispute(r) && (
+              <Tag color="default">Hết hạn khiếu nại</Tag>
             )}
             {r.status === 'disputed' && (
               <Button size="small" type="primary" onClick={() => { setActiveRecord(r); resolveForm.resetFields(); setResolveOpen(true); }}>
@@ -269,6 +311,7 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
               { label: 'Đã xác nhận', value: 'confirmed' },
               { label: 'Đang khiếu nại', value: 'disputed' },
               { label: 'Đã miễn', value: 'waived' },
+              { label: 'Đã trừ lương', value: 'deducted' },
             ]}
           />
         </Space>
@@ -334,6 +377,13 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
           <Form.Item name="penalty_amount" label="Tiền phạt (VND)" rules={[{ required: true, message: 'Nhập tiền phạt' }]}>
             <InputNumber<number> style={{ width: '100%' }} min={0} formatter={(v) => String(v ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
           </Form.Item>
+          <Form.Item name="evidence_urls" label="Bằng chứng (Hình ảnh/Video)">
+            <FileUploader 
+              buttonText="Tải lên bằng chứng" 
+              accept="image/*,video/*,.pdf" 
+              maxCount={5} 
+            />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -346,9 +396,22 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
         okText="Gửi khiếu nại"
         cancelText={t('common.cancel')}
       >
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
           Vi phạm #{activeRecord?.id} · {VIOLATION_TYPES.find((vt) => vt.value === activeRecord?.type)?.label} · {formatMoney(activeRecord?.penalty_amount ?? 0, { withCurrency: true })}
         </Typography.Text>
+        {activeRecord?.confirmed_at && (() => {
+          const deadline = getDisputeDeadline(activeRecord.confirmed_at);
+          if (!deadline) return null;
+          return (
+            <Alert
+              type={deadline.getTime() - Date.now() < 24 * 60 * 60 * 1000 ? 'error' : 'warning'}
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={`Còn ${formatTimeRemaining(deadline)} để khiếu nại`}
+              description="Hết thời hạn → vi phạm sẽ tự động trừ lương."
+            />
+          );
+        })()}
         <Form
           form={disputeForm}
           layout="vertical"
@@ -365,8 +428,18 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
             }
           }}
         >
-          <Form.Item name="reason" label="Lý do khiếu nại" rules={[{ required: true, message: 'Nhập lý do' }]}>
-            <Input.TextArea rows={3} placeholder="Nêu lý do phản đối vi phạm..." />
+          <Form.Item name="reason" label="Lý do khiếu nại" rules={[
+            { required: true, message: 'Nhập lý do' },
+            { min: 10, message: 'Lý do phải có ít nhất 10 ký tự' },
+          ]}>
+            <Input.TextArea rows={3} placeholder="Nêu lý do phản đối vi phạm (tối thiểu 10 ký tự)..." maxLength={2000} showCount />
+          </Form.Item>
+          <Form.Item name="evidence_urls" label="Bằng chứng khiếu nại">
+            <FileUploader 
+              buttonText="Tải lên minh chứng" 
+              accept="image/*,video/*,.pdf" 
+              maxCount={3} 
+            />
           </Form.Item>
         </Form>
       </Modal>

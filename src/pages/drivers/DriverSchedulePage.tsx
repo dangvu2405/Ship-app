@@ -351,10 +351,10 @@ export function DriverSchedulePage() {
 
   const handleApproveOverrideHos = useCallback(() => {
     if (!detailSchedule) return;
-    const id = detailSchedule.id;
+    // Instead of silently approving, open override modal which requires a reason for audit trail
     setHosWarning(null);
-    void runScheduleAction('approve', () => workforceOpsService.approveDriverSchedule(id), 'Đã duyệt lịch (bỏ qua HOS)');
-  }, [detailSchedule, runScheduleAction]);
+    setOverrideOpen(true);
+  }, [detailSchedule]);
 
   const handleCreateSchedule = useCallback(async () => {
     try {

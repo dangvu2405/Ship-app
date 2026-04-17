@@ -1,22 +1,65 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createSafeStorage } from '@/lib/safe-storage';
-import { User } from '@/types';
+import { Tenant, User } from '@/types';
 import authService from '@/services/auth.service';
 import toast from 'react-hot-toast';
-import { clearAuthToken, hasAuthToken, setAuthToken, setRefreshToken } from '@/lib/auth-session';
+import {
+  clearAuthToken,
+  clearTenantId,
+  getTenantId,
+  hasAuthToken,
+  setAuthToken,
+  setRefreshToken,
+  setTenantId,
+} from '@/lib/auth-session';
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** ID tenant đang active trong session này. null = chưa chọn (chỉ xảy ra khi user thuộc nhiều tenant). */
+  currentTenantId: number | null;
+  /** Danh sách tenant chờ user chọn sau khi login (chỉ có khi user thuộc ≥ 2 tenant). */
+  pendingTenants: Tenant[];
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setUser: (user: User | null) => void;
   /** Lưu token + user khi hoàn tất luồng ngoài form email/password (nếu có). */
   setSession: (user: User, token?: string) => void;
+  /** Chọn tenant sau khi login — ghi vào localStorage và cập nhật state. */
+  selectTenant: (tenantId: number) => void;
+  /** Xoá tenant hiện tại để switch sang tenant khác (đưa user về /select-tenant). */
+  switchTenant: () => void;
 }
+
+const resolveTenantAfterAuth = (
+  user: User,
+  storedTenantId: number | null,
+): { currentTenantId: number | null; pendingTenants: Tenant[] } => {
+  const tenants = user.tenants ?? [];
+
+  if (tenants.length === 0) {
+    // Backend chưa trả tenants (single-tenant legacy) — không block truy cập
+    return { currentTenantId: null, pendingTenants: [] };
+  }
+
+  const storedIsValid = storedTenantId != null && tenants.some((t) => t.id === storedTenantId);
+  if (storedIsValid) {
+    setTenantId(storedTenantId!);
+    return { currentTenantId: storedTenantId, pendingTenants: [] };
+  }
+
+  if (tenants.length === 1) {
+    setTenantId(tenants[0].id);
+    return { currentTenantId: tenants[0].id, pendingTenants: [] };
+  }
+
+  // Nhiều tenant — cần user chọn
+  clearTenantId();
+  return { currentTenantId: null, pendingTenants: tenants };
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -24,6 +67,8 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      currentTenantId: null,
+      pendingTenants: [],
 
       login: async (email: string, password: string) => {
         try {
@@ -32,17 +77,13 @@ export const useAuthStore = create<AuthState>()(
           if (response.success && response.data?.user) {
             const accessToken = response.data.access_token || response.data.token;
             const refreshToken = response.data.refresh_token;
-            if (accessToken) {
-              setAuthToken(accessToken);
-            }
-            if (refreshToken) {
-              setRefreshToken(refreshToken);
-            }
-            set({
-              user: response.data.user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
+            if (accessToken) setAuthToken(accessToken);
+            if (refreshToken) setRefreshToken(refreshToken);
+
+            const user = response.data.user;
+            const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
+
+            set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
             toast.success('Login successful');
           }
         } catch (error) {
@@ -55,24 +96,17 @@ export const useAuthStore = create<AuthState>()(
         try {
           await authService.logout();
         } catch {
-          // no-op: local logout still executes in finally
+          // no-op
         } finally {
           clearAuthToken();
-          set({
-            user: null,
-            isAuthenticated: false,
-          });
+          set({ user: null, isAuthenticated: false, currentTenantId: null, pendingTenants: [] });
           toast.success('Logged out successfully');
         }
       },
 
       checkAuth: async () => {
         if (!hasAuthToken()) {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+          set({ user: null, isAuthenticated: false, isLoading: false, currentTenantId: null, pendingTenants: [] });
           return;
         }
 
@@ -81,50 +115,50 @@ export const useAuthStore = create<AuthState>()(
           const response = await authService.getCurrentUser();
           const user = authService.getUserFromMeResponse(response);
           if (response.success && user) {
-            set({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
+            const storedTenantId = getTenantId();
+            const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, storedTenantId);
+            set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
           } else {
-            set({
-              user: null,
-              isAuthenticated: false,
-              isLoading: false,
-            });
+            set({ user: null, isAuthenticated: false, isLoading: false, currentTenantId: null, pendingTenants: [] });
           }
         } catch {
           clearAuthToken();
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+          set({ user: null, isAuthenticated: false, isLoading: false, currentTenantId: null, pendingTenants: [] });
         }
       },
 
       setUser: (user: User | null) => {
-        set({
-          user,
-          isAuthenticated: !!user,
-        });
+        set({ user, isAuthenticated: !!user });
       },
 
       setSession: (user: User, token?: string) => {
-        if (token) {
-          setAuthToken(token);
-        }
-        set({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
+        if (token) setAuthToken(token);
+        const storedTenantId = getTenantId();
+        const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, storedTenantId);
+        set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
+      },
+
+      selectTenant: (tenantId: number) => {
+        setTenantId(tenantId);
+        set({ currentTenantId: tenantId, pendingTenants: [] });
+      },
+
+      switchTenant: () => {
+        clearTenantId();
+        set((state) => ({
+          currentTenantId: null,
+          pendingTenants: state.user?.tenants ?? [],
+        }));
       },
     }),
     {
       name: 'auth-storage:v1',
       storage: createSafeStorage(),
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        currentTenantId: state.currentTenantId,
+      }),
     }
   )
 );

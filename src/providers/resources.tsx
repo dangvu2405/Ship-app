@@ -200,6 +200,15 @@ export const resources: ResourceProps[] = [
     },
   },
   {
+    name: 'payroll_adjustments',
+    list: ROUTES.admin.payroll_adjustments.list,
+    meta: {
+      label: 'Điều chỉnh lương',
+      icon: 'SlidersOutlined',
+      canDelete: true,
+    },
+  },
+  {
     name: 'users',
     list: ROUTES.admin.users.list,
     create: ROUTES.admin.users.create,

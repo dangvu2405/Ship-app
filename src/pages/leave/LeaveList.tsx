@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Button,
   Card,
   Form,
@@ -8,10 +9,12 @@ import {
   Modal,
   Select,
   Space,
+  Spin,
   Tag,
   Typography,
 } from 'antd';
 import { useList } from '@refinedev/core';
+import { useQuery } from '@tanstack/react-query';
 import { PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
@@ -24,6 +27,7 @@ import workforceOpsService from '@/services/workforce-ops.service';
 import { ROUTES } from '@/routes';
 import toast from 'react-hot-toast';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { FileUploader } from '@/components/common/FileUploader';
 
 interface LeaveType {
   id: number;
@@ -82,7 +86,10 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
   const filteredDrivers = useMemo(
     () => (driversData?.data ?? []).filter((d) => {
       if (officeId && d.employee?.office_id !== officeId) return false;
-      if (companyId && d.employee?.company_id !== companyId) return false;
+      if (companyId) {
+        const driverCompanyId = d.employee?.office?.company_id;
+        if (driverCompanyId != null && driverCompanyId !== companyId) return false;
+      }
       return true;
     }),
     [driversData?.data, officeId, companyId],
@@ -111,7 +118,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
         if (Array.isArray(data)) setLeaveTypes(data as LeaveType[]);
       })
       .catch(() => {/* silent */});
-  }, [officeId]);
+  }, []);
 
   const fetchList = useCallback(async (page = 1, status?: string) => {
     setLoading(true);
@@ -239,6 +246,19 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, busyId, driverOptions, leaveTypes, rejectForm]);
 
+  const selectedDriverId = Form.useWatch('driver_id', createForm);
+  const selectedLeaveTypeId = Form.useWatch('leave_type_id', createForm);
+
+  const { data: balanceData, isLoading: isLoadingBalance } = useQuery({
+    queryKey: ['leave-balance', selectedDriverId, selectedLeaveTypeId],
+    queryFn: async () => {
+      if (!selectedDriverId || !selectedLeaveTypeId) return null;
+      const res = await workforceOpsService.getLeaveBalance(selectedDriverId, selectedLeaveTypeId);
+      return res.data;
+    },
+    enabled: !!selectedDriverId && !!selectedLeaveTypeId,
+  });
+
   return (
     <>
       {!embedded && (
@@ -336,18 +356,49 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
               <Input type="date" />
             </Form.Item>
           </Space>
+
+          {isLoadingBalance && selectedDriverId && selectedLeaveTypeId && (
+            <div style={{ marginBottom: 16 }}>
+              <Spin size="small" /> <Typography.Text type="secondary">Đang tải số dư phép…</Typography.Text>
+            </div>
+          )}
+          {balanceData && (
+            <Alert
+              type={balanceData.available > 0 ? 'info' : 'error'}
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={`Số dư quỹ phép: còn ${balanceData.available} ngày`}
+              description={`Tổng: ${balanceData.total} | Đã dùng: ${balanceData.used} | Đang chờ duyệt: ${balanceData.pending}`}
+            />
+          )}
+
           <Form.Item
             name="total_days"
             label="Số ngày nghỉ"
             rules={[
               { required: true, message: 'Nhập số ngày' },
               { type: 'number', min: 0.5, message: 'Tối thiểu 0.5 ngày' },
+              () => ({
+                validator(_, value) {
+                  if (value && balanceData && value > balanceData.available) {
+                    return Promise.reject(new Error(`Vượt quá số phép còn lại (${balanceData.available} ngày)`));
+                  }
+                  return Promise.resolve();
+                },
+              }),
             ]}
           >
             <InputNumber style={{ width: '100%' }} step={0.5} min={0.5} addonAfter="ngày" />
           </Form.Item>
           <Form.Item name="reason" label="Lý do">
             <Input.TextArea rows={2} placeholder="Lý do nghỉ phép..." maxLength={1000} />
+          </Form.Item>
+          <Form.Item name="attachment_urls" label="Tài liệu đính kèm (nếu có)">
+            <FileUploader 
+              buttonText="Tải lên minh chứng" 
+              accept=".pdf,image/*" 
+              maxCount={3} 
+            />
           </Form.Item>
         </Form>
       </Modal>

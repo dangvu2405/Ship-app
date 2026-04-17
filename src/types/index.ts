@@ -10,6 +10,16 @@
  * Từ điển DB backend (canonical): `ship-app-api/docs/DATABASE_DATA_DICTIONARY.md` (repo api, cùng thư mục cha với ship-app).
  */
 
+export interface Tenant {
+  id: number;
+  name: string;
+  code: string;
+  logo_url?: string;
+  status: string;
+  timezone?: string;
+  default_currency?: string;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -24,6 +34,7 @@ export interface User {
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   residential_address?: string;
+  tenants?: Tenant[];
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
@@ -330,6 +341,23 @@ export interface Payroll {
   deleted_at?: string | null;
 }
 
+export interface PayrollAdjustment {
+  id: number;
+  payroll_id: number;
+  employee_id: number;
+  type: 'allowance' | 'deduction';
+  amount: number;
+  description: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approved_by?: number;
+  approved_at?: string;
+  rejection_reason?: string;
+  created_at?: string;
+  updated_at?: string;
+  employee?: Employee;
+  payroll?: Payroll;
+}
+
 export interface PayrollDetail {
   id: number;
   payroll_id: number;
@@ -365,6 +393,7 @@ export interface PayrollDetail {
   updated_by?: number;
   deleted_by?: number;
   employee?: Employee;
+  adjustments?: PayrollAdjustment[];
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
@@ -531,6 +560,13 @@ export interface ViolationRecord {
   status: string;
   description?: string;
   penalty_amount?: number;
+  /** Set by backend when status → 'confirmed'. Used to compute 3-day dispute deadline. */
+  confirmed_at?: string;
+  disputed_at?: string;
+  resolved_at?: string;
+  waived_at?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface WorkforceAttendanceRecord {
@@ -561,6 +597,7 @@ export interface ApiResourceResponseByName {
   invoices: Invoice;
   offices: Office;
   payrolls: Payroll;
+  payroll_adjustments: PayrollAdjustment;
   positions: Position;
   roles: Role;
   trip_bonus_rules: TripBonusRule;
