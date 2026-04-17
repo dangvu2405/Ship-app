@@ -295,7 +295,7 @@ export function WorkforceOps({ embedded = false }: WorkforceOpsProps = {}) {
   const [overtimeForm] = Form.useForm();
   const [violationForm] = Form.useForm();
 
-  const [activeTab, setActiveTab] = useState<TabKey>('leave');
+  const [activeTab, setActiveTab] = useState<TabKey>('schedule');
   const [loading, setLoading] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
 
@@ -1345,9 +1345,11 @@ export function WorkforceOps({ embedded = false }: WorkforceOpsProps = {}) {
             activeKey={activeTab}
             onChange={(k) => setActiveTab(k as TabKey)}
             items={[
-              { key: 'leave', label: t('workforce.tabs.leave' as never) },
-              { key: 'overtime', label: t('workforce.tabs.overtime' as never) },
-              { key: 'violations', label: t('workforce.tabs.violations' as never) },
+              { key: 'schedule',   label: t('workforce.tabs.schedule'    as never) },
+              { key: 'attendance', label: t('workforce.tabs.attendance'  as never) },
+              { key: 'leave',      label: t('workforce.tabs.leave'       as never) },
+              { key: 'overtime',   label: t('workforce.tabs.overtime'    as never) },
+              { key: 'violations', label: t('workforce.tabs.violations'  as never) },
             ]}
           />
 

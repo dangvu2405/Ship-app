@@ -59,12 +59,15 @@ export const ENDPOINTS = {
     ...crud('/payrolls'),
     approve: (id: Id) => `/payrolls/${id}/approve`,
     lock: (id: Id) => `/payrolls/${id}/lock`,
+    markPaid: (id: Id) => `/payrolls/${id}/mark-paid`,
     export: (id: Id) => `/payrolls/${id}/export`,
     mySalary: '/payrolls/my-salary',
+    driverHistory: (driverId: Id) => `/payrolls/driver/${driverId}`,
   },
   reports: {
     dashboard: '/reports/dashboard',
     payrollSummary: '/reports/payroll-summary',
+    revenueSummary: '/reports/revenue-summary',
   },
   driverSchedules: {
     base: '/driver-schedules',

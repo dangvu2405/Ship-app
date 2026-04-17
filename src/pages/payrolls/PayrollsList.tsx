@@ -34,12 +34,14 @@ function payrollStatusText(status: string, t: Translate): string {
     approved: t('payrolls.statusApproved'),
     generated: t('payrolls.statusGenerated'),
     draft: t('payrolls.statusGenerated'),
+    paid: t('payrolls.statusPaid'),
   });
 }
 
 function payrollStatusTagColor(status: string): string {
   if (status === 'approved') return 'processing';
-  if (status === 'locked') return 'success';
+  if (status === 'locked') return 'blue';
+  if (status === 'paid') return 'success';
   if (status === 'draft' || status === 'generated') return 'default';
   if (status === 'running') return 'warning';
   return 'processing';
@@ -133,6 +135,12 @@ export function PayrollsList() {
       render: (item) => <DateTimeBadge value={item.locked_at} mode="datetime" />,
     },
     {
+      key: 'paid_at',
+      header: 'Paid At',
+      dataIndex: 'paid_at',
+      render: (item) => <DateTimeBadge value={item.paid_at} mode="datetime" />,
+    },
+    {
       key: 'notes',
       header: 'Notes',
       render: (item) => (
@@ -172,7 +180,7 @@ export function PayrollsList() {
   const total = data?.total ?? 0;
   const pageSize = 15;
   const recentPayroll = listData[0];
-  const pendingPayrollCount = listData.filter((item) => ['draft', 'generated', 'running'].includes(item.status)).length;
+  const pendingPayrollCount = listData.filter((item) => ['draft', 'generated', 'running'].includes(item.status ?? '')).length;
   const approvedPayrollCount = listData.filter((item) => item.status === 'approved').length;
   const getPayrollAmount = useCallback(
     (item: Payroll) =>
@@ -390,9 +398,10 @@ export function PayrollsList() {
               setStatusFilter(v);
             }}
             options={[
-              { label: 'draft', value: 'draft' },
-              { label: 'approved', value: 'approved' },
-              { label: 'locked', value: 'locked' },
+              { label: 'Draft', value: 'draft' },
+              { label: 'Approved', value: 'approved' },
+              { label: 'Locked', value: 'locked' },
+              { label: 'Paid', value: 'paid' },
             ]}
           />
         </Flex>

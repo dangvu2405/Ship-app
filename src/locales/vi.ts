@@ -302,11 +302,12 @@ export const vi = {
     recentTrips: 'Chuyến gần đây',
     recentTripsDescription: 'Các chuyến mới nhất',
     noRecentTrips: 'Chưa có chuyến',
-    revenueByCompany: 'Doanh thu theo công ty',
-    revenueByCompanyDescription:
-      'Chuyến hoàn thành trong tháng {month}/{year}: tổng giá chuyến (VND) theo từng công ty. Bộ lọc phía trên thu hẹp bảng này.',
-    revenueByCompanyTrips: 'Số chuyến hoàn thành',
-    revenueByCompanyEmpty: 'Không có dữ liệu công ty cho màn hình này',
+    topOffices: 'Top văn phòng',
+    revenueByOffice: 'Doanh thu theo văn phòng',
+    revenueByOfficeDescription:
+      'Chuyến hoàn thành trong tháng {month}/{year}: tổng giá chuyến (VND) theo từng văn phòng. Bộ lọc phía trên thu hẹp bảng này.',
+    revenueByOfficeTrips: 'Số chuyến hoàn thành',
+    revenueByOfficeEmpty: 'Không có dữ liệu văn phòng cho màn hình này',
   },
 
   // Companies
@@ -736,6 +737,10 @@ export const vi = {
     unpaidLeaveDeduction: 'Khấu trừ nghỉ không lương',
     violationDeduction: 'Khấu trừ vi phạm',
     fuelCost: 'Chi phí nhiên liệu',
+    fuelExcessDeduction: 'Vượt định mức xăng',
+    fuelSavingBonus: 'Thưởng tiết kiệm xăng',
+    markPaid: 'Đánh dấu đã thanh toán',
+    paidAtLabel: 'Thanh toán lúc',
     taxLabel: 'Thuế',
     netSalary: 'Lương thực nhận',
     workingDays: 'Ngày công',

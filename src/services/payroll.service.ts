@@ -34,6 +34,11 @@ class PayrollService {
     return response.data;
   }
 
+  async markPaid(id: number): Promise<ApiResponse<Payroll>> {
+    const response = await api.post(ENDPOINTS.payrolls.markPaid(id));
+    return response.data;
+  }
+
   /** Download server-provided payroll export as blob/CSV. */
   async downloadExport(id: number): Promise<void> {
     const response = await api.get(ENDPOINTS.payrolls.export(id), { responseType: 'blob' });

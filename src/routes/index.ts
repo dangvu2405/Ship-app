@@ -31,7 +31,11 @@ export const ROUTES = {
     drivers: createCrudRoutes('drivers'),
     /** Lịch làm việc tài xế (matrix tuần) — không thuộc CRUD drivers. */
     driversSchedule: `${ADMIN_PREFIX}/drivers/schedule`,
-    workforceOps: `${ADMIN_PREFIX}/workforce-ops`,
+    /** Tạo lịch hàng loạt theo chi nhánh và vị trí. */
+    driversScheduleBulk: `${ADMIN_PREFIX}/drivers/bulk-schedule`,
+    violations: `${ADMIN_PREFIX}/violations`,
+    overtime: `${ADMIN_PREFIX}/overtime`,
+    leave: `${ADMIN_PREFIX}/leave`,
     invoices: createCrudRoutes('invoices'),
     vehicle_assignments: createCrudRoutes('vehicle_assignments'),
     vehicle_expenses: createCrudRoutes('vehicle_expenses'),

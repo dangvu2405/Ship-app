@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@/services/api';
-import type { Company, Trip } from '@/types';
+import type { Office, Trip } from '@/types';
 import { getErrorMessage } from '@/utils/errorHandler';
 
 function tripDateInMonth(trip: Pick<Trip, 'start_time' | 'end_time'>, month: number, year: number): boolean {
@@ -20,10 +20,10 @@ interface TripsListBody {
   message?: string;
 }
 
-export type CompanyRevenueRow = {
+export type OfficeRevenueRow = {
   key: string;
-  companyId: number | null;
-  companyName: string;
+  officeId: number | null;
+  officeName: string;
   revenue: number;
   completedTrips: number;
 };
@@ -31,37 +31,44 @@ export type CompanyRevenueRow = {
 type Agg = { revenue: number; completedTrips: number };
 
 /**
- * Gom doanh thu (price) chuyến completed trong tháng/năm theo company_id.
- * Bổ sung hàng công ty chưa có chuyến (0) từ danh sách `companies`.
+ * Gom doanh thu (price) chuyến completed trong tháng/năm theo office_id.
+ * Khi có companyId: chỉ chuyến thuộc công ty đó và chỉ văn phòng của công ty đó.
  */
-export function useDashboardRevenueByCompany(options: {
-  companies: Company[];
+export function useDashboardRevenueByOffice(options: {
+  offices: Office[];
   companyId?: number;
+  officeId?: number;
   month: number;
   year: number;
 }): {
-  rows: CompanyRevenueRow[];
+  rows: OfficeRevenueRow[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 } {
-  const { companies, companyId, month, year } = options;
-  const [rows, setRows] = useState<CompanyRevenueRow[]>([]);
+  const { offices, companyId, officeId, month, year } = options;
+  const [rows, setRows] = useState<OfficeRevenueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const baseOffices = useCallback(() => {
+    if (companyId == null) return offices;
+    return offices.filter((o) => o.company_id === companyId);
+  }, [offices, companyId]);
+
   const buildRows = useCallback(
     (agg: Map<number | 'none', Agg>, unknownIds: Set<number>) => {
-      const nameById = new Map(companies.map((c) => [c.id, c.name] as const));
+      const listSource = baseOffices();
+      const nameById = new Map(listSource.map((o) => [o.id, o.name] as const));
       const seen = new Set<number>();
 
-      const list: CompanyRevenueRow[] = companies.map((c) => {
-        seen.add(c.id);
-        const a = agg.get(c.id) ?? { revenue: 0, completedTrips: 0 };
+      const list: OfficeRevenueRow[] = listSource.map((o) => {
+        seen.add(o.id);
+        const a = agg.get(o.id) ?? { revenue: 0, completedTrips: 0 };
         return {
-          key: `c-${c.id}`,
-          companyId: c.id,
-          companyName: c.name,
+          key: `o-${o.id}`,
+          officeId: o.id,
+          officeName: o.name,
           revenue: a.revenue,
           completedTrips: a.completedTrips,
         };
@@ -72,9 +79,9 @@ export function useDashboardRevenueByCompany(options: {
         const a = agg.get(id) ?? { revenue: 0, completedTrips: 0 };
         if (a.revenue === 0 && a.completedTrips === 0) continue;
         list.push({
-          key: `c-${id}`,
-          companyId: id,
-          companyName: nameById.get(id) ?? `#${id}`,
+          key: `o-${id}`,
+          officeId: id,
+          officeName: nameById.get(id) ?? `#${id}`,
           revenue: a.revenue,
           completedTrips: a.completedTrips,
         });
@@ -84,21 +91,21 @@ export function useDashboardRevenueByCompany(options: {
       if (none && (none.revenue > 0 || none.completedTrips > 0)) {
         list.push({
           key: 'none',
-          companyId: null,
-          companyName: '__UNASSIGNED__',
+          officeId: null,
+          officeName: '__UNASSIGNED__',
           revenue: none.revenue,
           completedTrips: none.completedTrips,
         });
       }
 
-      list.sort((a, b) => b.revenue - a.revenue || a.companyName.localeCompare(b.companyName));
+      list.sort((a, b) => b.revenue - a.revenue || a.officeName.localeCompare(b.officeName));
 
-      if (companyId != null) {
-        return list.filter((r) => r.companyId === companyId);
+      if (officeId != null) {
+        return list.filter((r) => r.officeId === officeId);
       }
       return list;
     },
-    [companies, companyId],
+    [baseOffices, officeId],
   );
 
   const fetchData = useCallback(async () => {
@@ -106,6 +113,7 @@ export function useDashboardRevenueByCompany(options: {
     setError(null);
     const agg = new Map<number | 'none', Agg>();
     const unknownIds = new Set<number>();
+    const listSource = baseOffices();
 
     try {
       let page = 1;
@@ -128,11 +136,15 @@ export function useDashboardRevenueByCompany(options: {
 
         for (const trip of tripRows) {
           if (!tripDateInMonth(trip, month, year)) continue;
+          if (companyId != null) {
+            const cid = trip.company_id;
+            if (cid == null || Number(cid) !== companyId) continue;
+          }
           const p = typeof trip.price === 'number' ? trip.price : Number(trip.price);
           const price = Number.isFinite(p) ? p : 0;
-          const cid = trip.company_id;
-          const key: number | 'none' = cid == null || !Number.isFinite(Number(cid)) ? 'none' : Number(cid);
-          if (key !== 'none' && !companies.some((c) => c.id === key)) {
+          const oid = trip.office_id;
+          const key: number | 'none' = oid == null || !Number.isFinite(Number(oid)) ? 'none' : Number(oid);
+          if (key !== 'none' && !listSource.some((o) => o.id === key)) {
             unknownIds.add(key);
           }
           const cur = agg.get(key) ?? { revenue: 0, completedTrips: 0 };
@@ -146,11 +158,11 @@ export function useDashboardRevenueByCompany(options: {
       setRows(buildRows(agg, unknownIds));
     } catch (e) {
       setRows([]);
-      setError(getErrorMessage(e) || 'Failed to load revenue by company');
+      setError(getErrorMessage(e) || 'Failed to load revenue by office');
     } finally {
       setLoading(false);
     }
-  }, [buildRows, companies, month, year]);
+  }, [buildRows, baseOffices, companyId, month, year]);
 
   useEffect(() => {
     void fetchData();

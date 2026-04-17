@@ -68,7 +68,6 @@ export function AppSidebarContent({ collapsed }: { collapsed: boolean }) {
         items: [
           { title: t('drivers.title'), url: ROUTES.admin.drivers.list },
           { title: t('drivers.scheduleTitle'), url: ROUTES.admin.driversSchedule },
-          { title: 'Workforce Ops', url: ROUTES.admin.workforceOps },
           { title: t('customers.title'), url: ROUTES.admin.customers.list },
           { title: t('allowances.title'), url: ROUTES.admin.allowances.list },
           { title: t('deductions.title'), url: ROUTES.admin.deductions.list },

@@ -6,6 +6,7 @@ import type { DayInfo } from '@/hooks/use-driver-day-map';
 interface Props {
   date: Dayjs;
   info: DayInfo | undefined;
+  onClick?: () => void;
 }
 
 const KIND_STYLE: Record<string, { bg: string; border: string }> = {
@@ -31,7 +32,7 @@ const STATUS_BADGE: Record<string, 'default' | 'processing' | 'success' | 'error
   rejected: 'error',
 };
 
-export function ScheduleDayCell({ date, info }: Props) {
+export function ScheduleDayCell({ date, info, onClick }: Props) {
   const { t } = useTranslation();
   if (!info) {
     return (
@@ -53,13 +54,14 @@ export function ScheduleDayCell({ date, info }: Props) {
   return (
     <Tooltip title={<CellTooltip date={date} info={info} />} placement="top">
       <div
+        onClick={onClick}
         style={{
           background: style.bg,
           border: `1px solid ${style.border}`,
           borderRadius: 8,
           padding: 4,
           minHeight: 68,
-          cursor: 'pointer',
+          cursor: onClick ? 'pointer' : 'default',
         }}
       >
         <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937', marginBottom: 2 }}>{date.date()}</div>

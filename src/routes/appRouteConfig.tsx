@@ -88,7 +88,10 @@ const Profile = lazyWithMinDelay(() => import('@/pages/system/Profile').then((m)
 const Settings = lazyWithMinDelay(() => import('@/pages/system/Settings').then((m) => ({ default: m.Settings })));
 const Billing = lazyWithMinDelay(() => import('@/pages/system/Billing').then((m) => ({ default: m.Billing })));
 const SystemUsersHub = lazyWithMinDelay(() => import('@/pages/system/Users').then((m) => ({ default: m.Users })));
-const WorkforceOps = lazyWithMinDelay(() => import('@/pages/system/WorkforceOps').then((m) => ({ default: m.WorkforceOps })));
+const ViolationsList = lazyWithMinDelay(() => import('@/pages/violations/ViolationsList').then((m) => ({ default: m.ViolationsList })));
+const OvertimeList = lazyWithMinDelay(() => import('@/pages/overtime/OvertimeList').then((m) => ({ default: m.OvertimeList })));
+const LeaveList = lazyWithMinDelay(() => import('@/pages/leave/LeaveList').then((m) => ({ default: m.LeaveList })));
+const DriverScheduleBulkPage = lazyWithMinDelay(() => import('@/pages/drivers/DriverScheduleBulkPage').then((m) => ({ default: m.DriverScheduleBulkPage })));
 
 export const crudRoutes: CrudRouteConfig[] = [
   { key: 'companies', routes: ROUTES.admin.companies, List: CompaniesList, Form: CompanyFormDialog },
@@ -135,9 +138,27 @@ export const singleRoutes: SingleRouteConfig[] = [
     requiredRole: 'admin',
   },
   {
-    key: 'workforce_ops',
-    path: ROUTES.admin.workforceOps,
-    Component: WorkforceOps,
+    key: 'drivers_schedule_bulk',
+    path: ROUTES.admin.driversScheduleBulk,
+    Component: DriverScheduleBulkPage,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'violations',
+    path: ROUTES.admin.violations,
+    Component: ViolationsList,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'overtime',
+    path: ROUTES.admin.overtime,
+    Component: OvertimeList,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'leave',
+    path: ROUTES.admin.leave,
+    Component: LeaveList,
     requiredRole: 'admin',
   },
 ];

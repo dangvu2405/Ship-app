@@ -1,23 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import api from '@/services/api';
-import type { Trip } from '@/types';
+import reportsService from '@/services/reports.service';
 import { getErrorMessage } from '@/utils/errorHandler';
-
-function tripDateInMonth(trip: Pick<Trip, 'start_time' | 'end_time'>, month: number, year: number): boolean {
-  const raw = trip.end_time || trip.start_time;
-  if (!raw) return false;
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return false;
-  return d.getMonth() + 1 === month && d.getFullYear() === year;
-}
-
-interface TripsListBody {
-  success?: boolean;
-  data?: {
-    data?: Trip[];
-    meta?: { current_page?: number; last_page?: number; per_page?: number; total?: number };
-  };
-}
 
 export interface UseDashboardTripRevenueResult {
   total: number;
@@ -45,39 +28,16 @@ export function useDashboardTripRevenue(options: {
   const fetchRevenue = useCallback(async () => {
     setLoading(true);
     setError(null);
-    let sum = 0;
-    let count = 0;
     try {
-      let page = 1;
-      let lastPage = 1;
-      do {
-        const response = await api.get<TripsListBody>('/trips', {
-          params: {
-            page,
-            per_page: 100,
-            status: 'completed',
-            ...(companyId != null ? { company_id: companyId } : {}),
-          },
-        });
-        const body = response.data;
-        if (body?.success === false) {
-          throw new Error(typeof body === 'object' && body && 'message' in body ? String((body as { message?: string }).message) : 'Request failed');
-        }
-        const rows = body?.data?.data ?? [];
-        const meta = body?.data?.meta;
-        lastPage = Math.max(1, Number(meta?.last_page) || 1);
-
-        for (const trip of rows) {
-          if (!tripDateInMonth(trip, month, year)) continue;
-          const p = typeof trip.price === 'number' ? trip.price : Number(trip.price);
-          if (Number.isFinite(p)) sum += p;
-          count += 1;
-        }
-        page += 1;
-      } while (page <= lastPage);
-
-      setTotal(sum);
-      setTripCount(count);
+      const response = await reportsService.getRevenueSummary(companyId, month, year);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load revenue');
+      }
+      const payload = response.data;
+      const totalCandidate = payload.total_revenue ?? payload.total ?? 0;
+      const tripsCandidate = payload.trips_completed ?? payload.completed ?? 0;
+      setTotal(Number.isFinite(Number(totalCandidate)) ? Number(totalCandidate) : 0);
+      setTripCount(Number.isFinite(Number(tripsCandidate)) ? Number(tripsCandidate) : 0);
     } catch (e) {
       setTotal(0);
       setTripCount(0);

@@ -196,7 +196,7 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
       deduction: toNumber(raw.deduction),
       leave_unpaid_deduction: toNumber(raw.leave_unpaid_deduction),
       violation_deduction: toNumber(raw.violation_deduction),
-      fuel_cost: toNumber(raw.fuel_cost),
+      fuel_excess_deduction: toNumber(raw.fuel_excess_deduction ?? raw.fuel_cost),
       tax: toNumber(raw.tax),
       net_salary: toNumber(raw.net_salary),
       trips_completed_count: toNumber(raw.trips_completed_count),
@@ -219,7 +219,7 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
           (line.deduction ?? 0) +
           (line.leave_unpaid_deduction ?? 0) +
           (line.violation_deduction ?? 0) +
-          (line.fuel_cost ?? 0) +
+          (line.fuel_excess_deduction ?? 0) +
           (line.tax ?? 0);
         acc.total_base_salary += line.base_salary ?? 0;
         acc.total_trip_bonus += tripBonus;
@@ -265,12 +265,16 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
               approved: t('payrolls.statusApproved'),
               generated: t('payrolls.statusGenerated'),
               draft: t('payrolls.statusGenerated'),
+              paid: t('payrolls.statusPaid'),
             })}
           </Tag>
           <Typography.Text strong className="payroll-period">{`${String(payroll.month).padStart(2, '0')}/${payroll.year}`}</Typography.Text>
           <Typography.Text>{payroll.company?.name ?? `Company ID ${payroll.company_id}`}</Typography.Text>
           <Typography.Text type="secondary">{`${t('payrolls.approvedAtLabel')}: ${formatDateTime(payroll.approved_at)}`}</Typography.Text>
           <Typography.Text type="secondary">{`${t('payrolls.lockedAtLabel')}: ${formatDateTime(payroll.locked_at)}`}</Typography.Text>
+          {payroll.paid_at && (
+            <Typography.Text type="secondary">{`${t('payrolls.paidAtLabel')}: ${formatDateTime(payroll.paid_at)}`}</Typography.Text>
+          )}
         </Flex>
         <Typography.Text>{`${t('payrolls.notesLabel')}: ${payroll.notes || '-'}`}</Typography.Text>
       </Flex>
@@ -309,6 +313,15 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
               onClick={() => runPayrollAction('lock', () => payrollService.lock(resolvedId as number))}
             >
               {actionLoading === 'lock' ? t('common.loading') : t('payrolls.lock')}
+            </Button>
+            <Button
+              size="small"
+              type="primary"
+              disabled={payroll.status !== 'locked' || actionLoading !== null || !isAdmin}
+              title={isAdmin ? t('payrolls.markPaid') : t('messages.accessDenied')}
+              onClick={() => runPayrollAction('markPaid', () => payrollService.markPaid(resolvedId as number))}
+            >
+              {actionLoading === 'markPaid' ? t('common.loading') : t('payrolls.markPaid')}
             </Button>
             {['draft', 'generated'].includes(payroll.status) ? (
               <Button
@@ -393,7 +406,7 @@ export function PayrollFormDialog({ open, mode, recordId, onClose, onSuccess }: 
             { title: t('payrolls.deductionLabel'), key: 'deduction', align: 'right', render: (_, row) => formatMoney(row.deduction, { withCurrency: true }) },
             { title: t('payrolls.unpaidLeaveDeduction'), key: 'leave_unpaid_deduction', align: 'right', render: (_, row) => formatMoney(row.leave_unpaid_deduction, { withCurrency: true }) },
             { title: t('payrolls.violationDeduction'), key: 'violation_deduction', align: 'right', render: (_, row) => formatMoney(row.violation_deduction, { withCurrency: true }) },
-            { title: t('payrolls.fuelCost'), key: 'fuel_cost', align: 'right', render: (_, row) => formatMoney(row.fuel_cost, { withCurrency: true }) },
+            { title: t('payrolls.fuelExcessDeduction'), key: 'fuel_excess_deduction', align: 'right', render: (_, row) => formatMoney(row.fuel_excess_deduction, { withCurrency: true }) },
             { title: t('payrolls.taxLabel'), key: 'tax', align: 'right', render: (_, row) => formatMoney(row.tax, { withCurrency: true }) },
             {
               title: t('payrolls.netSalary'),

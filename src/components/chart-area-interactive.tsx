@@ -1,5 +1,5 @@
 import * as React from "react"
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTranslation } from "@/hooks/useTranslation"
@@ -210,9 +210,9 @@ export function ChartAreaInteractive({
             <Typography.Text type="secondary">{t("dashboard.chart.noRevenueData")}</Typography.Text>,
           )
         ) : (
-          <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
-            <LineChart accessibilityLayer data={chartData} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
-              <CartesianGrid vertical={false} />
+          <ChartContainer config={chartConfig} className="aspect-auto h-[320px] w-full">
+            <ComposedChart accessibilityLayer data={chartData} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+              <CartesianGrid vertical={false} strokeDasharray="2 4" />
               <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -257,7 +257,16 @@ export function ChartAreaInteractive({
                 verticalAlign="bottom"
                 content={<ChartLegendContent className="flex-wrap justify-center gap-x-3 gap-y-2 pt-3" />}
               />
-              {seriesKeys.map((key) => (
+              {seriesKeys[0] ? (
+                <Bar
+                  dataKey={seriesKeys[0]}
+                  fill={`var(--color-${seriesKeys[0]})`}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={32}
+                  isAnimationActive={!reduceMotion}
+                />
+              ) : null}
+              {seriesKeys.slice(1).map((key) => (
                 <Line
                   key={key}
                   type="monotone"
@@ -270,7 +279,7 @@ export function ChartAreaInteractive({
                   isAnimationActive={!reduceMotion}
                 />
               ))}
-            </LineChart>
+            </ComposedChart>
           </ChartContainer>
         )}
       </div>

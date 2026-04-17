@@ -303,12 +303,14 @@ export interface Attendance {
   deleted_at?: string | null;
 }
 
+export type PayrollStatus = 'draft' | 'approved' | 'locked' | 'paid';
+
 export interface Payroll {
   id: number;
   company_id: number;
   month: number;
   year: number;
-  status: string;
+  status: PayrollStatus | string;
   locked_at?: string;
   company?: { id: number; name?: string };
   payroll_period_id?: number;
@@ -318,6 +320,7 @@ export interface Payroll {
   approved_at?: string;
   approved_by?: number;
   paid_at?: string;
+  paid_by?: number;
   created_by?: number;
   updated_by?: number;
   deleted_by?: number;
@@ -344,7 +347,11 @@ export interface PayrollDetail {
   deduction: number;
   leave_unpaid_deduction?: number;
   violation_deduction?: number;
-  fuel_cost: number;
+  /** Renamed from fuel_cost — chi phí xăng vượt định mức */
+  fuel_excess_deduction: number;
+  /** @deprecated Dùng fuel_excess_deduction */
+  fuel_cost?: number;
+  fuel_saving_bonus?: number;
   tax: number;
   net_salary: number;
   leave_days_paid?: number;

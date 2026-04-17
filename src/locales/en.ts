@@ -301,11 +301,12 @@ export const en = {
     recentTrips: 'Recent trips',
     recentTripsDescription: 'Latest trips from your fleet',
     noRecentTrips: 'No trips yet',
-    revenueByCompany: 'Revenue by company',
-    revenueByCompanyDescription:
-      'Completed trips in {month}/{year}: sum of trip price (VND) per company. Filter above narrows this table.',
-    revenueByCompanyTrips: 'Completed trips',
-    revenueByCompanyEmpty: 'No company data for this view',
+    topOffices: 'Top offices',
+    revenueByOffice: 'Revenue by office',
+    revenueByOfficeDescription:
+      'Completed trips in {month}/{year}: sum of trip price (VND) per office. Filters above narrow this table.',
+    revenueByOfficeTrips: 'Completed trips',
+    revenueByOfficeEmpty: 'No office data for this view',
   },
 
   // Companies
@@ -735,6 +736,10 @@ export const en = {
     unpaidLeaveDeduction: 'Unpaid Leave Deduction',
     violationDeduction: 'Violation Deduction',
     fuelCost: 'Fuel Cost',
+    fuelExcessDeduction: 'Fuel Excess Deduction',
+    fuelSavingBonus: 'Fuel Saving Bonus',
+    markPaid: 'Mark as Paid',
+    paidAtLabel: 'Paid',
     taxLabel: 'Tax',
     netSalary: 'Net Salary',
     workingDays: 'Working Days',

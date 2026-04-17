@@ -68,7 +68,7 @@ export function PayrollDetailPage() {
           deduction: toNumber(raw.deduction),
           leave_unpaid_deduction: toNumber(raw.leave_unpaid_deduction),
           violation_deduction: toNumber(raw.violation_deduction),
-          fuel_cost: toNumber(raw.fuel_cost),
+          fuel_excess_deduction: toNumber(raw.fuel_excess_deduction ?? raw.fuel_cost),
           tax: toNumber(raw.tax),
           net_salary: toNumber(raw.net_salary),
           trips_completed_count: toNumber(raw.trips_completed_count),
@@ -156,6 +156,9 @@ export function PayrollDetailPage() {
                 </Space>
                 <Typography.Text type="secondary">{`${t('payrolls.approvedAtLabel')}: ${formatDateTime(payroll.approved_at)}`}</Typography.Text>
                 <Typography.Text type="secondary">{`${t('payrolls.lockedAtLabel')}: ${formatDateTime(payroll.locked_at)}`}</Typography.Text>
+                {payroll.paid_at && (
+                  <Typography.Text type="secondary">{`${t('payrolls.paidAtLabel')}: ${formatDateTime(payroll.paid_at)}`}</Typography.Text>
+                )}
               </Space>
               <Space>
                 <Button
@@ -177,6 +180,14 @@ export function PayrollDetailPage() {
                   onClick={() => void runAction('lock', () => payrollService.lock(resolvedId as number))}
                 >
                   {t('payrolls.lock')}
+                </Button>
+                <Button
+                  type="primary"
+                  disabled={payroll.status !== 'locked' || !isAdmin}
+                  loading={actionLoading === 'markPaid'}
+                  onClick={() => void runAction('markPaid', () => payrollService.markPaid(resolvedId as number))}
+                >
+                  {t('payrolls.markPaid')}
                 </Button>
                 <Button loading={actionLoading === 'export'} onClick={() => void runAction('export', () => payrollService.downloadExport(resolvedId as number))}>
                   {t('payrolls.exportJson')}
@@ -214,7 +225,8 @@ export function PayrollDetailPage() {
               items={[
                 { color: 'blue', children: `${t('common.create')}: ${formatDateTime(payroll.created_at)}` },
                 { color: payroll.approved_at ? 'green' : 'gray', children: `${t('payrolls.approvedAtLabel')}: ${formatDateTime(payroll.approved_at)}` },
-                { color: payroll.locked_at ? 'green' : 'gray', children: `${t('payrolls.lockedAtLabel')}: ${formatDateTime(payroll.locked_at)}` },
+                { color: payroll.locked_at ? 'blue' : 'gray', children: `${t('payrolls.lockedAtLabel')}: ${formatDateTime(payroll.locked_at)}` },
+                { color: payroll.paid_at ? 'green' : 'gray', children: `${t('payrolls.paidAtLabel')}: ${formatDateTime(payroll.paid_at)}` },
               ]}
             />
           </Card>
