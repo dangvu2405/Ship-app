@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
-import { API_BASE_URL, API_ROOT_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
+import { API_BASE_URL, API_ROOT_BASE_URL, AUTH_REFRESH_ENABLED, STORAGE_KEYS } from '@/utils/constants';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { clearAuthToken, getRefreshToken, setAuthToken, setRefreshToken } from '@/lib/auth-session';
@@ -171,42 +171,47 @@ api.interceptors.response.use(
     // and NOT for auth endpoints themselves (prevent loop).
     const isAuthEndpoint = config?.url?.includes('/auth/');
     if (status === 401 && config && !config._retry && !isAuthEndpoint) {
-      if (isRefreshing) {
-        // Queue this request — it will be retried after refresh completes
-        return new Promise<AxiosResponse>((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              config.headers.Authorization = `Bearer ${token}`;
-              resolve(api(config));
-            },
-            reject: (err: unknown) => {
-              reject(err);
-            },
+      const canTryRefresh = AUTH_REFRESH_ENABLED && Boolean(getRefreshToken());
+
+      if (canTryRefresh) {
+        if (isRefreshing) {
+          return new Promise<AxiosResponse>((resolve, reject) => {
+            failedQueue.push({
+              resolve: (token: string) => {
+                config.headers.Authorization = `Bearer ${token}`;
+                resolve(api(config));
+              },
+              reject: (err: unknown) => {
+                reject(err);
+              },
+            });
           });
-        });
-      }
-
-      config._retry = true;
-      isRefreshing = true;
-
-      try {
-        const newToken = await attemptRefresh();
-        if (newToken) {
-          processQueue(null, newToken);
-          config.headers.Authorization = `Bearer ${newToken}`;
-          return api(config);
         }
-        // Refresh failed — force logout
-        processQueue(error, null);
-        forceLogout();
-        return Promise.reject(error);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        forceLogout();
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+
+        config._retry = true;
+        isRefreshing = true;
+
+        try {
+          const newToken = await attemptRefresh();
+          if (newToken) {
+            processQueue(null, newToken);
+            config.headers.Authorization = `Bearer ${newToken}`;
+            return api(config);
+          }
+          processQueue(error, null);
+          forceLogout();
+          return Promise.reject(error);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          forceLogout();
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
       }
+
+      forceLogout();
+      return Promise.reject(error);
     }
 
     // ── Toast error handling ─────────────────────────────────────────────────

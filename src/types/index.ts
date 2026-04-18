@@ -568,6 +568,23 @@ export interface LateAttendanceNotification {
   note?: string;
 }
 
+/** Khung giờ làm việc (template) — áp hàng loạt cho văn phòng. */
+export interface WorkScheduleTemplate {
+  id: number;
+  name: string;
+  shift_code: string;
+  start_time: string;
+  end_time: string;
+}
+
+/** Kết quả POST offices/:id/apply-schedule */
+export interface ApplyOfficeScheduleResult {
+  queued?: boolean;
+  estimated_rows?: number;
+  rows_created?: number;
+  drivers_count?: number;
+}
+
 export interface DriverSchedule {
   id: number;
   driver_id: number;

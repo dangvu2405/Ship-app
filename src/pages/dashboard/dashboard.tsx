@@ -53,6 +53,7 @@ export default function Dashboard() {
     total: clientRevenueTotal,
     tripCount: clientTripCount,
     loading: revenueLoading,
+    refetch: refetchTripRevenue,
   } = useDashboardTripRevenue({
     companyId: effectiveCompanyId,
     month: period.month,
@@ -72,9 +73,9 @@ export default function Dashboard() {
     enabled: effectiveCompanyId != null,
   })
 
-  const fromApi = stats?.revenue != null
-  const revenueTotal = fromApi ? (stats?.revenue?.total ?? 0) : clientRevenueTotal
-  const revenueTripCount = fromApi ? (stats?.trips?.completed ?? 0) : clientTripCount
+  /** Luôn dùng báo cáo theo tháng/năm đã chọn — stats API không gắn period nên không trộn với KPI chuyến hoàn thành. */
+  const revenueTotal = clientRevenueTotal
+  const revenueTripCount = clientTripCount
   const { rows: officeRevenueRows, loading: rankingLoading } = useDashboardRevenueByOffice({
     offices,
     companyId: effectiveCompanyId,
@@ -115,7 +116,15 @@ export default function Dashboard() {
             />
             <Space>
               <Button onClick={handleReset}>{t("common.reset")}</Button>
-              <Button type="primary" onClick={() => void refetchStats()}>{t("common.search")}</Button>
+              <Button
+                type="primary"
+                onClick={() => {
+                  void refetchStats()
+                  void refetchTripRevenue()
+                }}
+              >
+                {t("common.search")}
+              </Button>
             </Space>
           </Flex>
         </div>
@@ -209,7 +218,7 @@ export default function Dashboard() {
               {[
                 { label: t("dashboard.cards.activeVehicles"), value: stats?.vehicles?.active ?? 0, total: Math.max(stats?.vehicles?.total ?? 1, 1) },
                 { label: t("dashboard.cards.activeEmployees"), value: stats?.employees?.active ?? 0, total: Math.max(stats?.employees?.total ?? 1, 1) },
-                { label: t("dashboard.cards.completedTrips"), value: stats?.trips?.completed ?? 0, total: Math.max(stats?.trips?.total ?? 1, 1) },
+                { label: t("dashboard.cards.completedTrips"), value: revenueTripCount, total: Math.max(stats?.trips?.total ?? 1, 1) },
               ].map((item) => {
                 const percent = Math.round((item.value / item.total) * 100)
                 return (

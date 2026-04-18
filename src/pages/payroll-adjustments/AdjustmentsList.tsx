@@ -18,7 +18,8 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { useSelect, useUpdate } from '@refinedev/core';
+import type { TablePaginationConfig } from 'antd/es/table/interface';
+import { useSelect } from '@refinedev/core';
 import { PayrollAdjustment, Employee, Payroll } from '@/types';
 import toast from 'react-hot-toast';
 import payrollAdjustmentService from '@/services/payroll-adjustment.service';
@@ -52,15 +53,15 @@ export const AdjustmentsList: React.FC = () => {
   const isAdmin = hasRole('admin');
 
   // Form Create/Edit
-  const { selectProps: employeeSelectProps } = useSelect<Employee>({
+  const employeeSelect = useSelect<Employee>({
     resource: 'employees',
     optionLabel: 'name',
     optionValue: 'id',
   });
 
-  const { selectProps: payrollSelectProps } = useSelect<Payroll>({
+  const payrollSelect = useSelect<Payroll>({
     resource: 'payrolls',
-    optionLabel: 'id', // Maybe show "Tháng X/Y" but let's keep ID for now or format in render
+    optionLabel: 'id',
     optionValue: 'id',
   });
 
@@ -95,7 +96,7 @@ export const AdjustmentsList: React.FC = () => {
     try {
       await payrollAdjustmentService.approve(record.id);
       toast.success('Đã duyệt biểu điều chỉnh');
-      tableProps.onChange?.({ current: 1 } as any, {}, {}, { currentDataSource: [] });
+      tableProps.onChange?.({ current: 1 } as TablePaginationConfig, {}, {}, { currentDataSource: [], action: 'paginate' });
     } catch (err) {
       if (!shouldShowLocalErrorToast(err)) return;
       toast.error(getErrorMessage(err) || 'Duyệt thất bại');
@@ -108,7 +109,7 @@ export const AdjustmentsList: React.FC = () => {
       await payrollAdjustmentService.reject(actionRecord.id, values.reason);
       toast.success('Đã từ chối biểu điều chỉnh');
       setRejectOpen(false);
-      tableProps.onChange?.({ current: 1 } as any, {}, {}, { currentDataSource: [] });
+      tableProps.onChange?.({ current: 1 } as TablePaginationConfig, {}, {}, { currentDataSource: [], action: 'paginate' });
     } catch (err) {
       if (!shouldShowLocalErrorToast(err)) return;
       toast.error(getErrorMessage(err) || 'Từ chối thất bại');
@@ -170,10 +171,24 @@ export const AdjustmentsList: React.FC = () => {
       <Modal {...createModalProps} title="Thêm Điều Chỉnh Lương">
         <Form {...createFormProps} layout="vertical">
           <Form.Item name="payroll_id" label="Kỳ lương (Payroll ID)" rules={[{ required: true }]}>
-            <Select {...payrollSelectProps} />
+            <Select
+              options={payrollSelect.options}
+              onSearch={payrollSelect.onSearch}
+              loading={payrollSelect.query.isFetching}
+              showSearch
+              optionFilterProp="label"
+              filterOption={false}
+            />
           </Form.Item>
           <Form.Item name="employee_id" label="Nhân viên" rules={[{ required: true }]}>
-             <Select {...employeeSelectProps} showSearch optionFilterProp="label" />
+            <Select
+              options={employeeSelect.options}
+              onSearch={employeeSelect.onSearch}
+              loading={employeeSelect.query.isFetching}
+              showSearch
+              optionFilterProp="label"
+              filterOption={false}
+            />
           </Form.Item>
           <Form.Item name="type" label="Loại điều chỉnh" rules={[{ required: true }]}>
             <Select options={[{ label: 'Phụ cấp', value: 'allowance' }, { label: 'Khấu trừ', value: 'deduction' }]} />

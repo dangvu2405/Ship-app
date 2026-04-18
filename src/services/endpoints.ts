@@ -24,7 +24,11 @@ export const ENDPOINTS = {
     me: '/auth/me',
   },
   companies: crud('/companies'),
-  offices: crud('/offices'),
+  offices: {
+    ...crud('/offices'),
+    applySchedule: (officeId: Id) => `/offices/${officeId}/apply-schedule`,
+  },
+  workScheduleTemplates: '/work-schedule-templates',
   departments: crud('/departments'),
   positions: crud('/positions'),
   employees: crud('/employees'),

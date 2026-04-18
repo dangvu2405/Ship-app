@@ -39,7 +39,7 @@ export function InvoiceForm(props: InvoiceFormProps) {
     }
     form.setFieldValue('subtotal', subtotal);
     form.setFieldValue('total_amount', subtotal + Number(form.getFieldValue('vat_amount') ?? 0));
-  }, [selectedTripId, form]);
+  }, [selectedTripId, form, subtotal]);
 
   useEffect(() => {
     if (typeof subtotal !== 'number') {

@@ -29,12 +29,11 @@ function formatAxisVnd(v: number): string {
 
 export function ChartAreaInteractive({
   companyId,
-  onCompanyIdChange,
   companies,
   offices,
 }: {
   companyId?: number
-  onCompanyIdChange: (id: number | undefined) => void
+  onCompanyIdChange?: (id: number | undefined) => void
   companies: Company[]
   offices: Office[]
 }) {
@@ -123,11 +122,6 @@ export function ChartAreaInteractive({
   const hasAnyPoint = seriesKeys.some((k) =>
     chartData.some((row) => Number(row[k] ?? 0) > 0),
   )
-
-  const companySelectOptions = [
-    { value: "all", label: t("dashboard.allCompanies") },
-    ...companies.map((c) => ({ value: String(c.id), label: c.name })),
-  ]
 
   const rangeSegmentedOptions = [
     { label: t("dashboard.chart.range90d"), value: "90d" },

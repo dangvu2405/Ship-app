@@ -46,12 +46,12 @@ export function SiteHeader({ sidebarCollapsed, onToggleSidebar }: SiteHeaderProp
       </div>
       <Flex align="center" gap={4} style={{ marginLeft: 'auto' }}>
         {canSwitchTenant && (
-          <Tooltip title={t('header.switchTenant', 'Switch company')}>
+          <Tooltip title={t('header.switchTenant')}>
             <Button
               type="text"
               icon={<SwapOutlined />}
               onClick={handleSwitchTenant}
-              aria-label={t('header.switchTenant', 'Switch company')}
+              aria-label={t('header.switchTenant')}
             />
           </Tooltip>
         )}

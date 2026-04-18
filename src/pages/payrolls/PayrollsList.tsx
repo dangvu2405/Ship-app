@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useInvalidate, useList, useNavigation, type CrudFilter } from '@refinedev/core';
 import { Alert, Button, Card, Flex, Input, InputNumber, Progress, Select, Tag, Typography } from 'antd';
 import { EyeOutlined, PlusOutlined } from '@ant-design/icons';
@@ -8,7 +9,8 @@ import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Company, Payroll } from '@/types';
+import type { Company, Payroll, PayrollDetail } from '@/types';
+import { dataProvider } from '@/providers/dataProvider';
 import { ROUTES } from '@/routes';
 import { PayrollFormDialog } from './PayrollFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
@@ -69,6 +71,37 @@ export function PayrollsList() {
     if (statusFilter) items.push({ field: 'status', operator: 'eq', value: statusFilter });
     return items;
   }, [companyFilter, monthFilter, yearFilter, statusFilter]);
+
+  const chartListFilters = useMemo<CrudFilter[]>(() => {
+    const items: CrudFilter[] = [];
+    if (companyFilter != null) items.push({ field: 'company_id', operator: 'eq', value: companyFilter });
+    const y = yearFilter ?? new Date().getFullYear();
+    items.push({ field: 'year', operator: 'eq', value: y });
+    return items;
+  }, [companyFilter, yearFilter]);
+
+  const { data: payrollRowsForChart = [] } = useQuery({
+    queryKey: ['payrolls-chart-year', chartListFilters],
+    queryFn: async () => {
+      const all: Payroll[] = [];
+      let page = 1;
+      const pageSize = 100;
+      for (;;) {
+        const res = await dataProvider.getList<Payroll>({
+          resource: 'payrolls',
+          pagination: { current: page, pageSize },
+          filters: chartListFilters,
+        });
+        const batch = res.data ?? [];
+        all.push(...batch);
+        const total = res.total ?? batch.length;
+        if (batch.length < pageSize || all.length >= total) break;
+        page += 1;
+        if (page > 40) break;
+      }
+      return all;
+    },
+  });
 
   const { data, isLoading, isError, refetch } = useResourceListQuery<Payroll>({
     resource: 'payrolls',
@@ -182,43 +215,56 @@ export function PayrollsList() {
   const recentPayroll = listData[0];
   const pendingPayrollCount = listData.filter((item) => ['draft', 'generated', 'running'].includes(item.status ?? '')).length;
   const approvedPayrollCount = listData.filter((item) => item.status === 'approved').length;
-  const getPayrollAmount = useCallback(
-    (item: Payroll) =>
-      toNumber(
-        (item as Payroll & {
-          total_net_salary?: number | string;
-          net_salary?: number | string;
-          total_amount?: number | string;
-          amount?: number | string;
-        }).total_net_salary ??
-          (item as Payroll & { net_salary?: number | string }).net_salary ??
-          (item as Payroll & { total_amount?: number | string }).total_amount ??
-          (item as Payroll & { amount?: number | string }).amount,
-      ),
-    [],
-  );
-  const getPayrollDeduction = useCallback(
-    (item: Payroll) =>
-      toNumber(
-        (item as Payroll & {
-          total_deduction?: number | string;
-          deduction?: number | string;
-        }).total_deduction ?? (item as Payroll & { deduction?: number | string }).deduction,
-      ),
-    [],
-  );
-  const chartByMonth = Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1;
-    const inMonth = listData.filter((item) => item.month === month && (!yearFilter || item.year === yearFilter));
-    let net = inMonth.reduce((acc, item) => acc + getPayrollAmount(item), 0);
-    let deduction = inMonth.reduce((acc, item) => acc + getPayrollDeduction(item), 0);
-    // Backend list may omit aggregated salary fields; fallback to count-based bars.
-    if (net === 0 && deduction === 0) {
-      net = inMonth.filter((item) => item.status === 'approved' || item.status === 'locked').length;
-      deduction = inMonth.filter((item) => item.status === 'draft' || item.status === 'generated' || item.status === 'running').length;
+  const getPayrollAmount = useCallback((item: Payroll) => {
+    const row = item as Payroll & {
+      total_net_salary?: number | string;
+      net_salary?: number | string;
+      total_amount?: number | string;
+      amount?: number | string;
+      details?: PayrollDetail[];
+    };
+    const scalar = toNumber(
+      row.total_net_salary ?? row.net_salary ?? row.total_amount ?? row.amount,
+    );
+    if (scalar > 0) return scalar;
+    const details = row.details;
+    if (Array.isArray(details) && details.length > 0) {
+      return details.reduce((acc, d) => acc + toNumber(d.net_salary), 0);
     }
-    return { month, net, deduction };
-  });
+    return 0;
+  }, []);
+  const getPayrollDeduction = useCallback((item: Payroll) => {
+    const row = item as Payroll & {
+      total_deduction?: number | string;
+      deduction?: number | string;
+      details?: PayrollDetail[];
+    };
+    const scalar = toNumber(row.total_deduction ?? row.deduction);
+    if (scalar > 0) return scalar;
+    const details = row.details;
+    if (Array.isArray(details) && details.length > 0) {
+      return details.reduce(
+        (acc, d) =>
+          acc +
+          toNumber(d.deduction) +
+          toNumber(d.tax) +
+          toNumber(d.leave_unpaid_deduction) +
+          toNumber(d.violation_deduction),
+        0,
+      );
+    }
+    return 0;
+  }, []);
+  const chartYear = yearFilter ?? new Date().getFullYear();
+  const chartByMonth = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1;
+      const inMonth = payrollRowsForChart.filter((item) => item.month === month && item.year === chartYear);
+      const net = inMonth.reduce((acc, item) => acc + getPayrollAmount(item), 0);
+      const deduction = inMonth.reduce((acc, item) => acc + getPayrollDeduction(item), 0);
+      return { month, net, deduction };
+    });
+  }, [payrollRowsForChart, chartYear, getPayrollAmount, getPayrollDeduction]);
   const maxBarValue = Math.max(1, ...chartByMonth.map((it) => Math.max(it.net, it.deduction)));
   const filteredListData = listData.filter((item) => {
     const keyword = keywordFilter.trim().toLowerCase();

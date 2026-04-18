@@ -1,7 +1,7 @@
 import { Refine, Authenticated } from '@refinedev/core';
 import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, theme as antdTheme } from 'antd';
+import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
 import { Toaster } from 'react-hot-toast';
 import { Fragment, Suspense, useEffect, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -50,6 +50,7 @@ function App() {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
       <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
+      <AntdApp>
       <Refine
         dataProvider={dataProvider}
         authProvider={authProvider}
@@ -108,6 +109,7 @@ function App() {
         <DocumentTitleHandler />
         <Toaster position="top-right" />
       </Refine>
+      </AntdApp>
       </ConfigProvider>
       </QueryClientProvider>
     </BrowserRouter>

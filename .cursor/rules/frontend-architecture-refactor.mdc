@@ -1,0 +1,54 @@
+---
+description: Quy chuẩn refactor FE Ship ERP (hooks, services, Antd App, TS) — dùng khi tách page/modal lớn
+globs: src/**/*.tsx,src/**/*.ts
+alwaysApply: false
+---
+
+# Refactor & clean frontend (Ship ERP)
+
+## Stack
+
+React 18, Vite, TypeScript, Ant Design v5, Tailwind, Refine v4, TanStack Query, Zustand, axios qua `src/services/api.ts`, API `/api/v1` + envelope `success`, `message`, `data`, `errors`.
+
+## 1. Separation of concerns
+
+- **Custom hook** (`src/pages/**/use-kebab-name.ts` hoặc `src/hooks/`): `useState`, `useEffect`, `useMemo`, `useCallback`, handlers (`handle…`), Refine `useList` / TanStack `useQuery` khi gói theo màn hình.
+- **Page `.tsx`**: JSX, Antd, Tailwind; nhận state/handlers từ hook qua destructuring. Không gọi `axios` trực tiếp.
+- **Service**: `src/services/*.service.ts` — mọi HTTP qua `api` + `ENDPOINTS`. Không duplicate base URL.
+
+## 2. Refine
+
+Hooks `useList`, `useNavigation`, … **chỉ** được gọi trong component là con của `<Refine>` (page/route). Custom hook chỉ export logic được gọi **từ** page đó, không import hook đó từ util ngoài cây Refine.
+
+## 3. Ant Design v5
+
+- Dùng `App.useApp()` cho `message` / `modal` / `notification` khi cần context động — app root bọc `antd` `<App>` (xem `App.tsx`).
+- Modal / Drawer / Form nặng: tách file riêng `src/components/<feature>/…tsx`.
+
+## 4. Tailwind
+
+- Ưu tiên `className` + Tailwind; giảm `style={{}}` dần; màu/spacing từ `theme.useToken()` khi cần đồng bộ theme.
+- Ngoại lệ có kiểm soát: prop `styles` của Antd hoặc layout bắt buộc object — gom hằng số hoặc SCSS một chỗ.
+
+## 5. TypeScript
+
+- Không `any`. `Props`, `FormValues`, response typed; dùng type Antd (`ColumnsType`, `FormProps`, …).
+
+## 6. Housekeeping
+
+- Xóa import/biến chết, `console.log`, comment chết.
+- Component & interface: PascalCase. Hooks & biến: camelCase. **File mới**: kebab-case. File page hiện PascalCase — đổi tên file page chỉ khi refactor route có kiểm soát (`appRouteConfig`).
+
+## 7. i18n
+
+Chuỗi UI mới: `src/locales/vi.ts` + `en.ts`.
+
+## 8. Đầu ra khi AI refactor một file
+
+1. **Phân tích:** 3–5 điểm chưa sạch của code cũ.
+2. **Mã:** hook + service (nếu cần) + UI tách.
+3. **Hướng dẫn:** import và nối file.
+
+## 9. Ưu tiên slice
+
+Form + Modal + Table dày: tách modal/form trước; sau đó hook điều phối.

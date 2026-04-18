@@ -45,7 +45,7 @@ export function NotificationPopup({ children }: NotificationPopupProps) {
     pollingInterval: open ? 30000 : 60000,
   });
 
-  const handleMarkAsRead = async (id: number) => {
+  const handleMarkAsRead = async (id: number | string) => {
     try {
       await markAsRead(id);
     } catch (error) {

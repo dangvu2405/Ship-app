@@ -15,6 +15,45 @@ import type {
 
 type ListResult<T> = { data: T[]; total: number };
 
+/** Open API: https://date.nager.at — Public Holidays, không cần API key. */
+const NAGER_PUBLIC_HOLIDAYS_BASE = 'https://date.nager.at/api/v3/PublicHolidays';
+
+interface NagerPublicHolidayRow {
+  date: string;
+  localName: string;
+  name: string;
+  countryCode: string;
+  types?: string[];
+  counties?: string[] | null;
+}
+
+function stableHolidayId(date: string, index: number): number {
+  let h = 0;
+  for (let i = 0; i < date.length; i += 1) {
+    h = (Math.imul(31, h) + date.charCodeAt(i)) | 0;
+  }
+  return (Math.abs(h) * 10007 + index) % 2_000_000_000 + 1;
+}
+
+function mapNagerRowsToPublicHolidays(rows: NagerPublicHolidayRow[]): PublicHoliday[] {
+  return rows.map((row, index) => {
+    const types = row.types ?? [];
+    const hasCounties = Array.isArray(row.counties) && row.counties.length > 0;
+    const holiday_type: PublicHoliday['holiday_type'] = hasCounties
+      ? 'regional'
+      : types.includes('Bank') || types.includes('School')
+        ? 'compensatory'
+        : 'national';
+    const dateKey = String(row.date).slice(0, 10);
+    return {
+      id: stableHolidayId(dateKey, index),
+      date: dateKey,
+      name: (row.localName && row.localName.trim()) || row.name,
+      holiday_type,
+    };
+  });
+}
+
 const getListData = <T>(body: unknown): ListResult<T> => {
   const payload = unwrapEnvelope<ApiListPayload<T>>(body);
   if (!payload || !Array.isArray(payload.data)) {
@@ -114,10 +153,28 @@ class WorkforceOpsService {
     return getListData<LeaveRequest>(response.data);
   }
 
+  /**
+   * Danh sách ngày lễ theo năm — ưu tiên [Nager.Date](https://date.nager.at) (miễn phí, VN mặc định),
+   * fallback backend `/public-holidays` nếu gọi Nager thất bại.
+   */
   async listPublicHolidays(params: { year: number; country_code?: string }): Promise<{ data: PublicHoliday[] }> {
-    const response = await api.get(ENDPOINTS.publicHolidays.list, { params });
-    const body = response.data as { data?: PublicHoliday[] };
-    return { data: Array.isArray(body?.data) ? body.data : [] };
+    const country = (params.country_code ?? 'VN').toUpperCase();
+    try {
+      const url = `${NAGER_PUBLIC_HOLIDAYS_BASE}/${params.year}/${country}`;
+      const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' } });
+      if (!res.ok) {
+        throw new Error(`Nager.Date HTTP ${res.status}`);
+      }
+      const rows = (await res.json()) as unknown;
+      if (!Array.isArray(rows)) {
+        throw new Error('Nager.Date: invalid JSON');
+      }
+      return { data: mapNagerRowsToPublicHolidays(rows as NagerPublicHolidayRow[]) };
+    } catch {
+      const response = await api.get(ENDPOINTS.publicHolidays.list, { params });
+      const body = response.data as { data?: PublicHoliday[] };
+      return { data: Array.isArray(body?.data) ? body.data : [] };
+    }
   }
 
   async listLeaveRequests(params: {

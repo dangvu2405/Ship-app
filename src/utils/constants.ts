@@ -91,6 +91,12 @@ export const STORAGE_KEYS = {
   TENANT_ID: 'tenant-id:v1',
 } as const;
 
+/**
+ * Khi `true`: axios 401 sẽ thử `POST /auth/refresh` (cần refresh token).
+ * Mặc định `false`: không refresh — 401 → xóa phiên và chuyển login (phù hợp tự động logout / chỉ access token).
+ */
+export const AUTH_REFRESH_ENABLED = import.meta.env.VITE_AUTH_REFRESH_ENABLED === 'true';
+
 // Auto-login is opt-in only via env flag
 export const AUTO_LOGIN_ENABLED = import.meta.env.VITE_AUTO_LOGIN === 'true';
 

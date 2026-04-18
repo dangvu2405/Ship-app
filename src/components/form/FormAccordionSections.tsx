@@ -58,6 +58,7 @@ export function FormAccordionSections({
         key: section.value,
         label: t(`common.formSections.${section.titleKey}`),
         className: "rounded-lg border border-border/70 bg-muted/20",
+        forceRender: true,
         children: <div className="flex flex-col gap-3">{section.children}</div>,
       }))}
     />

@@ -106,7 +106,7 @@ function buildReportCsvRows(
       d.bonus,
       d.allowance,
       d.deduction,
-      d.fuel_cost,
+      d.fuel_cost ?? '',
       d.tax,
       d.net_salary,
     ]);

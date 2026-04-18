@@ -10,7 +10,7 @@ interface SearchFieldProps {
 
 export function SearchField({ value, onChange, placeholder, className }: SearchFieldProps) {
   return (
-    <div>
+    <div className={className}>
       <Input
         allowClear
         value={value}
