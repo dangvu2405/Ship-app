@@ -1,9 +1,17 @@
 import { useMemo } from 'react';
 import { Form } from 'antd';
+import type { UploadFile } from 'antd/es/upload/interface';
+import type { UploadProps } from 'antd/es/upload';
+import { InboxOutlined } from '@ant-design/icons';
+import toast from 'react-hot-toast';
 import { useList } from '@refinedev/core';
-import { FormAccordionSections, FormItemSelect, FormItemText } from '@/components/form';
+import { FormAccordionSections, FormItemSelect, FormItemText, FormItemUploadDragger } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getErrorMessage } from '@/utils/errorHandler';
+import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 import type { Employee, Role, User } from '@/types';
+
+const normUploadFileList = (e: { fileList?: UploadFile[] }) => e?.fileList ?? [];
 
 interface UserFormProps {
   form: ReturnType<typeof Form.useForm>[0];
@@ -34,7 +42,7 @@ export function UserForm(props: UserFormProps) {
         label: `${employee.code} - ${employee.name}`,
         value: employee.id,
       })),
-    [employeesData?.data]
+    [employeesData?.data],
   );
 
   const roleOptions = useMemo(
@@ -43,13 +51,32 @@ export function UserForm(props: UserFormProps) {
         label: role.name,
         value: role.id,
       })),
-    [rolesData?.data]
+    [rolesData?.data],
   );
 
   const statusOptions = [
     { label: t('common.active'), value: 'active' },
     { label: t('common.inactive'), value: 'inactive' },
   ];
+
+  const customAvatarRequest = useMemo<NonNullable<UploadProps['customRequest']>>(
+    () => (options) => {
+      void publicFileUploadToUrl({
+        ...options,
+        onSuccess: (body, xhr) => {
+          toast.success(t('notifications.uploadSuccess'));
+          options.onSuccess?.(body, xhr);
+        },
+        onError: (err) => {
+          toast.error(getErrorMessage(err) || t('notifications.uploadError'));
+          options.onError?.(err);
+        },
+      });
+    },
+    [t],
+  );
+
+  const passwordMin = 8;
 
   const sections = [
     {
@@ -108,18 +135,166 @@ export function UserForm(props: UserFormProps) {
           />
 
           {!isEdit ? (
-            <FormItemText
-              name="password"
-              label={t('users.password')}
-              required
-              type="password"
-              rules={[
-                { required: true, message: t('validation.required', { field: t('users.password') }) },
-                { min: 6, message: t('validation.minLength', { min: 6 }) },
-              ]}
-              placeholder={t('users.passwordPlaceholder')}
-            />
-          ) : null}
+            <>
+              <FormItemText
+                name="password"
+                label={t('users.password')}
+                required
+                type="password"
+                autoComplete="new-password"
+                rules={[
+                  { required: true, message: t('validation.required', { field: t('users.password') }) },
+                  { min: passwordMin, message: t('validation.minLength', { min: passwordMin }) },
+                ]}
+                placeholder={t('users.passwordPlaceholder')}
+              />
+              <FormItemText
+                name="password_confirmation"
+                label={t('users.passwordConfirmation')}
+                required
+                type="password"
+                autoComplete="new-password"
+                dependencies={['password']}
+                rules={[
+                  { required: true, message: t('validation.required', { field: t('users.passwordConfirmation') }) },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      const pwd = getFieldValue('password') as string | undefined;
+                      if (value === pwd) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t('auth.registerPasswordMismatch')));
+                    },
+                  }),
+                ]}
+                placeholder={t('users.passwordConfirmationPlaceholder')}
+              />
+            </>
+          ) : (
+            <>
+              <FormItemText
+                name="password"
+                label={t('users.newPassword')}
+                type="password"
+                autoComplete="new-password"
+                help={t('users.optionalPasswordHint')}
+                dependencies={['password_confirmation']}
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      const confirm = getFieldValue('password_confirmation') as string | undefined;
+                      if (!confirm?.trim()) {
+                        if (!value?.trim()) {
+                          return Promise.resolve();
+                        }
+                        if (value.trim().length < passwordMin) {
+                          return Promise.reject(
+                            new Error(t('validation.minLength', { min: passwordMin })),
+                          );
+                        }
+                        return Promise.resolve();
+                      }
+                      if (!value?.trim()) {
+                        return Promise.reject(new Error(t('validation.required', { field: t('users.newPassword') })));
+                      }
+                      if (value.trim().length < passwordMin) {
+                        return Promise.reject(
+                          new Error(t('validation.minLength', { min: passwordMin })),
+                        );
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
+                placeholder={t('users.newPasswordPlaceholder')}
+              />
+              <FormItemText
+                name="password_confirmation"
+                label={t('users.passwordConfirmation')}
+                type="password"
+                autoComplete="new-password"
+                dependencies={['password']}
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      const pwd = getFieldValue('password') as string | undefined;
+                      if (!pwd?.trim()) {
+                        if (!value?.trim()) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error(t('validation.required', { field: t('users.newPassword') })));
+                      }
+                      if (!value?.trim()) {
+                        return Promise.reject(
+                          new Error(t('validation.required', { field: t('users.passwordConfirmation') })),
+                        );
+                      }
+                      if (value !== pwd) {
+                        return Promise.reject(new Error(t('auth.registerPasswordMismatch')));
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
+                placeholder={t('users.passwordConfirmationPlaceholder')}
+              />
+            </>
+          )}
+        </>
+      ),
+    },
+    {
+      value: 'contact',
+      titleKey: 'contact' as const,
+      children: (
+        <>
+          <FormItemText
+            name="emergency_contact_name"
+            label={t('users.emergencyContactName')}
+            placeholder={t('users.emergencyContactNamePlaceholder')}
+          />
+          <FormItemText
+            name="emergency_contact_phone"
+            label={t('users.emergencyContactPhone')}
+            placeholder={t('users.emergencyContactPhonePlaceholder')}
+          />
+          <FormItemText
+            name="residential_address"
+            label={t('users.residentialAddress')}
+            placeholder={t('users.residentialAddressPlaceholder')}
+          />
+          <FormItemUploadDragger
+            name="avatar"
+            label={t('users.avatar')}
+            extra={<span className="text-xs text-muted-foreground">{t('users.avatarHint')}</span>}
+            getValueFromEvent={normUploadFileList}
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+            maxCount={1}
+            rules={[
+              {
+                validator(_, value: UploadFile[]) {
+                  if (!value?.length) {
+                    return Promise.resolve();
+                  }
+                  if (value.some((f) => f.status === 'uploading')) {
+                    return Promise.reject(new Error(t('users.avatarWaitUpload')));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+            uploadProps={{
+              listType: 'picture',
+              customRequest: customAvatarRequest,
+              beforeUpload: () => true,
+            }}
+          >
+            <p className="flex justify-center">
+              <InboxOutlined className="text-3xl text-muted-foreground" aria-hidden />
+            </p>
+            <p className="text-center text-sm font-medium">{t('users.avatarDraggerTitle')}</p>
+            <p className="text-center text-xs text-muted-foreground">{t('users.avatarDraggerSubtitle')}</p>
+          </FormItemUploadDragger>
         </>
       ),
     },

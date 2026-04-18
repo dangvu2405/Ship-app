@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Alert, Button, Form, Space } from 'antd';
+import type { UploadFile } from 'antd/es/upload/interface';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useUpdate, useOne, useNavigation } from '@refinedev/core';
@@ -17,22 +18,67 @@ interface UserFormValues {
   username: string;
   email: string;
   password?: string;
+  password_confirmation?: string;
   status: string;
   employee_id?: number;
   role_ids?: number[];
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  residential_address?: string;
+  avatar?: UploadFile[];
 }
+
+const uploadDoneListForAvatar = (url: string | undefined): UploadFile[] => {
+  if (!url?.trim()) {
+    return [];
+  }
+  const name = url.trim().split('/').pop() || 'avatar';
+  return [{ uid: '-avatar', name, status: 'done', url: url.trim() }];
+};
+
+const avatarUrlFromFormFiles = (files?: UploadFile[]): string | null => {
+  if (!files?.length) {
+    return null;
+  }
+  const f = files[0];
+  const fromResponse = f.response as { data?: { url?: string } } | undefined;
+  const url = fromResponse?.data?.url ?? f.url;
+  if (typeof url === 'string' && url.trim()) {
+    return url.trim();
+  }
+  return null;
+};
+
+const trimOrUndefined = (value: unknown): string | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+  const s = String(value).trim();
+  return s === '' ? undefined : s;
+};
 
 const buildPayload = (values: UserFormValues, isEdit: boolean): Record<string, unknown> => {
   const payload: Record<string, unknown> = {
-    username: values.username,
-    email: values.email,
+    username: String(values.username).trim(),
+    email: String(values.email).trim(),
     status: values.status,
     employee_id: values.employee_id,
     role_ids: values.role_ids ?? [],
   };
 
-  if (!isEdit && values.password) {
-    payload.password = values.password;
+  payload.emergency_contact_name = trimOrUndefined(values.emergency_contact_name) ?? null;
+  payload.emergency_contact_phone = trimOrUndefined(values.emergency_contact_phone) ?? null;
+  payload.residential_address = trimOrUndefined(values.residential_address) ?? null;
+  payload.avatar_url = avatarUrlFromFormFiles(values.avatar);
+
+  if (!isEdit && values.password?.trim()) {
+    payload.password = values.password.trim();
+    payload.password_confirmation = values.password_confirmation?.trim() ?? '';
+  }
+
+  if (isEdit && values.password?.trim()) {
+    payload.password = values.password.trim();
+    payload.password_confirmation = values.password_confirmation?.trim() ?? '';
   }
 
   if (values.employee_id == null) {
@@ -152,6 +198,12 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
       status: data.data.status,
       employee_id: data.data.employee_id ?? data.data.employee?.id,
       role_ids: data.data.roles?.map((role) => role.id) ?? [],
+      emergency_contact_name: data.data.emergency_contact_name,
+      emergency_contact_phone: data.data.emergency_contact_phone,
+      residential_address: data.data.residential_address,
+      avatar: uploadDoneListForAvatar(data.data.avatar_url),
+      password: undefined,
+      password_confirmation: undefined,
     });
   }, [hasRecordId, data?.data, form]);
 

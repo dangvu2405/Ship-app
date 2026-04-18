@@ -157,6 +157,7 @@ export function InvoiceFormDialog({ open, mode, recordId, onClose, onSuccess }: 
           layout="vertical"
           validateTrigger={['onBlur', 'onSubmit']}
           disabled={isViewMode}
+          initialValues={{ status: 'draft' }}
         >
           <InvoiceForm form={form} initialValues={data?.data} />
         </Form>

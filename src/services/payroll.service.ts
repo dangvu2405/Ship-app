@@ -39,19 +39,39 @@ class PayrollService {
     return response.data;
   }
 
-  /** Download server-provided payroll export as blob/CSV. */
-  async downloadExport(id: number): Promise<void> {
-    const response = await api.get(ENDPOINTS.payrolls.export(id), { responseType: 'blob' });
+  /** Download server blob — dùng nội bộ cho các loại export. */
+  private async downloadBlob(url: string, fallbackName: string): Promise<void> {
+    const response = await api.get(url, { responseType: 'blob' });
     const blob = response.data as Blob;
     const contentDisposition = response.headers['content-disposition'] as string | undefined;
-    const matchedFileName = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];
-    const fileName = matchedFileName ? decodeURIComponent(matchedFileName.replace(/"/g, '')) : `payroll-${id}-export.csv`;
-    const url = URL.createObjectURL(blob);
+    const matched = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];
+    const fileName = matched ? decodeURIComponent(matched.replace(/"/g, '')) : fallbackName;
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
+    a.href = objectUrl;
     a.download = fileName;
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  /** Xuất bảng lương tổng hợp (CSV/xlsx). */
+  async downloadExport(id: number): Promise<void> {
+    return this.downloadBlob(ENDPOINTS.payrolls.export(id), `payroll-${id}-export.csv`);
+  }
+
+  /** Xuất khai báo BHXH D02-TS (xlsx). */
+  async downloadBhxhReport(id: number): Promise<void> {
+    return this.downloadBlob(ENDPOINTS.payrolls.exportBhxh(id), `payroll-${id}-bhxh-D02TS.xlsx`);
+  }
+
+  /** Xuất tờ khai thuế TNCN 05/KK-TNCN (xlsx). */
+  async downloadPitReport(id: number): Promise<void> {
+    return this.downloadBlob(ENDPOINTS.payrolls.exportPit(id), `payroll-${id}-pit-05KKTNCN.xlsx`);
+  }
+
+  /** Xuất phiếu lương (PDF zip). */
+  async downloadPayslips(id: number): Promise<void> {
+    return this.downloadBlob(ENDPOINTS.payrolls.exportPayslips(id), `payroll-${id}-payslips.zip`);
   }
 
   async getMySalary(month?: number, year?: number): Promise<ApiResponse<MySalaryPayload>> {

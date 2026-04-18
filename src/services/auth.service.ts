@@ -16,11 +16,13 @@ export interface RegisterData {
 }
 
 class AuthService {
-  getUserFromMeResponse(response: ApiResponse<User | { user?: User }>): User | null {
+  getUserFromMeResponse(response: ApiResponse<User | { user?: User; tenants?: import('@/types').Tenant[] }>): User | null {
     const payload = response.data;
     if (!payload) return null;
     if ('user' in (payload as { user?: User })) {
-      return (payload as { user?: User }).user ?? null;
+      const nested = payload as { user?: User; tenants?: import('@/types').Tenant[] };
+      if (!nested.user) return null;
+      return { ...nested.user, tenants: nested.tenants ?? nested.user.tenants ?? [] };
     }
     return payload as User;
   }
@@ -35,6 +37,7 @@ class AuthService {
 
   async login(credentials: LoginCredentials): Promise<ApiResponse<{
     user: User;
+    tenants?: import('@/types').Tenant[];
     token?: string;
     access_token?: string;
     refresh_token?: string;

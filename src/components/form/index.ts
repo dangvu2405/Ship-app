@@ -18,3 +18,5 @@ export { FormItemSwitch } from './FormItemSwitch';
 export { FormItemText } from './FormItemText';
 export { FormItemTextArea } from './FormItemTextArea';
 export { FormItemUploadDragger } from './FormItemUploadDragger';
+export { VnAdminAddressFields } from './vn-admin-address-fields';
+export type { VnAdminAddressFieldsProps } from './vn-admin-address-fields';

@@ -7,8 +7,8 @@ import {
   FormAccordionSections,
   FormItemSelect,
   FormItemText,
-  FormItemTextArea,
   FormItemUploadDragger,
+  VnAdminAddressFields,
 } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
@@ -26,16 +26,14 @@ interface CompanyFormProps {
 
 export function CompanyForm(props: CompanyFormProps) {
   const {
-    form: _form,
-    initialValues: _initialValues,
+    form,
+    initialValues,
     isCreate = false,
     showBulkImport = false,
     showDriverScheduleHint = false,
     importFileList = [],
     onImportChange,
   } = props;
-  void _form;
-  void _initialValues;
   const { t } = useTranslation();
 
   const statusOptions = [
@@ -82,11 +80,11 @@ export function CompanyForm(props: CompanyFormProps) {
       titleKey: 'contact',
       children: (
         <>
-          <FormItemTextArea
-            name="address"
-            label={t('companies.address')}
-            rows={3}
-            placeholder={t('companies.addressPlaceholder')}
+          <VnAdminAddressFields
+            form={form}
+            cascadeRequired={false}
+            relaxCascadeRequired={Boolean(initialValues?.id && initialValues?.address?.trim())}
+            legacySavedAddress={initialValues?.address?.trim()}
           />
 
           <FormItemText

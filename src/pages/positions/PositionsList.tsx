@@ -151,20 +151,21 @@ export function PositionsList() {
           </Button>
         }
       />
-      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
-        <ListPageFilters variant="grid-3">
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <ListPageFilters variant="grid-2">
           <ListPageFilters.Search
             placeholder={t('common.search')}
             value={searchKeyword}
             onChange={setSearchKeyword}
           />
-
+        </ListPageFilters>
+        <div className="list-page-filters__btn-row">
           <ListPageFilters.Actions
             onSearch={handleSearchFilters}
             onReset={handleClearFilters}
             busy={isFetching && !isLoading}
           />
-        </ListPageFilters>
+        </div>
 
         {isError ? (
           <ErrorState

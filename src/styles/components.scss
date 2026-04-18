@@ -177,9 +177,7 @@
     height: 40px !important;
     min-height: 40px !important;
     font-size: 14px !important;
-    padding-top: 0;
-    padding-bottom: 0;
-    line-height: 1.25;
+    padding: 0;
   }
 
   // Ant Design Select trong toolbar (Công ty / Văn phòng / filter chung)
@@ -229,8 +227,8 @@
     min-width: 140px;
     max-width: 160px;
     width: clamp(140px, 100%, 160px);
-    height: 40px !important;
-    min-height: 40px !important;
+    height: 32px !important;
+    min-height: 32px !important;
     padding-left: 20px !important;
     padding-right: 20px !important;
     font-size: 14px !important;
@@ -241,8 +239,8 @@
     min-width: 100px;
     max-width: 120px;
     width: clamp(100px, 100%, 120px);
-    height: 40px !important;
-    min-height: 40px !important;
+    height: 32px !important;
+    min-height: 32px !important;
     font-size: 14px !important;
   }
 
@@ -251,6 +249,41 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  // === Modifier: grid 2 cột (Search + select) ===
+  &--grid-2 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+
+    @media (min-width: 768px) {
+      &:has(> :only-child) {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      &:not(:has(> :only-child)) {
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 280px);
+        align-items: center;
+      }
+    }
+  }
+
+  // === Modifier: grid 6 cột (Search + nhiều control + Tìm + Đặt lại) ===
+  &--grid-6 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+
+    @media (min-width: 1024px) {
+      grid-template-columns:
+        minmax(200px, 1.5fr)
+        minmax(140px, 1fr)
+        minmax(140px, 1fr)
+        minmax(140px, 1fr)
+        minmax(140px, max-content)
+        minmax(100px, max-content);
+    }
   }
 
   // === Modifier: grid 4 cột (Search + control + Tìm + Đặt lại) ===

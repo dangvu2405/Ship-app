@@ -1,6 +1,6 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormAccordionSections, FormItemSelect, FormItemText, FormItemTextArea } from '@/components/form';
+import { FormAccordionSections, FormItemSelect, FormItemText, VnAdminAddressFields } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Company, Office } from '@/types';
 
@@ -10,7 +10,7 @@ interface OfficeFormProps {
 }
 
 export function OfficeForm(props: OfficeFormProps) {
-  void props;
+  const { form, initialValues } = props;
   const { t } = useTranslation();
   const { data: companiesData, isLoading } = useList<Company>({
     resource: 'companies',
@@ -60,7 +60,12 @@ export function OfficeForm(props: OfficeFormProps) {
                 required
                 rules={[{ required: true, message: t('validation.required', { field: t('companies.name') }) }]}
               />
-              <FormItemTextArea name="address" label={t('companies.address')} rows={2} />
+              <VnAdminAddressFields
+                form={form}
+                cascadeRequired={false}
+                relaxCascadeRequired={Boolean(initialValues?.id && initialValues?.address?.trim())}
+                legacySavedAddress={initialValues?.address?.trim()}
+              />
             </>
           ),
         },

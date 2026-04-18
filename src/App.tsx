@@ -4,7 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, theme as antdTheme } from 'antd';
 import { Toaster } from 'react-hot-toast';
 import { Fragment, Suspense, useEffect, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/query-client';
 import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
@@ -25,7 +26,7 @@ import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
 /** Redirect về /select-tenant nếu user đã đăng nhập nhưng chưa chọn tenant (multi-tenant). */
 function TenantGuard({ children }: { children: ReactNode }) {
   const { currentTenantId, pendingTenants } = useAuthStore();
-  if (!currentTenantId && pendingTenants.length > 1) {
+  if (!currentTenantId && pendingTenants.length > 0) {
     return <Navigate to={ROUTES.selectTenant} replace />;
   }
   return <>{children}</>;
@@ -35,15 +36,6 @@ const suspensePage = (node: ReactNode) => (
   <Suspense fallback={<AppLoadingSpin variant="page" />}>{node}</Suspense>
 );
 
-/** TanStack Query v5 — dùng bởi `useDashboardStats`, `useResourceListQuery`, v.v. (khác instance nội bộ của Refine). */
-const appQueryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 function App() {
   const { theme } = useAppStore();
@@ -56,7 +48,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <QueryClientProvider client={appQueryClient}>
+      <QueryClientProvider client={queryClient}>
       <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
       <Refine
         dataProvider={dataProvider}
@@ -76,10 +68,21 @@ function App() {
             <Route path={ROUTES.register} element={suspensePage(<AppPages.RegisterForm />)} />
             <Route path={ROUTES.forgotPassword} element={suspensePage(<AppPages.ForgotPasswordForm />)} />
             <Route path={ROUTES.forgotPasswordVerify} element={suspensePage(<AppPages.ForgotPasswordVerifyForm />)} />
+            {/* Authenticated nhưng chưa chọn tenant — không có AppLayout */}
+            <Route
+              element={
+                <Authenticated key="authenticated-pre-tenant" fallback={<Navigate to={ROUTES.login} replace />}>
+                  <Suspense fallback={<AppLoadingSpin variant="page" />}><AppPages.TenantSelector /></Suspense>
+                </Authenticated>
+              }
+              path={ROUTES.selectTenant}
+            />
             <Route
               element={
                 <Authenticated key="authenticated-layout" fallback={<Navigate to={ROUTES.login} replace />}>
-                  <AppLayout />
+                  <TenantGuard>
+                    <AppLayout />
+                  </TenantGuard>
                 </Authenticated>
               }
             >

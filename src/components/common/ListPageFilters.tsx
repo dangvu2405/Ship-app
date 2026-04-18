@@ -4,9 +4,11 @@ import { SearchField } from '@/components/common/SearchField';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
-export type ListPageFiltersVariant = 'grid-4' | 'grid-3' | 'dual-entity';
+export type ListPageFiltersVariant = 'grid-2' | 'grid-6' | 'grid-4' | 'grid-3' | 'dual-entity';
 
 const variantClass: Record<ListPageFiltersVariant, string> = {
+  'grid-2': 'list-page-filters--grid-2',
+  'grid-6': 'list-page-filters--grid-6',
   'grid-4': 'list-page-filters--grid-4',
   'grid-3': 'list-page-filters--grid-3',
   'dual-entity': 'list-page-filters--dual-entity',
@@ -56,8 +58,9 @@ function ListPageFiltersActions({ onSearch, onReset, busy }: ListPageFiltersActi
 }
 
 /**
- * Compound toolbar for CRUD list pages: SCSS layout + optional search + actions.
- * Child order should be: `Search` (if any) → extra filters → `Actions`.
+ * Compound toolbar for CRUD list pages: SCSS layout + optional search + extra controls.
+ * Put `ListPageFilters.Actions` in `list-page-filters__btn-row` below the grid (see list pages).
+ * Child order inside the grid: `Search` (if any) → selects / `__select-row` → …
  */
 export const ListPageFilters = Object.assign(ListPageFiltersRoot, {
   Search: ListPageFiltersSearch,

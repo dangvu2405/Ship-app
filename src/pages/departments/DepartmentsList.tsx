@@ -179,51 +179,43 @@ export function DepartmentsList() {
         }
       />
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
-          <ListPageFilters variant="grid-4">
+        <Form form={filterForm} layout="vertical" requiredMark={false} colon={false} className="contents min-w-0 w-full">
+          <ListPageFilters variant="grid-2">
             <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
               onChange={setSearchKeyword}
             />
-
-            <Form
-              form={filterForm}
-              layout="vertical"
-              requiredMark={false}
-              colon={false}
-              className="contents min-w-0 w-full"
-            >
-              <FormItemSelect
-                noStyle
-                name="office_id"
-                label={null}
-                placeholder={t('employees.office')}
-                options={officesSelect.options}
-                showSearch
-                allowClear
-                loading={officesSelect.isLoading || officesSelect.isFetchingNextPage}
-                prefix={<ShopOutlined aria-hidden />}
-                classNames={{ root: 'list-page-filters__select' }}
-                onPopupScroll={officesSelect.onPopupScroll}
-                optionFilterProp="label"
-              />
-            </Form>
-
+            <FormItemSelect
+              noStyle
+              name="office_id"
+              label={null}
+              placeholder={t('employees.office')}
+              options={officesSelect.options}
+              showSearch
+              allowClear
+              loading={officesSelect.isLoading || officesSelect.isFetchingNextPage}
+              prefix={<ShopOutlined aria-hidden />}
+              onPopupScroll={officesSelect.onPopupScroll}
+              optionFilterProp="label"
+            />
+          </ListPageFilters>
+          <div className="list-page-filters__btn-row">
             <ListPageFilters.Actions
               onSearch={handleSearchFilters}
               onReset={handleClearFilters}
               busy={isFetching && !isLoading}
             />
-          </ListPageFilters>
-
-          {isError ? (
-            <ErrorState
-              title={t('common.loadError')}
-              description={t('common.tryAgainDescription')}
-              onRetry={() => void safeRefetch(true)}
-            />
-          ) : (
-            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+          </div>
+        </Form>
+        {isError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => void safeRefetch(true)}
+          />
+        ) : (
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
             <DataTable<Department>
               data={listData}
               columns={columns}
@@ -237,8 +229,8 @@ export function DepartmentsList() {
               }
               pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
             />
-            </PageLoadingOverlay>
-          )}
+          </PageLoadingOverlay>
+        )}
       </Card>
       <DeleteConfirmDialog
         open={deleteOpen}

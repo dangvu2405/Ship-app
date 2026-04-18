@@ -1,15 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@refinedev/core';
-import { Button, Card, Dropdown, Form, Tag } from 'antd';
+import { Button, Card, Dropdown, Form, Modal, Input, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   ApartmentOutlined,
-  CheckCircleOutlined,
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
   MoreOutlined,
-  PlayCircleOutlined,
   PlusOutlined,
   ShopOutlined,
 } from '@ant-design/icons';
@@ -31,28 +29,31 @@ import { TripFormDialog } from './TripFormDialog';
 import { formatCurrencyVND } from '@/utils/format';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 import { notifyErrorOnce } from '@/utils/errorToast';
-import { getTripStatusLabel } from '@/utils/tripStatus';
+import {
+  getAvailableActions,
+  getTripStatusLabel,
+  getTripStatusTagColor,
+  TERMINAL_TRIP_STATUSES,
+} from '@/utils/tripStatus';
 import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 import { usePaginatedResourceSelectOptions } from '@/hooks/usePaginatedResourceSelectOptions';
 
-function tripStatusTagColor(status: string): string | undefined {
-  switch (status) {
-    case 'completed':
-      return 'success';
-    case 'in_progress':
-      return 'processing';
-    case 'cancelled':
-      return 'error';
-    default:
-      return undefined;
-  }
-}
-
 type TripFilterForm = {
   company_id?: number;
   office_id?: number;
+  status?: string;
 };
+
+interface ReasonModalState {
+  open: boolean;
+  trip: Trip | null;
+  action: string;
+  titleKey: string;
+  reasonKey: string;
+}
+
+const REASON_ACTIONS = new Set(['cancel', 'emergency', 'delay']);
 
 export function TripsList() {
   const { t } = useTranslation();
@@ -71,6 +72,10 @@ export function TripsList() {
   const [appliedOfficeId, setAppliedOfficeId] = useState<number | undefined>(undefined);
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
   const [busyTripId, setBusyTripId] = useState<number | null>(null);
+  const [reasonModal, setReasonModal] = useState<ReasonModalState>({
+    open: false, trip: null, action: '', titleKey: '', reasonKey: '',
+  });
+  const [reasonValue, setReasonValue] = useState('');
 
   const companyFilters = useMemo(
     () => [{ field: 'status', operator: 'eq' as const, value: 'active' }],
@@ -78,35 +83,33 @@ export function TripsList() {
   );
 
   const officeFilters = useMemo(
-    () =>
-      companyWatch != null
-        ? [{ field: 'company_id', operator: 'eq' as const, value: companyWatch }]
-        : [],
+    () => companyWatch != null ? [{ field: 'company_id', operator: 'eq' as const, value: companyWatch }] : [],
     [companyWatch],
   );
 
-  const mapCompanyOption = useCallback(
-    (c: Company) => ({ label: c.name ?? `#${c.id}`, value: c.id }),
-    [],
-  );
-  const mapOfficeOption = useCallback(
-    (o: Office) => ({ label: o.name ?? `#${o.id}`, value: o.id }),
-    [],
-  );
+  const mapCompanyOption = useCallback((c: Company) => ({ label: c.name ?? `#${c.id}`, value: c.id }), []);
+  const mapOfficeOption  = useCallback((o: Office)  => ({ label: o.name ?? `#${o.id}`, value: o.id  }), []);
 
   const companiesSelect = usePaginatedResourceSelectOptions<Company>({
-    resource: 'companies',
-    filters: companyFilters,
-    sorters: [{ field: 'name', order: 'asc' }],
-    mapOption: mapCompanyOption,
+    resource: 'companies', filters: companyFilters, sorters: [{ field: 'name', order: 'asc' }], mapOption: mapCompanyOption,
+  });
+  const officesSelect = usePaginatedResourceSelectOptions<Office>({
+    resource: 'offices', filters: officeFilters, sorters: [{ field: 'name', order: 'asc' }], mapOption: mapOfficeOption,
   });
 
-  const officesSelect = usePaginatedResourceSelectOptions<Office>({
-    resource: 'offices',
-    filters: officeFilters,
-    sorters: [{ field: 'name', order: 'asc' }],
-    mapOption: mapOfficeOption,
-  });
+  const statusOptions = useMemo(() => [
+    { label: t('trips.statusPending'),        value: 'pending' },
+    { label: t('trips.statusAssigned'),       value: 'assigned' },
+    { label: t('trips.statusDriverAccepted'), value: 'driver_accepted' },
+    { label: t('trips.statusEnRoutePickup'),  value: 'en_route_pickup' },
+    { label: t('trips.statusPickedUp'),       value: 'picked_up' },
+    { label: t('trips.statusInTransit'),      value: 'in_transit' },
+    { label: t('trips.statusArrived'),        value: 'arrived' },
+    { label: t('trips.statusCompleted'),      value: 'completed' },
+    { label: t('trips.statusCancelled'),      value: 'cancelled' },
+    { label: t('trips.statusDelayed'),        value: 'delayed' },
+    { label: t('trips.statusEmergency'),      value: 'emergency' },
+  ], [t]);
 
   const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Trip>({
     resource: 'trips',
@@ -114,16 +117,17 @@ export function TripsList() {
     pageSize: 15,
     filters: [
       ...(appliedCompanyId ? [{ field: 'company_id', operator: 'eq' as const, value: appliedCompanyId }] : []),
-      ...(appliedOfficeId ? [{ field: 'office_id', operator: 'eq' as const, value: appliedOfficeId }] : []),
-      ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
+      ...(appliedOfficeId  ? [{ field: 'office_id',  operator: 'eq' as const, value: appliedOfficeId  }] : []),
+      ...(appliedStatus    ? [{ field: 'status',     operator: 'eq' as const, value: appliedStatus    }] : []),
     ],
   });
   const safeRefetch = useSafeRefetch('trips-list', refetch);
 
   const handleSearchFilters = () => {
-    const { company_id, office_id } = filterForm.getFieldsValue();
+    const { company_id, office_id, status } = filterForm.getFieldsValue();
     setAppliedCompanyId(company_id);
     setAppliedOfficeId(office_id);
+    setAppliedStatus(status);
     setCurrent(1);
   };
 
@@ -154,11 +158,8 @@ export function TripsList() {
 
   const confirmDelete = () => {
     if (!selectedTrip) return;
-
     deleteItem(
-      {
-        id: selectedTrip.id,
-      },
+      { id: selectedTrip.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('trips.title') }));
@@ -167,10 +168,7 @@ export function TripsList() {
           void safeRefetch(true);
         },
         onError: (error) => {
-          if (!shouldShowLocalErrorToast(error)) {
-            return;
-          }
-
+          if (!shouldShowLocalErrorToast(error)) return;
           notifyErrorOnce('trips-delete', error, {
             fallbackMessage: t('notifications.deleteError', { item: t('trips.title') }),
           });
@@ -179,17 +177,16 @@ export function TripsList() {
     );
   };
 
-  /** Chuyển trạng thái chuyến theo workflow spec */
-  const handleStatusChange = useCallback(
-    async (trip: Trip, newStatus: 'in_progress' | 'completed' | 'cancelled') => {
+  const dispatchAction = useCallback(
+    async (trip: Trip, action: string, reason?: string) => {
       setBusyTripId(trip.id);
       try {
-        await tripService.updateStatus(trip.id, newStatus);
+        await tripService.dispatchAction(trip.id, action, { reason });
         toast.success(t('notifications.updateSuccess', { item: t('trips.title') }));
         await safeRefetch(true);
       } catch (error) {
         if (shouldShowLocalErrorToast(error)) {
-          notifyErrorOnce('trips-status-update', error, {
+          notifyErrorOnce('trips-action', error, {
             fallbackMessage: getErrorMessage(error) || t('notifications.updateError', { item: t('trips.title') }),
           });
         }
@@ -197,11 +194,41 @@ export function TripsList() {
         setBusyTripId(null);
       }
     },
-    [t, safeRefetch]
+    [t, safeRefetch],
   );
+
+  const handleAction = useCallback((trip: Trip, action: string) => {
+    if (REASON_ACTIONS.has(action)) {
+      const titleMap: Record<string, string> = {
+        cancel:    'trips.confirmCancelTitle',
+        emergency: 'trips.confirmEmergencyTitle',
+        delay:     'trips.confirmDelayTitle',
+      };
+      const reasonMap: Record<string, string> = {
+        cancel:    'trips.cancelReason',
+        emergency: 'trips.emergencyReason',
+        delay:     'trips.delayReason',
+      };
+      setReasonValue('');
+      setReasonModal({ open: true, trip, action, titleKey: titleMap[action], reasonKey: reasonMap[action] });
+      return;
+    }
+    void dispatchAction(trip, action);
+  }, [dispatchAction]);
+
+  const handleReasonConfirm = () => {
+    const { trip, action } = reasonModal;
+    if (!trip) return;
+    setReasonModal((s) => ({ ...s, open: false }));
+    void dispatchAction(trip, action, reasonValue);
+  };
 
   const tripRowMenu = useCallback(
     (record: Trip): MenuProps => {
+      const isBusy = busyTripId === record.id;
+      const isTerminal = TERMINAL_TRIP_STATUSES.includes(record.status as never);
+      const actions = getAvailableActions(record.status);
+
       const items: MenuProps['items'] = [
         {
           key: 'view',
@@ -213,27 +240,24 @@ export function TripsList() {
           key: 'edit',
           icon: <EditOutlined />,
           label: t('common.edit'),
+          disabled: isTerminal,
           onClick: () => handleEdit(record.id),
         },
       ];
-      if (record.status === 'pending') {
-        items.push({
-          key: 'start',
-          icon: <PlayCircleOutlined />,
-          label: t('trips.startTrip'),
-          disabled: busyTripId === record.id,
-          onClick: () => void handleStatusChange(record, 'in_progress'),
+
+      if (actions.length > 0) {
+        items.push({ type: 'divider' });
+        actions.forEach((cfg) => {
+          items.push({
+            key: cfg.action,
+            label: t(cfg.labelKey as Parameters<typeof t>[0]),
+            danger: cfg.danger,
+            disabled: isBusy,
+            onClick: () => handleAction(record, cfg.action),
+          });
         });
       }
-      if (record.status === 'in_progress') {
-        items.push({
-          key: 'complete',
-          icon: <CheckCircleOutlined />,
-          label: t('trips.completeTrip'),
-          disabled: busyTripId === record.id,
-          onClick: () => void handleStatusChange(record, 'completed'),
-        });
-      }
+
       items.push({ type: 'divider' });
       items.push({
         key: 'delete',
@@ -244,52 +268,52 @@ export function TripsList() {
       });
       return { items };
     },
-    [t, show, busyTripId, handleEdit, handleDelete, handleStatusChange],
+    [t, show, busyTripId, handleEdit, handleDelete, handleAction],
   );
 
   const columns = useMemo<DataTableColumn<Trip>[]>(
     () => [
-    { key: 'code', header: t('trips.code'), dataIndex: 'code' },
-    { key: 'start_point', header: t('trips.startPoint'), dataIndex: 'start_point' },
-    { key: 'end_point', header: t('trips.endPoint'), dataIndex: 'end_point' },
-    {
-      key: 'distance_km',
-      header: t('trips.distance'),
-      dataIndex: 'distance_km',
-      render: (item) => `${item.distance_km} km`,
-    },
-    {
-      key: 'price',
-      header: t('trips.price'),
-      dataIndex: 'price',
-      render: (item) => formatCurrencyVND(item.price),
-    },
-    {
-      key: 'status',
-      header: t('common.status'),
-      dataIndex: 'status',
-      render: (item) => (
-        <Tag color={tripStatusTagColor(item.status ?? '')}>{getTripStatusLabel(item.status, t)}</Tag>
-      ),
-    },
-    {
-      key: 'start_time',
-      header: t('trips.startTime'),
-      dataIndex: 'start_time',
-      render: (item) => <DateTimeBadge value={item.start_time} mode="datetime" />,
-    },
-    {
-      key: 'actions',
-      header: t('common.actions'),
-      render: (record) => (
-        <div role="presentation" onClick={(e) => e.stopPropagation()}>
-          <Dropdown menu={tripRowMenu(record)} trigger={['click']}>
-            <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t('common.actions')} />
-          </Dropdown>
-        </div>
-      ),
-    },
-  ],
+      { key: 'code', header: t('trips.code'), dataIndex: 'code' },
+      { key: 'start_point', header: t('trips.startPoint'), dataIndex: 'start_point' },
+      { key: 'end_point',   header: t('trips.endPoint'),   dataIndex: 'end_point' },
+      {
+        key: 'distance_km',
+        header: t('trips.distance'),
+        dataIndex: 'distance_km',
+        render: (item) => `${item.distance_km} km`,
+      },
+      {
+        key: 'price',
+        header: t('trips.price'),
+        dataIndex: 'price',
+        render: (item) => formatCurrencyVND(item.price),
+      },
+      {
+        key: 'status',
+        header: t('common.status'),
+        dataIndex: 'status',
+        render: (item) => (
+          <Tag color={getTripStatusTagColor(item.status ?? '')}>{getTripStatusLabel(item.status, t)}</Tag>
+        ),
+      },
+      {
+        key: 'start_time',
+        header: t('trips.startTime'),
+        dataIndex: 'start_time',
+        render: (item) => <DateTimeBadge value={item.start_time} mode="datetime" />,
+      },
+      {
+        key: 'actions',
+        header: t('common.actions'),
+        render: (record) => (
+          <div role="presentation" onClick={(e) => e.stopPropagation()}>
+            <Dropdown menu={tripRowMenu(record)} trigger={['click']}>
+              <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t('common.actions')} />
+            </Dropdown>
+          </div>
+        ),
+      },
+    ],
     [t, tripRowMenu]
   );
 
@@ -316,81 +340,96 @@ export function TripsList() {
       />
 
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
-              <Form
-                form={filterForm}
-                layout="vertical"
-                onValuesChange={(changed) => {
-                  if ('company_id' in changed) {
-                    filterForm.setFieldsValue({ office_id: undefined });
-                  }
-                }}
-              >
-                <FormItemSelect
-                  name="company_id"
-                  label={null}
-                  placeholder={t('companies.title')}
-                  options={companiesSelect.options}
-                  showSearch
-                  allowClear
-                  loading={companiesSelect.isLoading || companiesSelect.isFetchingNextPage}
-                  prefix={<ApartmentOutlined aria-hidden />}
-                  classNames={{ root: 'list-page-filters__select' }}
-                  onPopupScroll={companiesSelect.onPopupScroll}
-                  optionFilterProp="label"
-                  style={{ width: 180, }}
-                />
-                <FormItemSelect
-                  name="office_id"
-                  label={null}
-                  placeholder={t('employees.office')}
-                  options={officesSelect.options}
-                  showSearch
-                  allowClear
-                  loading={officesSelect.isLoading || officesSelect.isFetchingNextPage}
-                  prefix={<ShopOutlined aria-hidden />}
-                  classNames={{ root: 'list-page-filters__select' }}
-                  onPopupScroll={officesSelect.onPopupScroll}
-                  optionFilterProp="label"
-                  style={{ width: 180}}
-                />
-              </Form>
-
-
-            <div className="list-page-filters__btn-row">
-              <ListPageFilters.Actions
-                onSearch={handleSearchFilters}
-                onReset={handleClearFilters}
-                busy={isFetching && !isLoading}
+        <Form
+          form={filterForm}
+          layout="vertical"
+          requiredMark={false}
+          colon={false}
+          className="contents min-w-0 w-full"
+          onValuesChange={(changed) => {
+            if ('company_id' in changed) {
+              filterForm.setFieldsValue({ office_id: undefined });
+            }
+          }}
+        >
+          <ListPageFilters variant="grid-2">
+            <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <FormItemSelect
+                noStyle
+                name="company_id"
+                label={null}
+                placeholder={t('companies.title')}
+                options={companiesSelect.options}
+                showSearch
+                allowClear
+                loading={companiesSelect.isLoading || companiesSelect.isFetchingNextPage}
+                prefix={<ApartmentOutlined aria-hidden />}
+                classNames={{ root: 'list-page-filters__select' }}
+                onPopupScroll={companiesSelect.onPopupScroll}
+                optionFilterProp="label"
+              />
+              <FormItemSelect
+                noStyle
+                name="office_id"
+                label={null}
+                placeholder={t('employees.office')}
+                options={officesSelect.options}
+                showSearch
+                allowClear
+                loading={officesSelect.isLoading || officesSelect.isFetchingNextPage}
+                prefix={<ShopOutlined aria-hidden />}
+                classNames={{ root: 'list-page-filters__select' }}
+                onPopupScroll={officesSelect.onPopupScroll}
+                optionFilterProp="label"
+              />
+              <FormItemSelect
+                noStyle
+                name="status"
+                label={null}
+                placeholder={t('common.status')}
+                options={statusOptions}
+                allowClear
+                classNames={{ root: 'list-page-filters__select' }}
               />
             </div>
-          {isError ? (
-            <ErrorState
-              title={t('common.loadError')}
-              description={t('common.tryAgainDescription')}
-              onRetry={() => void safeRefetch(true)}
+          </ListPageFilters>
+          <div className="list-page-filters__btn-row">
+            <ListPageFilters.Actions
+              onSearch={handleSearchFilters}
+              onReset={handleClearFilters}
+              busy={isFetching && !isLoading}
             />
-          ) : (
-            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-              <DataTable<Trip>
-                data={listData}
-                columns={columns}
-                onRowClick={(record) => show('trips', record.id)}
-                emptyMessage={t('common.noData')}
-                emptyDescription={t('emptyState.listDescription', { resource: t('trips.title') })}
-                emptyAction={
-                  <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                    {t('trips.createTrip')}
-                  </Button>
-                }
-                pagination={{
-                  current,
-                  total,
-                  pageSize,
-                  onPageChange: setCurrent,
-                }}
-              />
-            </PageLoadingOverlay>
-          )}
+          </div>
+        </Form>
+
+        {isError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => void safeRefetch(true)}
+          />
+        ) : (
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Trip>
+              data={listData}
+              columns={columns}
+              onRowClick={(record) => show('trips', record.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('trips.title') })}
+              emptyAction={
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                  {t('trips.createTrip')}
+                </Button>
+              }
+              pagination={{
+                current,
+                total,
+                pageSize,
+                onPageChange: setCurrent,
+              }}
+            />
+          </PageLoadingOverlay>
+        )}
       </Card>
 
       <DeleteConfirmDialog
@@ -399,20 +438,33 @@ export function TripsList() {
         onConfirm={confirmDelete}
         itemName={selectedTrip?.code}
       />
+
       {formOpen && (
         <TripFormDialog
           open={formOpen}
           mode={formMode}
           recordId={editingId}
-          onClose={() => {
-            setFormOpen(false);
-            setEditingId(undefined);
-          }}
-          onSuccess={() => {
-            void safeRefetch(true);
-          }}
+          onClose={() => { setFormOpen(false); setEditingId(undefined); }}
+          onSuccess={() => { void safeRefetch(true); }}
         />
       )}
+
+      <Modal
+        open={reasonModal.open}
+        title={reasonModal.titleKey ? t(reasonModal.titleKey as Parameters<typeof t>[0]) : ''}
+        okButtonProps={{ danger: true, disabled: reasonModal.action !== 'delay' && !reasonValue.trim() }}
+        onOk={handleReasonConfirm}
+        onCancel={() => setReasonModal((s) => ({ ...s, open: false }))}
+        destroyOnClose
+      >
+        <Input.TextArea
+          rows={3}
+          placeholder={reasonModal.reasonKey ? t(reasonModal.reasonKey as Parameters<typeof t>[0]) : ''}
+          value={reasonValue}
+          onChange={(e) => setReasonValue(e.target.value)}
+          style={{ marginTop: 8 }}
+        />
+      </Modal>
     </>
   );
 }

@@ -92,12 +92,14 @@ class ChatService {
 
   async sendMessageStream(payload: SendChatMessagePayload, handlers: StreamHandlers = {}): Promise<StreamDoneEvent | undefined> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    const tenantId = localStorage.getItem(STORAGE_KEYS.TENANT_ID);
     const response = await fetch(`${API_BASE_URL}${ENDPOINTS.chat.messagesStream}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token    ? { Authorization: `Bearer ${token}` } : {}),
+        ...(tenantId ? { 'X-Tenant-ID': tenantId }         : {}),
       },
       body: JSON.stringify(this.toApiPayload(payload)),
     });

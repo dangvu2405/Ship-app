@@ -1,9 +1,11 @@
-import { SearchOutlined, MoonOutlined, SunOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
-import { Button, Divider, Flex, Input, theme } from 'antd';
+import { SearchOutlined, MoonOutlined, SunOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SwapOutlined } from '@ant-design/icons';
+import { Button, Divider, Flex, Input, theme, Tooltip } from 'antd';
 import { useAppStore } from '@/stores/app.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { NotificationPopup } from '@/components/common/NotificationPopup';
+import { useNavigate } from 'react-router-dom';
 
 type SiteHeaderProps = {
   sidebarCollapsed: boolean;
@@ -12,8 +14,16 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ sidebarCollapsed, onToggleSidebar }: SiteHeaderProps) {
   const { theme: colorMode, toggleTheme } = useAppStore();
+  const { user, switchTenant } = useAuthStore();
   const { t } = useTranslation();
   const { token } = theme.useToken();
+  const navigate = useNavigate();
+  const canSwitchTenant = (user?.tenants?.length ?? 0) >= 2;
+
+  const handleSwitchTenant = () => {
+    switchTenant();
+    navigate('/select-tenant');
+  };
 
   return (
     <Flex align="center" gap="small" style={{ width: '100%', height: '100%', paddingInline: 16 }}>
@@ -35,6 +45,16 @@ export function SiteHeader({ sidebarCollapsed, onToggleSidebar }: SiteHeaderProp
         />
       </div>
       <Flex align="center" gap={4} style={{ marginLeft: 'auto' }}>
+        {canSwitchTenant && (
+          <Tooltip title={t('header.switchTenant', 'Switch company')}>
+            <Button
+              type="text"
+              icon={<SwapOutlined />}
+              onClick={handleSwitchTenant}
+              aria-label={t('header.switchTenant', 'Switch company')}
+            />
+          </Tooltip>
+        )}
         <LanguageSwitcher />
         <Button
           type="text"

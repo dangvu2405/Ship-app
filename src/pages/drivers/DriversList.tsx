@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigation } from '@refinedev/core';
-import { Avatar, Button, Card, Form, List, Radio, Space, Tabs, Tag } from 'antd';
+import { Avatar, Button, Card, Form, List, Space, Tabs, Tag } from 'antd';
 import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -23,12 +23,6 @@ type DriverFilterForm = {
   available_status?: string;
 };
 
-type PaginationPosition = 'top' | 'bottom' | 'both';
-type PaginationAlign = 'start' | 'center' | 'end';
-
-const positionOptions: PaginationPosition[] = ['top', 'bottom', 'both'];
-const alignOptions: PaginationAlign[] = ['start', 'center', 'end'];
-
 export function DriversList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
@@ -40,8 +34,6 @@ export function DriversList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Driver | null>(null);
   const [current, setCurrent] = useState(1);
-  const [position, setPosition] = useState<PaginationPosition>('bottom');
-  const [align, setAlign] = useState<PaginationAlign>('center');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
@@ -155,89 +147,48 @@ export function DriversList() {
       />
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
         <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
-
-          <ListPageFilters variant="grid-4">
+        <Form form={filterForm} layout="vertical" requiredMark={false} colon={false} className="contents min-w-0 w-full">
+          <ListPageFilters variant="grid-2">
             <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
               onChange={setSearchKeyword}
             />
-            <Form
-              form={filterForm}
-              layout="vertical"
-              requiredMark={false}
-              colon={false}
-              className="contents min-w-0 w-full"
-            >
-              <FormItemSelect
-                noStyle
-                name="available_status"
-                label={null}
-                placeholder={t('drivers.availableStatus')}
-                options={availableStatusOptions}
-                allowClear
-                selectProps={{
-                  classNames: { root: 'list-page-filters__select' },
-                }}
-              />
-            </Form>
+            <FormItemSelect
+              noStyle
+              name="available_status"
+              label={null}
+              placeholder={t('drivers.availableStatus')}
+              options={availableStatusOptions}
+              allowClear
+              classNames={{ root: 'list-page-filters__select' }}
+            />
+          </ListPageFilters>
+          <div className="list-page-filters__btn-row">
             <ListPageFilters.Actions
               onSearch={handleSearchFilters}
               onReset={handleClearFilters}
               busy={isFetching && !isLoading}
             />
-          </ListPageFilters>
-        <Space direction="vertical" style={{ marginBottom: '20px' }} size="middle">
-          <Space>
-            <span>Pagination Position:</span>
-            <Radio.Group
-              optionType="button"
-              value={position}
-              onChange={(e) => {
-                setPosition(e.target.value as PaginationPosition);
-              }}
-            >
-              {positionOptions.map((item) => (
-                <Radio.Button key={item} value={item}>
-                  {item}
-                </Radio.Button>
-              ))}
-            </Radio.Group>
-          </Space>
-          <Space>
-            <span>Pagination Align:</span>
-            <Radio.Group
-              optionType="button"
-              value={align}
-              onChange={(e) => {
-                setAlign(e.target.value as PaginationAlign);
-              }}
-            >
-              {alignOptions.map((item) => (
-                <Radio.Button key={item} value={item}>
-                  {item}
-                </Radio.Button>
-              ))}
-            </Radio.Group>
-          </Space>
-        </Space>
+          </div>
+        </Form>
 
-          {isError ? (
-            <ErrorState
-              title={t('common.loadError')}
-              description={t('common.tryAgainDescription')}
-              onRetry={() => void safeRefetch(true)}
-            />
-          ) : (
-            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-              <List
-                itemLayout="horizontal"
-                dataSource={listData}
-                locale={{
-                  emptyText: t('emptyState.listDescription', { resource: t('drivers.title') }),
-                }}
-                pagination={{ current, total, pageSize, onChange: setCurrent, position, align }}
-                renderItem={(item, index) => {
+        {isError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => void safeRefetch(true)}
+          />
+        ) : (
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <List
+              itemLayout="horizontal"
+              dataSource={listData}
+              locale={{
+                emptyText: t('emptyState.listDescription', { resource: t('drivers.title') }),
+              }}
+              pagination={{ current, total, pageSize, onChange: setCurrent }}
+              renderItem={(item, index) => {
                   const statusLabel =
                     item.available_status === 'available'
                       ? t('drivers.statusAvailable')
@@ -284,7 +235,16 @@ export function DriversList() {
                       ]}
                     >
                       <List.Item.Meta
-                        avatar={<Avatar src={`https://api.dicebear.com/7.x/miniavs/svg?seed=${index}`} />}
+                        avatar={(
+                          <Avatar
+                            src={
+                              item.employee?.avatar_url?.trim()
+                                ? item.employee.avatar_url
+                                : `https://api.dicebear.com/7.x/miniavs/svg?seed=${encodeURIComponent(String(item.employee_id ?? item.id ?? index))}`
+                            }
+                            alt=""
+                          />
+                        )}
                         title={
                           <Button type="link" style={{ padding: 0 }} onClick={() => show('drivers', item.id)}>
                             {item.employee?.name ?? `#${item.employee_id}`}
@@ -301,9 +261,9 @@ export function DriversList() {
                     </List.Item>
                   );
                 }}
-              />
-            </PageLoadingOverlay>
-          )}
+            />
+          </PageLoadingOverlay>
+        )}
       </Card>
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.license_no} />
       {formOpen && (

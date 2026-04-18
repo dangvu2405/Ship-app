@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Upload, Button, type UploadFile, type UploadProps } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import toast from 'react-hot-toast';
-import api from '@/services/api';
-import { ENDPOINTS } from '@/services/endpoints';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errorHandler';
+import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 
 interface FileUploaderProps {
   value?: string[];
@@ -49,36 +48,19 @@ export function FileUploader({
     }
   };
 
-  const customRequest: UploadProps['customRequest'] = async (options) => {
-    const { action, file, onSuccess, onError, onProgress } = options;
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await api.post(ENDPOINTS.public.upload, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total && onProgress) {
-            onProgress({ percent: (progressEvent.loaded / progressEvent.total) * 100 });
-          }
-        },
-      });
-
-      // Assuming backend responds with { data: { url: string } }
-      const uploadedUrl = response.data?.data?.url || response.data?.url;
-      if (!uploadedUrl) {
-        throw new Error('No URL returned from upload API');
-      }
-
-      onSuccess?.({ data: { url: uploadedUrl } });
-      toast.success(t('notifications.uploadSuccess') ?? 'Upload thành công');
-    } catch (err) {
-      onError?.(err as Error);
-      const msg = getErrorMessage(err);
-      toast.error(msg === 'An error occurred' ? (t('notifications.uploadError') ?? 'Lỗi upload file') : msg);
-    }
+  const customRequest: UploadProps['customRequest'] = (options) => {
+    void publicFileUploadToUrl({
+      ...options,
+      onSuccess: (body, xhr) => {
+        toast.success(t('notifications.uploadSuccess'));
+        options.onSuccess?.(body, xhr);
+      },
+      onError: (err) => {
+        const msg = getErrorMessage(err);
+        toast.error(msg === 'An error occurred' ? t('notifications.uploadError') : msg);
+        options.onError?.(err);
+      },
+    });
   };
 
   return (

@@ -4,7 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes';
 
 export const useAuth = () => {
-  const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    checkAuth,
+    currentTenantId,
+    pendingTenants,
+    selectTenant,
+    switchTenant,
+  } = useAuthStore();
   const navigate = useNavigate();
 
   const normalizeRole = (role: string): string => role.trim().toLowerCase();
@@ -34,6 +43,8 @@ export const useAuth = () => {
     ) ?? false;
   };
 
+  const currentTenant = user?.tenants?.find((t) => t.id === currentTenantId) ?? null;
+
   return {
     user,
     isAuthenticated,
@@ -41,5 +52,10 @@ export const useAuth = () => {
     requireAuth,
     hasRole,
     hasPermission,
+    currentTenantId,
+    currentTenant,
+    pendingTenants,
+    selectTenant,
+    switchTenant,
   };
 };

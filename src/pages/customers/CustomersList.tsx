@@ -166,21 +166,14 @@ export function CustomersList() {
           </Button>
         }
       />
-      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
-        <ListPageFilters variant="grid-4">
-          <ListPageFilters.Search
-            placeholder={t('common.search')}
-            value={searchKeyword}
-            onChange={setSearchKeyword}
-          />
-
-          <Form
-            form={filterForm}
-            layout="vertical"
-            requiredMark={false}
-            colon={false}
-            className="contents min-w-0 w-full"
-          >
+      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <Form form={filterForm} layout="vertical" requiredMark={false} colon={false} className="contents min-w-0 w-full">
+          <ListPageFilters variant="grid-2">
+            <ListPageFilters.Search
+              placeholder={t('common.search')}
+              value={searchKeyword}
+              onChange={setSearchKeyword}
+            />
             <FormItemSelect
               noStyle
               name="type"
@@ -188,18 +181,17 @@ export function CustomersList() {
               placeholder={t('customers.type')}
               options={customerTypeOptions}
               allowClear
-              selectProps={{
-                classNames: { root: 'list-page-filters__select' },
-              }}
+              classNames={{ root: 'list-page-filters__select' }}
             />
-          </Form>
-
-          <ListPageFilters.Actions
-            onSearch={handleSearchFilters}
-            onReset={handleClearFilters}
-            busy={isFetching && !isLoading}
-          />
-        </ListPageFilters>
+          </ListPageFilters>
+          <div className="list-page-filters__btn-row">
+            <ListPageFilters.Actions
+              onSearch={handleSearchFilters}
+              onReset={handleClearFilters}
+              busy={isFetching && !isLoading}
+            />
+          </div>
+        </Form>
 
         {isError ? (
           <ErrorState
@@ -208,7 +200,7 @@ export function CustomersList() {
             onRetry={() => refetch()}
           />
         ) : (
-          <PageLoadingOverlay loading={isLoading} className="mt-4 overflow-hidden rounded-lg">
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
             <DataTable<Customer>
               data={listData}
               columns={columns}

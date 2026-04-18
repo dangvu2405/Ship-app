@@ -12,6 +12,7 @@ import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesW
 import toast from 'react-hot-toast';
 import type { Office } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { mergeVnAddressIntoPayload } from '@/utils/vnAddressForm';
 
 interface OfficeFormDialogProps {
   open?: boolean;
@@ -58,10 +59,13 @@ export function OfficeFormDialog({ open, mode, recordId, onClose, onSuccess }: O
     onClose: handleClose,
   });
 
-  const handleSubmit = (values: Partial<Office>) => {
+  const handleSubmit = (values: Partial<Office> & Record<string, unknown>) => {
+    const payload: Record<string, unknown> = { ...values };
+    mergeVnAddressIntoPayload(payload, values, '', 'address');
+
     if (isEdit && resolvedId) {
       updateItem(
-        { resource: 'offices', id: resolvedId, values },
+        { resource: 'offices', id: resolvedId, values: payload as Partial<Office> },
         {
           onSuccess: () => {
             toast.success(t('notifications.updateSuccess', { item: t('offices.title') }));
@@ -76,7 +80,7 @@ export function OfficeFormDialog({ open, mode, recordId, onClose, onSuccess }: O
       );
     } else {
       createItem(
-        { resource: 'offices', values },
+        { resource: 'offices', values: payload as Partial<Office> },
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('offices.title') }));

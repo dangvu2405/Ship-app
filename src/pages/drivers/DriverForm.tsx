@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { Badge, Checkbox, Descriptions, Form } from 'antd';
+import { useMemo } from 'react';
+import { Badge, Descriptions, Form } from 'antd';
 import type { DescriptionsProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
+import type { UploadProps } from 'antd/es/upload';
 import { Inbox } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useList } from '@refinedev/core';
 import {
   FormAccordionSections,
@@ -10,8 +12,11 @@ import {
   FormItemText,
   FormItemTextArea,
   FormItemUploadDragger,
+  VnAdminAddressFields,
 } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getErrorMessage } from '@/utils/errorHandler';
+import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 import type { Driver, Employee } from '@/types';
 
 interface DriverFormProps {
@@ -25,10 +30,25 @@ const uploadListOk = (list?: UploadFile[]) => Array.isArray(list) && list.length
 const normFile = (e: { fileList?: UploadFile[] }) => e?.fileList ?? [];
 
 export function DriverForm(props: DriverFormProps) {
-  const { form: _form, initialValues, isViewMode } = props;
-  void _form;
+  const { form, initialValues, isViewMode } = props;
   const { t } = useTranslation();
-  const [componentDisabled, setComponentDisabled] = useState(false);
+
+  const driverFileCustomRequest = useMemo<NonNullable<UploadProps['customRequest']>>(
+    () => (options) => {
+      void publicFileUploadToUrl({
+        ...options,
+        onSuccess: (body, xhr) => {
+          toast.success(t('notifications.uploadSuccess'));
+          options.onSuccess?.(body, xhr);
+        },
+        onError: (err) => {
+          toast.error(getErrorMessage(err) || t('notifications.uploadError'));
+          options.onError?.(err);
+        },
+      });
+    },
+    [t],
+  );
   const { data: empData, isLoading } = useList<Employee>({
     resource: 'employees',
     pagination: { current: 1, pageSize: 500 },
@@ -146,18 +166,9 @@ export function DriverForm(props: DriverFormProps) {
   });
 
   return (
-    <>
-      <Checkbox
-        checked={componentDisabled}
-        onChange={(e) => setComponentDisabled(e.target.checked)}
-        style={{ marginBottom: 12 }}
-      >
-        Form disabled
-      </Checkbox>
-      <fieldset disabled={componentDisabled} style={{ border: 0, margin: 0, padding: 0 }}>
-        <FormAccordionSections
-          defaultOpen="assignment"
-          sections={[
+    <FormAccordionSections
+      defaultOpen="assignment"
+      sections={[
             {
               value: 'assignment',
               titleKey: 'assignment',
@@ -208,12 +219,13 @@ export function DriverForm(props: DriverFormProps) {
                     required
                     rules={[{ required: true, message: t('validation.required', { field: t('drivers.idCardIssueDate') }) }]}
                   />
-                  <FormItemTextArea
-                    name="permanent_address"
-                    label={t('drivers.permanentAddress')}
-                    rows={2}
-                    required
-                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.permanentAddress') }) }]}
+                  <VnAdminAddressFields
+                    form={form}
+                    cascadeRequired
+                    relaxCascadeRequired={Boolean(
+                      initialValues?.id && initialValues?.permanent_address?.trim(),
+                    )}
+                    legacySavedAddress={initialValues?.permanent_address?.trim()}
                   />
                 </>
               ),
@@ -230,6 +242,11 @@ export function DriverForm(props: DriverFormProps) {
                     getValueFromEvent={normFile}
                     rules={[requireUploadUnlessUrl('id_card_front_url')]}
                     accept="image/*,.pdf,application/pdf"
+                    uploadProps={{
+                      listType: 'picture',
+                      customRequest: driverFileCustomRequest,
+                      beforeUpload: () => true,
+                    }}
                   >
                     <p className="flex justify-center">
                       <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -244,6 +261,11 @@ export function DriverForm(props: DriverFormProps) {
                     getValueFromEvent={normFile}
                     rules={[requireUploadUnlessUrl('id_card_back_url')]}
                     accept="image/*,.pdf,application/pdf"
+                    uploadProps={{
+                      listType: 'picture',
+                      customRequest: driverFileCustomRequest,
+                      beforeUpload: () => true,
+                    }}
                   >
                     <p className="flex justify-center">
                       <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -285,6 +307,11 @@ export function DriverForm(props: DriverFormProps) {
                     getValueFromEvent={normFile}
                     rules={[requireUploadUnlessUrl('insurance_doc_url')]}
                     accept="image/*,.pdf,application/pdf"
+                    uploadProps={{
+                      listType: 'picture',
+                      customRequest: driverFileCustomRequest,
+                      beforeUpload: () => true,
+                    }}
                   >
                     <p className="flex justify-center">
                       <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -303,8 +330,6 @@ export function DriverForm(props: DriverFormProps) {
               ),
             },
           ]}
-        />
-      </fieldset>
-    </>
+    />
   );
 }

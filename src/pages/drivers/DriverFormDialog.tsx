@@ -13,16 +13,64 @@ import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesW
 import toast from 'react-hot-toast';
 import type { Driver } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { mergeVnAddressIntoPayload } from '@/utils/vnAddressForm';
 
 type DriverFormSubmitValues = Partial<Driver> & {
   id_card_front?: UploadFile[];
   id_card_back?: UploadFile[];
   insurance_doc?: UploadFile[];
+  addr_province_code?: number;
+  addr_province_name?: string;
+  addr_district_code?: number;
+  addr_district_name?: string;
+  addr_ward_code?: number;
+  addr_ward_name?: string;
+  addr_street_detail?: string;
 };
 
 const uploadDoneList = (url: string | undefined, fileName: string): UploadFile[] => {
   if (!url?.trim()) return [];
   return [{ uid: `-${fileName}`, name: fileName, status: 'done', url: url.trim() }];
+};
+
+const urlFromDriverUploadList = (files?: UploadFile[]): string | undefined => {
+  if (!files?.length) {
+    return undefined;
+  }
+  const f = files[0];
+  const fromResponse = f.response as { data?: { url?: string } } | undefined;
+  const url = fromResponse?.data?.url ?? f.url;
+  return typeof url === 'string' && url.trim() ? url.trim() : undefined;
+};
+
+const mergeDriverUploadsIntoPayload = (
+  values: DriverFormSubmitValues,
+  isEdit: boolean,
+): Record<string, unknown> => {
+  const { id_card_front, id_card_back, insurance_doc, ...rest } = values;
+  const payload: Record<string, unknown> = { ...rest };
+
+  mergeVnAddressIntoPayload(payload, values as Record<string, unknown>, '', 'permanent_address');
+
+  const setUrl = (key: 'id_card_front_url' | 'id_card_back_url' | 'insurance_doc_url', files?: UploadFile[]) => {
+    if (files === undefined) {
+      return;
+    }
+    const next = urlFromDriverUploadList(files);
+    if (next !== undefined) {
+      payload[key] = next;
+      return;
+    }
+    if (isEdit && files.length === 0) {
+      payload[key] = null;
+    }
+  };
+
+  setUrl('id_card_front_url', id_card_front);
+  setUrl('id_card_back_url', id_card_back);
+  setUrl('insurance_doc_url', insurance_doc);
+
+  return payload;
 };
 
 interface DriverFormDialogProps {
@@ -71,11 +119,7 @@ export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: D
   });
 
   const handleSubmit = (values: DriverFormSubmitValues) => {
-    const { id_card_front, id_card_back, insurance_doc, ...rest } = values;
-    void id_card_front;
-    void id_card_back;
-    void insurance_doc;
-    const payload = { ...rest } as Partial<Driver>;
+    const payload = mergeDriverUploadsIntoPayload(values, isEdit) as Partial<Driver>;
 
     if (isEdit && resolvedId) {
       updateItem(

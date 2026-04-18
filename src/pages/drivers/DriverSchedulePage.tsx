@@ -8,6 +8,7 @@ import {
   Col,
   DatePicker,
   Descriptions,
+  Empty,
   Flex,
   Form,
   Input,
@@ -23,7 +24,7 @@ import {
 } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
-import { PlusOutlined, SwapOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -74,6 +75,25 @@ const SHIFT_OPTIONS = [
   { label: 'Tuỳ chỉnh (custom)',  value: 'custom' },
 ];
 
+function toFiniteNumber(v: unknown): number | undefined {
+  if (v == null || v === '') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Resolve office id from list payload (shape varies by API / includes). */
+function driverOfficeId(d: Driver): number | undefined {
+  const row = d as unknown as Record<string, unknown>;
+  const top = toFiniteNumber(row.office_id);
+  if (top != null) return top;
+  const emp = d.employee as Record<string, unknown> | undefined;
+  if (!emp) return undefined;
+  const fromFlat = toFiniteNumber(emp.office_id ?? emp.officeId);
+  if (fromFlat != null) return fromFlat;
+  const office = emp.office as { id?: unknown } | undefined;
+  return toFiniteNumber(office?.id);
+}
+
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
@@ -87,96 +107,93 @@ function StatCard({ label, value, danger }: { label: string; value: number; dang
   );
 }
 
-// ─── Company / Office gate ────────────────────────────────────────────────────
-
-interface GateProps {
-  companies: Company[];
-  offices: Office[];
-  onConfirm: (companyId: number, officeId: number) => void;
-}
-
-function CompanyOfficeGate({ companies, offices, onConfirm }: GateProps) {
-  const [companyId, setCompanyId] = useState<number | null>(null);
-  const [officeId, setOfficeId]   = useState<number | null>(null);
-
-  const filteredOffices = useMemo(
-    () => companyId ? offices.filter((o) => o.company_id === companyId) : offices,
-    [offices, companyId],
-  );
-
-  const companyOptions = useMemo(() => companies.map((c) => ({ label: c.name, value: c.id })), [companies]);
-  const officeOptions  = useMemo(() => filteredOffices.map((o) => ({ label: o.name, value: o.id })), [filteredOffices]);
-
-  return (
-    <Flex align="center" justify="center" style={{ minHeight: 'calc(100vh - 160px)' }}>
-      <Card style={{ width: 420 }}>
-        <Flex vertical align="center" gap={24}>
-          <div style={{ textAlign: 'center' }}>
-            <Typography.Title level={4} style={{ marginBottom: 4 }}>
-              Chọn công ty & chi nhánh
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              Vui lòng chọn để xem lịch làm việc, nghỉ phép, tăng ca và vi phạm
-            </Typography.Text>
-          </div>
-
-          <Flex vertical gap={12} style={{ width: '100%' }}>
-            <Select
-              showSearch
-              optionFilterProp="label"
-              placeholder="Chọn công ty"
-              options={companyOptions}
-              value={companyId ?? undefined}
-              onChange={(v) => { setCompanyId(v as number); setOfficeId(null); }}
-              style={{ width: '100%' }}
-            />
-            <Select
-              showSearch
-              optionFilterProp="label"
-              placeholder="Chọn chi nhánh"
-              options={officeOptions}
-              disabled={!companyId}
-              value={officeId ?? undefined}
-              onChange={(v) => setOfficeId(v as number)}
-              style={{ width: '100%' }}
-            />
-            <Button
-              type="primary"
-              size="large"
-              block
-              disabled={!officeId}
-              onClick={() => officeId && companyId && onConfirm(companyId, officeId)}
-            >
-              Xem dữ liệu
-            </Button>
-          </Flex>
-        </Flex>
-      </Card>
-    </Flex>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function DriverSchedulePage() {
   const { t } = useTranslation();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const canManage = hasRole('admin') || hasRole('manager') || hasRole('dispatcher');
 
   // ── Gate state ──
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [selectedOfficeId, setSelectedOfficeId]   = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('schedule');
+  const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
+
+  const driversListFilters = useMemo(
+    () =>
+      selectedOfficeId != null
+        ? [{ field: 'office_id', operator: 'eq' as const, value: selectedOfficeId }]
+        : [],
+    [selectedOfficeId],
+  );
 
   // ── Remote data ──
   const { data: companiesData } = useList<Company>({ resource: 'companies', pagination: { current: 1, pageSize: 200 } });
   const { data: officesData }   = useList<Office>({ resource: 'offices', pagination: { current: 1, pageSize: 200 } });
-  const { data, isLoading }     = useList<Driver>({ resource: 'drivers', pagination: { current: 1, pageSize: 500 }, sorters: [{ field: 'id', order: 'asc' }] });
+  const { data, isLoading }     = useList<Driver>({
+    resource: 'drivers',
+    pagination: { current: 1, pageSize: 500 },
+    sorters: [{ field: 'id', order: 'asc' }],
+    filters: driversListFilters,
+  });
   const { data: vehiclesData }  = useList<Vehicle>({ resource: 'vehicles', pagination: { current: 1, pageSize: 200 } });
 
   const companies = useMemo(() => companiesData?.data ?? [], [companiesData?.data]);
   const offices   = useMemo(() => officesData?.data ?? [], [officesData?.data]);
   const drivers   = useMemo(() => data?.data ?? [], [data?.data]);
+
+  useEffect(() => {
+    if (selectedOfficeId != null || offices.length === 0) {
+      return;
+    }
+    const fromUser = user?.employee?.office_id;
+    const uid = toFiniteNumber(fromUser);
+    const byUser = uid != null ? offices.find((o) => toFiniteNumber(o.id) === uid) : undefined;
+    const pick = byUser ?? offices[0];
+    if (pick) {
+      setSelectedOfficeId(toFiniteNumber(pick.id) ?? null);
+      setSelectedCompanyId(toFiniteNumber(pick.company_id) ?? null);
+    }
+  }, [offices, user?.employee?.office_id, selectedOfficeId]);
+
+  const companySelectOptions = useMemo(
+    () => companies
+      .map((c) => {
+        const id = toFiniteNumber(c.id);
+        return id == null ? null : { label: c.name, value: id };
+      })
+      .filter((o): o is { label: string; value: number } => o != null),
+    [companies],
+  );
+  const officeSelectOptions = useMemo(() => {
+    if (selectedCompanyId == null) {
+      return [];
+    }
+    const cid = selectedCompanyId;
+    return offices
+      .filter((o) => toFiniteNumber(o.company_id) === cid)
+      .map((o) => {
+        const id = toFiniteNumber(o.id);
+        return id == null ? null : { label: o.name, value: id };
+      })
+      .filter((o): o is { label: string; value: number } => o != null);
+  }, [offices, selectedCompanyId]);
+
+  const driverToolbarOptions = useMemo(() => {
+    if (selectedOfficeId == null) {
+      return [];
+    }
+    const oid = selectedOfficeId;
+    return drivers
+      .filter((d) => driverOfficeId(d) === oid)
+      .map((d) => {
+        const id = toFiniteNumber(d.id);
+        if (id == null) return null;
+        return { label: d.employee?.name ?? `#${id}`, value: id };
+      })
+      .filter((o): o is { label: string; value: number } => o != null);
+  }, [drivers, selectedOfficeId]);
 
   const vehicleOptions = useMemo(
     () => (vehiclesData?.data ?? []).map((v) => ({ label: v.plate_number || `#${v.id}`, value: v.id })),
@@ -184,20 +201,74 @@ export function DriverSchedulePage() {
   );
 
   // Drivers in selected office
-  const officeDrivers = useMemo(
-    () => selectedOfficeId
-      ? drivers.filter((d) => d.employee?.office_id === selectedOfficeId)
-      : drivers,
-    [drivers, selectedOfficeId],
-  );
+  const officeDrivers = useMemo(() => {
+    if (selectedOfficeId == null) {
+      return drivers;
+    }
+    const oid = selectedOfficeId;
+    return drivers.filter((d) => driverOfficeId(d) === oid);
+  }, [drivers, selectedOfficeId]);
 
   const driverOptions = useMemo(
-    () => officeDrivers.map((d) => ({ label: d.employee?.name ?? `#${d.id}`, value: d.id as number })),
+    () => officeDrivers
+      .map((d) => {
+        const id = toFiniteNumber(d.id);
+        return id == null ? null : { label: d.employee?.name ?? `#${id}`, value: id };
+      })
+      .filter((o): o is { label: string; value: number } => o != null),
     [officeDrivers],
   );
 
+  const applyCompanyFilter = useCallback(
+    (cid: unknown) => {
+      const c = toFiniteNumber(cid);
+      if (c == null) {
+        return;
+      }
+      setSelectedCompanyId(c);
+      const firstOff = offices.find((o) => toFiniteNumber(o.company_id) === c);
+      setSelectedOfficeId(toFiniteNumber(firstOff?.id) ?? null);
+      setSelectedDriverId(null);
+      setSchedules([]);
+    },
+    [offices],
+  );
+
+  const applyOfficeFilter = useCallback(
+    (oid: unknown) => {
+      const o = toFiniteNumber(oid);
+      if (o == null) {
+        return;
+      }
+      setSelectedOfficeId(o);
+      const row = offices.find((x) => toFiniteNumber(x.id) === o);
+      const co = toFiniteNumber(row?.company_id);
+      if (co != null) {
+        setSelectedCompanyId(co);
+      }
+      setSelectedDriverId(null);
+      setSchedules([]);
+    },
+    [offices],
+  );
+
+  useEffect(() => {
+    if (selectedDriverId == null) {
+      return;
+    }
+    if (!selectedOfficeId) {
+      setSelectedDriverId(null);
+      return;
+    }
+    const stillInOffice = drivers.some(
+      (d) => toFiniteNumber(d.id) === selectedDriverId && driverOfficeId(d) === selectedOfficeId,
+    );
+    if (!stillInOffice) {
+      setSelectedDriverId(null);
+    }
+  }, [drivers, selectedDriverId, selectedOfficeId]);
+
   // ── Schedule calendar state ──
-  const [selectedDriverId, setSelectedDriverId] = useState<number | 'all'>('all');
   const [currentMonth, setCurrentMonth]         = useState<Dayjs>(dayjs());
   const [selectedShift, setSelectedShift]       = useState<string>('all');
   const [selectedWorkStatus, setSelectedWorkStatus] = useState<WorkStatusFilter>('all');
@@ -263,7 +334,11 @@ export function DriverSchedulePage() {
 
   // ── Data loading ──
   const loadSchedules = useCallback(async () => {
-    if (!selectedOfficeId) return;
+    if (!selectedOfficeId || selectedDriverId == null) {
+      setSchedules([]);
+      setScheduleLoading(false);
+      return;
+    }
     setScheduleLoading(true);
     try {
       const result = await workforceOpsService.listDriverSchedules({
@@ -271,8 +346,8 @@ export function DriverSchedulePage() {
         to:        currentMonth.endOf('month').format('YYYY-MM-DD'),
         per_page:  200,
         office_id: selectedOfficeId,
-        ...(selectedDriverId !== 'all' && { driver_id: selectedDriverId }),
-        ...(selectedShift    !== 'all' && { shift_code: selectedShift }),
+        driver_id: selectedDriverId,
+        ...(selectedShift !== 'all' && { shift_code: selectedShift }),
       });
       setSchedules(result.data);
     } catch {
@@ -285,10 +360,15 @@ export function DriverSchedulePage() {
   useEffect(() => { void loadSchedules(); }, [loadSchedules]);
 
   useEffect(() => {
-    if (!selectedOfficeId) return;
+    if (!selectedOfficeId || selectedDriverId == null) {
+      setLeaveRequests([]);
+      setAbsences([]);
+      setPublicHolidays([]);
+      return;
+    }
     const from = currentMonth.startOf('month').format('YYYY-MM-DD');
     const to   = currentMonth.endOf('month').format('YYYY-MM-DD');
-    const driverParam = selectedDriverId !== 'all' ? { driver_id: selectedDriverId } : {};
+    const driverParam = { driver_id: selectedDriverId };
     void Promise.all([
       workforceOpsService.listLeaveRequests({ ...driverParam, from, to, status: 'approved', per_page: 200 }),
       workforceOpsService.listAbsences({ ...driverParam, from, to, per_page: 200 }),
@@ -366,7 +446,7 @@ export function DriverSchedulePage() {
       setCreateLoading(true);
       await workforceOpsService.createDriverSchedule({
         driver_id: values.driver_id,
-        office_id: driver?.employee?.office_id ?? selectedOfficeId ?? undefined,
+        office_id: driver ? driverOfficeId(driver) ?? selectedOfficeId ?? undefined : selectedOfficeId ?? undefined,
         work_date: values.work_date.format('YYYY-MM-DD'),
         shift_code: values.shift_code,
         start_time: values.start_time?.format('HH:mm'),
@@ -408,42 +488,35 @@ export function DriverSchedulePage() {
     return <ScheduleDayCell date={date} info={dayInfo} onClick={handleClick} />;
   };
 
-  // ── Gate: show selector if no office confirmed ──
-  if (!selectedOfficeId) {
-    return (
-      <CompanyOfficeGate
-        companies={companies}
-        offices={offices}
-        onConfirm={(cId, oId) => { setSelectedCompanyId(cId); setSelectedOfficeId(oId); }}
-      />
-    );
-  }
-
-  const selectedOfficeName = offices.find((o) => o.id === selectedOfficeId)?.name ?? `Chi nhánh #${selectedOfficeId}`;
-  const selectedCompanyName = companies.find((c) => c.id === selectedCompanyId)?.name;
-
   // ── Main render ──
   return (
     <>
       <PageHeader
         title={t('drivers.scheduleTitle')}
-        description={
-          <Space>
-            <Tag color="blue">{selectedCompanyName}</Tag>
-            <Tag color="green">{selectedOfficeName}</Tag>
-            <Button
-              size="small"
-              icon={<SwapOutlined />}
-              onClick={() => { setSelectedOfficeId(null); setSelectedCompanyId(null); setSchedules([]); }}
-            >
-              Đổi chi nhánh
-            </Button>
-          </Space>
-        }
         breadcrumb={[
           { label: t('dashboard.title'), path: ROUTES.dashboard },
           { label: t('drivers.scheduleTitle') },
         ]}
+        actions={
+          canManage ? (
+            <>
+              <Link to={ROUTES.admin.driversScheduleBulk}>
+                <Button icon={<UnorderedListOutlined />}>Tạo lịch theo lô</Button>
+              </Link>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  createForm.resetFields();
+                  if (selectedDriverId != null) createForm.setFieldValue('driver_id', selectedDriverId);
+                  setCreateOpen(true);
+                }}
+              >
+                Tạo lịch
+              </Button>
+            </>
+          ) : null
+        }
       />
 
       <Card styles={{ body: { padding: 0 } }}>
@@ -469,13 +542,45 @@ export function DriverSchedulePage() {
                       <Button size="small" onClick={() => setCurrentMonth((p) => p.add(1, 'month'))}>{'>'}</Button>
                     </Space>
                     <Space wrap>
-                      <Typography.Text type="secondary">{t('drivers.title')}:</Typography.Text>
-                      <Select
-                        showSearch optionFilterProp="label"
-                        value={selectedDriverId}
-                        onChange={setSelectedDriverId}
-                        options={[{ label: t('drivers.scheduleAllDrivers'), value: 'all' as const }, ...driverOptions]}
+                      <Typography.Text type="secondary">{t('payrolls.company')}:</Typography.Text>
+                      <Select<number>
+                        showSearch
+                        optionFilterProp="label"
                         style={{ minWidth: 220 }}
+                        placeholder={t('companies.title')}
+                        options={companySelectOptions}
+                        value={selectedCompanyId ?? undefined}
+                        onChange={(id) => applyCompanyFilter(id)}
+                      />
+                      <Typography.Text type="secondary">{t('offices.title')}:</Typography.Text>
+                      <Select<number>
+                        showSearch
+                        optionFilterProp="label"
+                        style={{ minWidth: 220 }}
+                        placeholder={t('offices.title')}
+                        options={officeSelectOptions}
+                        value={selectedOfficeId ?? undefined}
+                        disabled={selectedCompanyId == null}
+                        onChange={(id) => applyOfficeFilter(id)}
+                      />
+                      <Typography.Text type="secondary">{t('drivers.title')}:</Typography.Text>
+                      <Select<number>
+                        showSearch
+                        allowClear
+                        optionFilterProp="label"
+                        style={{ minWidth: 220 }}
+                        placeholder={t('drivers.title')}
+                        options={driverToolbarOptions}
+                        value={selectedDriverId ?? undefined}
+                        disabled={selectedOfficeId == null}
+                        onChange={(v) => {
+                          if (v == null) {
+                            setSelectedDriverId(null);
+                            return;
+                          }
+                          const id = toFiniteNumber(v);
+                          setSelectedDriverId(id ?? null);
+                        }}
                       />
                       <Tag bordered={false} color={scheduleStatus.color}>{scheduleStatus.label}</Tag>
                       {canManage && (
@@ -486,77 +591,87 @@ export function DriverSchedulePage() {
                       <Button loading={bulkActionLoading} disabled={!approvedIds.length || !canManage} onClick={() => void executeBulkAction(approvedIds, 'lock')}>
                         {t('drivers.scheduleLock')} ({approvedIds.length})
                       </Button>
-                      {canManage && (
-                        <>
-                          <Link to={ROUTES.admin.driversScheduleBulk}>
-                            <Button icon={<UnorderedListOutlined />}>Tạo lịch theo lô</Button>
-                          </Link>
-                          <Button type="primary" icon={<PlusOutlined />}
-                            onClick={() => { createForm.resetFields(); if (selectedDriverId !== 'all') createForm.setFieldValue('driver_id', selectedDriverId); setCreateOpen(true); }}>
-                            Tạo lịch
-                          </Button>
-                        </>
-                      )}
                     </Space>
                   </Flex>
 
-                  {/* Stats */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
-                    {statCards.map((s) => <StatCard key={s.label} {...s} />)}
-                    <Card size="small" styles={{ body: { padding: 12 } }}>
-                      <Typography.Title level={3} style={{ margin: 0 }}>{dayMap.size}</Typography.Title>
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('drivers.scheduleLegendWorking')}</Typography.Text>
-                    </Card>
-                  </div>
+                  {selectedDriverId == null ? (
+                    <Empty style={{ margin: '32px 0' }} description={t('drivers.scheduleSelectDriverToView')} />
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
+                        {statCards.map((s) => <StatCard key={s.label} {...s} />)}
+                        <Card size="small" styles={{ body: { padding: 12 } }}>
+                          <Typography.Title level={3} style={{ margin: 0 }}>{dayMap.size}</Typography.Title>
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('drivers.scheduleLegendWorking')}</Typography.Text>
+                        </Card>
+                      </div>
 
-                  {/* Filters */}
-                  <Flex gap={8} wrap="wrap" style={{ marginBottom: 12 }}>
-                    <Select value={selectedShift}      onChange={setSelectedShift}      options={shiftOptions}      style={{ minWidth: 140 }} />
-                    <Select value={selectedWorkStatus} onChange={setSelectedWorkStatus} options={workStatusOptions} style={{ minWidth: 220 }} />
-                  </Flex>
+                      <Flex gap={8} wrap="wrap" style={{ marginBottom: 12 }}>
+                        <Select value={selectedShift}      onChange={setSelectedShift}      options={shiftOptions}      style={{ minWidth: 140 }} />
+                        <Select value={selectedWorkStatus} onChange={setSelectedWorkStatus} options={workStatusOptions} style={{ minWidth: 220 }} />
+                      </Flex>
 
-                  {/* Calendar */}
-                  <Card size="small" styles={{ body: { padding: 8 } }}>
-                    <Space wrap style={{ marginBottom: 8 }}>
-                      {[
-                        { color: '#E6F1FB', border: '#85B7EB', label: t('drivers.scheduleLegendWorking') },
-                        { color: '#EAF3DE', border: '#97C459', label: t('drivers.scheduleLegendLeave') },
-                        { color: '#FCEBEB', border: '#F09595', label: t('drivers.scheduleLegendNoLeave') },
-                        { color: '#EEEDFE', border: '#AFA9EC', label: t('drivers.scheduleLegendHoliday') },
-                        { color: '#F5F5F5', border: '#D9D9D9', label: t('drivers.scheduleLegendWeekend') },
-                      ].map((item) => (
-                        <Space key={item.label} size={4}>
-                          <div style={{ width: 12, height: 12, borderRadius: 3, background: item.color, border: `1px solid ${item.border}` }} />
-                          <Typography.Text style={{ fontSize: 11 }}>{item.label}</Typography.Text>
+                      <Card size="small" styles={{ body: { padding: 8 } }}>
+                        <Space wrap style={{ marginBottom: 8 }}>
+                          {[
+                            { color: '#E6F1FB', border: '#85B7EB', label: t('drivers.scheduleLegendWorking') },
+                            { color: '#EAF3DE', border: '#97C459', label: t('drivers.scheduleLegendLeave') },
+                            { color: '#FCEBEB', border: '#F09595', label: t('drivers.scheduleLegendNoLeave') },
+                            { color: '#EEEDFE', border: '#AFA9EC', label: t('drivers.scheduleLegendHoliday') },
+                            { color: '#F5F5F5', border: '#D9D9D9', label: t('drivers.scheduleLegendWeekend') },
+                          ].map((item) => (
+                            <Space key={item.label} size={4}>
+                              <div style={{ width: 12, height: 12, borderRadius: 3, background: item.color, border: `1px solid ${item.border}` }} />
+                              <Typography.Text style={{ fontSize: 11 }}>{item.label}</Typography.Text>
+                            </Space>
+                          ))}
+                          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                            · Nhấn vào ô lịch để xem & quản lý
+                          </Typography.Text>
                         </Space>
-                      ))}
-                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                        · Nhấn vào ô lịch để xem & quản lý
-                      </Typography.Text>
-                    </Space>
-                    {isLoading || scheduleLoading ? (
-                      <TableSkeleton rows={6} columns={1} />
-                    ) : (
-                      <Calendar value={currentMonth} onPanelChange={onPanelChange} cellRender={cellRender} headerRender={() => null} className="driver-attendance-calendar" />
-                    )}
-                  </Card>
+                        {isLoading || scheduleLoading ? (
+                          <TableSkeleton rows={6} columns={1} />
+                        ) : (
+                          <Calendar value={currentMonth} onPanelChange={onPanelChange} cellRender={cellRender} headerRender={() => null} className="driver-attendance-calendar" />
+                        )}
+                      </Card>
+                    </>
+                  )}
                 </div>
               ),
             },
             {
               key: 'leave',
               label: 'Nghỉ phép',
-              children: <LeaveList companyId={selectedCompanyId ?? undefined} officeId={selectedOfficeId} embedded />,
+              children: (
+                <LeaveList
+                  companyId={selectedCompanyId ?? undefined}
+                  officeId={selectedOfficeId ?? undefined}
+                  embedded
+                />
+              ),
             },
             {
               key: 'overtime',
               label: 'Tăng ca',
-              children: <OvertimeList companyId={selectedCompanyId ?? undefined} officeId={selectedOfficeId} embedded />,
+              children: (
+                <OvertimeList
+                  companyId={selectedCompanyId ?? undefined}
+                  officeId={selectedOfficeId ?? undefined}
+                  embedded
+                />
+              ),
             },
             {
               key: 'violations',
               label: 'Vi phạm',
-              children: <ViolationsList companyId={selectedCompanyId ?? undefined} officeId={selectedOfficeId} embedded />,
+              children: (
+                <ViolationsList
+                  companyId={selectedCompanyId ?? undefined}
+                  officeId={selectedOfficeId ?? undefined}
+                  embedded
+                />
+              ),
             },
           ]}
         />
@@ -607,14 +722,28 @@ export function DriverSchedulePage() {
 
       {/* ── Schedule detail modal ─────────────────────────────── */}
       <Modal
-        title={<Space><span>Lịch #{detailSchedule?.id}</span>{detailSchedule?.status && <Tag color={SCHEDULE_STATUS_COLOR[detailSchedule.status]}>{scheduleStatusLabel(detailSchedule.status)}</Tag>}</Space>}
+        title={
+          detailSchedule ? (
+            <Space>
+              <span>Lịch #{detailSchedule.id}</span>
+              {detailSchedule.status ? (
+                <Tag color={SCHEDULE_STATUS_COLOR[detailSchedule.status] ?? 'default'}>
+                  {scheduleStatusLabel(detailSchedule.status)}
+                </Tag>
+              ) : null}
+            </Space>
+          ) : null
+        }
         open={!!detailSchedule}
-        onCancel={() => { setDetailSchedule(null); setHosWarning(null); }}
+        onCancel={() => {
+          setDetailSchedule(null);
+          setHosWarning(null);
+        }}
         footer={null}
         width={520}
         destroyOnHidden
       >
-        {detailSchedule && (
+        {detailSchedule ? (
           <Flex vertical gap={16}>
             {hosWarning && (
               <Alert type="warning" message="Vi phạm HOS" showIcon
@@ -663,7 +792,7 @@ export function DriverSchedulePage() {
               </Flex>
             )}
           </Flex>
-        )}
+        ) : null}
       </Modal>
 
       {/* ── Reject modal ─────────────────────────────────────── */}
@@ -687,4 +816,5 @@ export function DriverSchedulePage() {
       </Modal>
     </>
   );
+  
 }

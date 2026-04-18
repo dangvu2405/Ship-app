@@ -14,7 +14,7 @@ export function InvoiceForm(props: InvoiceFormProps) {
   const { form } = props;
   const { t } = useTranslation();
   const selectedTripId = Form.useWatch('trip_id', form);
-  const taxAmount = Form.useWatch('tax_amount', form);
+  const vatAmount = Form.useWatch('vat_amount', form);
   const { data: customersData, isLoading: loadingCustomers } = useList<Customer>({
     resource: 'customers',
     pagination: { current: 1, pageSize: 500 },
@@ -30,22 +30,29 @@ export function InvoiceForm(props: InvoiceFormProps) {
   const customerOptions = (customersData?.data ?? []).map((c) => ({ label: c.name, value: c.id }));
   const tripOptions = (tripsData?.data ?? []).map((tr) => ({ label: `${tr.code} (${tr.start_point} → ${tr.end_point})`, value: tr.id }));
   const selectedTrip = (tripsData?.data ?? []).find((tr) => tr.id === selectedTripId);
-  const expectedTotalAmount = selectedTrip ? Number(selectedTrip.price ?? 0) + Number(taxAmount ?? 0) : undefined;
+  const subtotal = selectedTrip ? Number(selectedTrip.price ?? 0) : undefined;
+  const expectedTotalAmount = typeof subtotal === 'number' ? subtotal + Number(vatAmount ?? 0) : undefined;
 
   useEffect(() => {
-    if (typeof expectedTotalAmount !== 'number') {
+    if (typeof subtotal !== 'number') {
       return;
     }
+    form.setFieldValue('subtotal', subtotal);
+    form.setFieldValue('total_amount', subtotal + Number(form.getFieldValue('vat_amount') ?? 0));
+  }, [selectedTripId, form]);
 
-    if (form.getFieldValue('total_amount') !== expectedTotalAmount) {
-      form.setFieldValue('total_amount', expectedTotalAmount);
+  useEffect(() => {
+    if (typeof subtotal !== 'number') {
+      return;
     }
-  }, [expectedTotalAmount, form]);
+    form.setFieldValue('total_amount', subtotal + Number(vatAmount ?? 0));
+  }, [vatAmount, subtotal, form]);
 
   const statusOptions = [
     { label: t('invoices.statusDraft'), value: 'draft' },
     { label: t('invoices.statusIssued'), value: 'issued' },
     { label: t('invoices.statusPaid'), value: 'paid' },
+    { label: t('invoices.statusCancelled'), value: 'cancelled' },
   ];
 
   return (
@@ -87,6 +94,20 @@ export function InvoiceForm(props: InvoiceFormProps) {
           children: (
             <>
               <FormItemNumber
+                name="subtotal"
+                label={t('invoices.subtotal')}
+                required
+                min={0}
+                disabled={true}
+                rules={[{ required: true, message: t('validation.required', { field: t('invoices.subtotal') }) }]}
+              />
+              <FormItemNumber
+                name="vat_amount"
+                label={t('invoices.vatAmount')}
+                min={0}
+                rules={[{ type: 'number', min: 0, message: t('validation.min', { min: 0 }) }]}
+              />
+              <FormItemNumber
                 name="total_amount"
                 label={t('invoices.totalAmount')}
                 required
@@ -105,7 +126,6 @@ export function InvoiceForm(props: InvoiceFormProps) {
                   },
                 ]}
               />
-              <FormItemNumber name="tax_amount" label={t('invoices.taxAmount')} min={0} rules={[{ type: 'number', min: 0, message: t('validation.min', { min: 0 }) }]} />
               <FormItemText name="issued_at" label={t('invoices.issuedAt')} type="date" />
               <FormItemText name="due_date" label={t('invoices.dueDate')} type="date" />
             </>
@@ -115,7 +135,13 @@ export function InvoiceForm(props: InvoiceFormProps) {
           value: 'status',
           titleKey: 'status',
           children: (
-            <FormItemSelect name="status" label={t('common.status')} options={statusOptions} />
+            <FormItemSelect
+              name="status"
+              label={t('common.status')}
+              required
+              options={statusOptions}
+              rules={[{ required: true, message: t('validation.required', { field: t('common.status') }) }]}
+            />
           ),
         },
       ]}

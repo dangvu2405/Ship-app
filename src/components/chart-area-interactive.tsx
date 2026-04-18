@@ -168,15 +168,6 @@ export function ChartAreaInteractive({
               {t("dashboard.chart.revenueDescriptionShort")}
             </Typography.Paragraph>
           </Col>
-          <Col xs={24} md={10}>
-            <Select
-              className="w-full"
-              aria-label={t("dashboard.filterByCompany")}
-              value={companyId != null ? String(companyId) : "all"}
-              options={companySelectOptions}
-              onChange={(v) => onCompanyIdChange(v === "all" ? undefined : Number(v))}
-            />
-          </Col>
         </Row>
         <Flex justify="flex-end" wrap="wrap" gap={8}>
           <div className="hidden md:block">

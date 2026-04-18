@@ -3,7 +3,6 @@ import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Button, Card, Dropdown, Form, Tabs, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
-import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
@@ -35,14 +34,6 @@ export function CompaniesList() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
-
-  const statusFilterOptions = useMemo(
-    () => [
-      { label: t('common.active'), value: 'active' },
-      { label: t('common.inactive'), value: 'inactive' },
-    ],
-    [t],
-  );
 
   const statusTabsItems = useMemo(
     () => [
@@ -209,69 +200,51 @@ export function CompaniesList() {
 
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
         <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
-
-          <ListPageFilters variant="grid-4">
+        <Form form={filterForm} layout="vertical" requiredMark={false} colon={false} className="contents min-w-0 w-full">
+          <ListPageFilters variant="grid-2">
             <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
               onChange={setSearchKeyword}
             />
-
-            <Form
-              form={filterForm}
-              layout="vertical"
-              requiredMark={false}
-              colon={false}
-              className="contents min-w-0 w-full"
-            >
-              <FormItemSelect
-                noStyle
-                name="status"
-                label={null}
-                placeholder={t('common.status')}
-                options={statusFilterOptions}
-                allowClear
-                selectProps={{
-                  classNames: { root: 'list-page-filters__select' },
-                }}
-              />
-            </Form>
-
+          </ListPageFilters>
+          <div className="list-page-filters__btn-row">
             <ListPageFilters.Actions
               onSearch={handleSearchFilters}
               onReset={handleClearFilters}
               busy={isFetching && !isLoading}
             />
-          </ListPageFilters>
+          </div>
+        </Form>
 
-          {isError ? (
-            <ErrorState
-              title={t('common.loadError')}
-              description={t('common.tryAgainDescription')}
-              onRetry={() => refetch()}
+        {isError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => refetch()}
+          />
+        ) : (
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Company>
+              data={listData}
+              columns={columns}
+              onRowClick={(record) => show('companies', record.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('companies.title') })}
+              emptyAction={
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
+                  {t('companies.createCompany')}
+                </Button>
+              }
+              pagination={{
+                current,
+                total,
+                pageSize,
+                onPageChange: setCurrent,
+              }}
             />
-          ) : (
-            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-              <DataTable<Company>
-                data={listData}
-                columns={columns}
-                onRowClick={(record) => show('companies', record.id)}
-                emptyMessage={t('common.noData')}
-                emptyDescription={t('emptyState.listDescription', { resource: t('companies.title') })}
-                emptyAction={
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
-                    {t('companies.createCompany')}
-                  </Button>
-                }
-                pagination={{
-                  current,
-                  total,
-                  pageSize,
-                  onPageChange: setCurrent,
-                }}
-              />
-            </PageLoadingOverlay>
-          )}
+          </PageLoadingOverlay>
+        )}
       </Card>
 
       <DeleteConfirmDialog

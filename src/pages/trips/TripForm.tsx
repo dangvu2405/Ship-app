@@ -1,8 +1,15 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormAccordionSections, FormItemNumber, FormItemSelect, FormItemText } from '@/components/form';
+import {
+  FormAccordionSections,
+  FormItemNumber,
+  FormItemSelect,
+  FormItemText,
+  VnAdminAddressFields,
+} from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Customer, Driver, Trip, Vehicle } from '@/types';
+import { TERMINAL_TRIP_STATUSES } from '@/utils/tripStatus';
 
 interface TripFormProps {
   form: ReturnType<typeof Form.useForm>[0];
@@ -11,11 +18,15 @@ interface TripFormProps {
   currentStatus?: string;
 }
 
+/** Trạng thái cho phép chỉnh sửa thủ công trong form (chỉ khi pending). Các trạng thái khác dùng action buttons. */
+const EDITABLE_STATUSES = ['pending', 'assigned'];
+
 export function TripForm(props: TripFormProps) {
-  const { form } = props;
+  const { form, initialValues } = props;
   const { t } = useTranslation();
   const mode = props.mode ?? 'create';
   const normalizedCurrentStatus = (props.currentStatus ?? '').toLowerCase();
+  const isTerminal = TERMINAL_TRIP_STATUSES.includes(normalizedCurrentStatus as never);
 
   const { data: customersData, isLoading: loadingCustomers } = useList<Customer>({
     resource: 'customers',
@@ -52,36 +63,10 @@ export function TripForm(props: TripFormProps) {
     value: v.id,
   }));
 
-  const allStatusOptions = [
-    { label: t('trips.statusPending'), value: 'pending' },
-    { label: t('trips.statusInProgress'), value: 'in_progress' },
-    { label: t('trips.statusCompleted'), value: 'completed' },
-    { label: t('trips.statusCancelled'), value: 'cancelled' },
-  ];
-
-  const statusOptions = (() => {
-    if (mode === 'create') {
-      return allStatusOptions.filter((s) => s.value === 'pending');
-    }
-
-    switch (normalizedCurrentStatus) {
-      case 'pending':
-        return allStatusOptions.filter((s) =>
-          ['pending', 'in_progress', 'cancelled'].includes(s.value)
-        );
-      case 'in_progress':
-        return allStatusOptions.filter((s) =>
-          ['in_progress', 'completed', 'cancelled'].includes(s.value)
-        );
-      case 'completed':
-        return allStatusOptions.filter((s) => s.value === 'completed');
-      case 'cancelled':
-      case 'canceled':
-        return allStatusOptions.filter((s) => s.value === 'cancelled');
-      default:
-        return allStatusOptions;
-    }
-  })();
+  // Trong create, chỉ cho phép tạo với status = pending
+  // Trong edit, chỉ hiển thị status field nếu chuyến còn ở giai đoạn EDITABLE_STATUSES
+  // Các chuyển đổi nâng cao dùng action buttons ở TripDetailPage
+  const showStatusField = mode === 'create' || EDITABLE_STATUSES.includes(normalizedCurrentStatus);
 
   return (
     <FormAccordionSections
@@ -100,6 +85,7 @@ export function TripForm(props: TripFormProps) {
                   { required: true, message: t('validation.required', { field: t('trips.code') }) },
                 ]}
                 placeholder={t('trips.codePlaceholder')}
+                disabled={isTerminal}
               />
 
               <FormItemSelect
@@ -109,7 +95,7 @@ export function TripForm(props: TripFormProps) {
                 options={customerOptions}
                 loading={loadingCustomers}
                 showSearch
-                selectProps={{ optionFilterProp: 'label' }}
+                selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
                 rules={[
                   { required: true, message: t('validation.required', { field: t('invoices.customer') }) },
                 ]}
@@ -129,7 +115,7 @@ export function TripForm(props: TripFormProps) {
                 options={driverOptions}
                 loading={loadingDrivers}
                 showSearch
-                selectProps={{ optionFilterProp: 'label' }}
+                selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
                 rules={[
                   { required: true, message: t('validation.required', { field: t('drivers.title') }) },
                 ]}
@@ -142,7 +128,7 @@ export function TripForm(props: TripFormProps) {
                 options={vehicleOptions}
                 loading={loadingVehicles}
                 showSearch
-                selectProps={{ optionFilterProp: 'label' }}
+                selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
                 rules={[
                   { required: true, message: t('validation.required', { field: t('vehicles.title') }) },
                 ]}
@@ -155,24 +141,28 @@ export function TripForm(props: TripFormProps) {
           titleKey: 'operational',
           children: (
             <>
-              <FormItemText
-                name="start_point"
-                label={t('trips.startPoint')}
-                required
-                rules={[
-                  { required: true, message: t('validation.required', { field: t('trips.startPoint') }) },
-                ]}
-                placeholder={t('trips.startPointPlaceholder')}
+              <VnAdminAddressFields
+                form={form}
+                fieldPrefix="start_"
+                cascadeRequired
+                relaxCascadeRequired={Boolean(
+                  initialValues?.id && initialValues?.start_point?.trim(),
+                )}
+                legacySavedAddress={initialValues?.start_point?.trim()}
+                heading={t('trips.addressStartHeading')}
+                disabled={isTerminal}
               />
 
-              <FormItemText
-                name="end_point"
-                label={t('trips.endPoint')}
-                required
-                rules={[
-                  { required: true, message: t('validation.required', { field: t('trips.endPoint') }) },
-                ]}
-                placeholder={t('trips.endPointPlaceholder')}
+              <VnAdminAddressFields
+                form={form}
+                fieldPrefix="end_"
+                cascadeRequired
+                relaxCascadeRequired={Boolean(
+                  initialValues?.id && initialValues?.end_point?.trim(),
+                )}
+                legacySavedAddress={initialValues?.end_point?.trim()}
+                heading={t('trips.addressEndHeading')}
+                disabled={isTerminal}
               />
 
               <FormItemNumber
@@ -184,6 +174,7 @@ export function TripForm(props: TripFormProps) {
                   { required: true, message: t('validation.required', { field: t('trips.distance') }) },
                 ]}
                 placeholder={t('trips.distancePlaceholder')}
+                disabled={isTerminal}
               />
 
               <FormItemNumber
@@ -195,50 +186,56 @@ export function TripForm(props: TripFormProps) {
                   { required: true, message: t('validation.required', { field: t('trips.price') }) },
                 ]}
                 placeholder={t('trips.pricePlaceholder')}
+                disabled={isTerminal}
               />
             </>
           ),
         },
-        {
-          value: 'status',
-          titleKey: 'status',
-          children: (
-            <>
-              <FormItemSelect
-                name="status"
-                label={t('common.status')}
-                required
-                options={statusOptions}
-                rules={[
-                  { required: true, message: t('validation.required', { field: t('common.status') }) },
-                ]}
-              />
+        ...(showStatusField
+          ? [
+              {
+                value: 'status',
+                titleKey: 'status' as const,
+                children: (
+                  <>
+                    <FormItemSelect
+                      name="status"
+                      label={t('common.status')}
+                      required
+                      options={[{ label: t('trips.statusPending'), value: 'pending' }]}
+                      rules={[
+                        { required: true, message: t('validation.required', { field: t('common.status') }) },
+                      ]}
+                      selectProps={{ disabled: mode === 'edit' }}
+                    />
 
-              <FormItemText
-                name="start_time"
-                label={t('trips.startTime')}
-                type="datetime-local"
-              />
+                    <FormItemText
+                      name="start_time"
+                      label={t('trips.startTime')}
+                      type="datetime-local"
+                    />
 
-              <FormItemText
-                name="end_time"
-                label={t('trips.endTime')}
-                type="datetime-local"
-                rules={[
-                  {
-                    validator: (_, value) => {
-                      const start = form.getFieldValue('start_time');
-                      if (!start || !value || value >= start) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error(t('validation.checkOutAfterCheckIn')));
-                    },
-                  },
-                ]}
-              />
-            </>
-          ),
-        },
+                    <FormItemText
+                      name="end_time"
+                      label={t('trips.endTime')}
+                      type="datetime-local"
+                      rules={[
+                        {
+                          validator: async (_: unknown, value: unknown) => {
+                            const start = form.getFieldValue('start_time') as string | undefined;
+                            if (!start || !value || String(value) >= String(start)) {
+                              return;
+                            }
+                            throw new Error(t('validation.checkOutAfterCheckIn'));
+                          },
+                        },
+                      ]}
+                    />
+                  </>
+                ),
+              },
+            ]
+          : []),
       ]}
     />
   );

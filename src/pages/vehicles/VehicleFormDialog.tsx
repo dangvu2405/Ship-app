@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Alert, Button, Form, Space } from 'antd';
+import type { UploadFile } from 'antd/es/upload/interface';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useUpdate, useOne, useNavigation } from '@refinedev/core';
@@ -20,6 +21,52 @@ interface VehicleFormDialogProps {
   onClose?: () => void;
   onSuccess?: () => void;
 }
+
+type VehicleFormSubmitValues = Partial<Vehicle> & {
+  vehicle_photo?: UploadFile[];
+};
+
+const uploadDoneListForVehiclePhoto = (url: string | undefined): UploadFile[] => {
+  if (!url?.trim()) {
+    return [];
+  }
+  const name = url.trim().split('/').pop() || 'vehicle';
+  return [{ uid: '-vehicle-photo', name, status: 'done', url: url.trim() }];
+};
+
+const imageUrlFromVehiclePhotoFiles = (files?: UploadFile[]): string | null => {
+  if (!files?.length) {
+    return null;
+  }
+  const f = files[0];
+  const fromResponse = f.response as { data?: { url?: string } } | undefined;
+  const url = fromResponse?.data?.url ?? f.url;
+  if (typeof url === 'string' && url.trim()) {
+    return url.trim();
+  }
+  return null;
+};
+
+const buildVehiclePayload = (values: VehicleFormSubmitValues, isEdit: boolean): Record<string, unknown> => {
+  const { vehicle_photo, ...rest } = values;
+  const payload: Record<string, unknown> = { ...rest };
+  delete (payload as Record<string, unknown>).vehicle_photo;
+
+  const prevUrl = typeof rest.image_url === 'string' && rest.image_url.trim() ? rest.image_url.trim() : undefined;
+  const nextUrl = imageUrlFromVehiclePhotoFiles(vehicle_photo);
+
+  if (nextUrl !== null) {
+    payload.image_url = nextUrl;
+  } else if (isEdit && vehicle_photo !== undefined && (!vehicle_photo || vehicle_photo.length === 0)) {
+    payload.image_url = null;
+  } else if (prevUrl) {
+    payload.image_url = prevUrl;
+  } else {
+    delete payload.image_url;
+  }
+
+  return payload;
+};
 
 export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: VehicleFormDialogProps = {}) {
   const { t } = useTranslation();
@@ -59,13 +106,15 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
     onClose: handleClose,
   });
 
-  const handleSubmit = (values: Partial<Vehicle>) => {
+  const handleSubmit = (values: VehicleFormSubmitValues) => {
+    const payload = buildVehiclePayload(values, isEdit) as Partial<Vehicle>;
+
     if (isEdit && resolvedId) {
       updateItem(
         {
           resource: 'vehicles',
           id: resolvedId,
-          values,
+          values: payload,
         },
         {
           onSuccess: () => {
@@ -88,7 +137,7 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
       createItem(
         {
           resource: 'vehicles',
-          values,
+          values: payload,
         },
         {
           onSuccess: () => {
@@ -112,7 +161,11 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
 
   useEffect(() => {
     if (hasRecordId && data?.data) {
-      form.setFieldsValue(data.data);
+      const v = data.data;
+      form.setFieldsValue({
+        ...v,
+        vehicle_photo: uploadDoneListForVehiclePhoto(v.image_url),
+      });
     }
   }, [hasRecordId, data?.data, form]);
 

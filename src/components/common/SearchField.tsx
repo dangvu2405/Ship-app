@@ -1,6 +1,5 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { Input } from 'antd';
-import { cn } from '@/lib/utils';
 
 interface SearchFieldProps {
   value: string;
@@ -11,14 +10,14 @@ interface SearchFieldProps {
 
 export function SearchField({ value, onChange, placeholder, className }: SearchFieldProps) {
   return (
-    <div className={cn('min-w-0 w-full list-page-filters__search', className)}>
+    <div>
       <Input
         allowClear
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-tertiary)' }} />}
-        className="min-w-0 flex-1"
+        style={{ width: '100%' }}
       />
     </div>
   );

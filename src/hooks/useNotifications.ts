@@ -1,45 +1,108 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ActivityLog } from '@/types';
+import notificationService from '@/services/notification.service';
 
-/**
- * Activity / notification feed. Backend has no `/activity-logs` API yet — keep stable empty state
- * so the header bell UI works without failing requests.
- */
 interface UseNotificationsReturn {
-	activityLogs: ActivityLog[];
-	activityLoading: boolean;
-	unreadCount: number;
-	refetchActivityLogs: () => Promise<void>;
-	markAsRead: (id: number) => Promise<void>;
-	markAllAsRead: () => Promise<void>;
+  activityLogs: ActivityLog[];
+  activityLoading: boolean;
+  unreadCount: number;
+  refetchActivityLogs: () => Promise<void>;
+  markAsRead: (id: number | string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
 }
 
 export const useNotifications = (options?: {
-	enablePolling?: boolean;
-	pollingInterval?: number;
+  enablePolling?: boolean;
+  pollingInterval?: number;
 }): UseNotificationsReturn => {
-	void options;
-	const [activityLoading] = useState(false);
-	const emptyLogs = useMemo<ActivityLog[]>(() => [], []);
+  const { enablePolling = false, pollingInterval = 60000 } = options ?? {};
 
-	const refetchActivityLogs = useCallback(async () => {
-		// No-op until activity-logs API exists
-	}, []);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	const markAsRead = useCallback(async (id: number) => {
-		void id;
-	}, []);
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await notificationService.getList({ per_page: 50 });
+      if (res.data?.data) {
+        setActivityLogs(res.data.data);
+      }
+    } catch {
+      // silently fail — notifications are non-critical
+    }
+  }, []);
 
-	const markAllAsRead = useCallback(async () => {
-		// No-op
-	}, []);
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await notificationService.getUnreadCount();
+      if (typeof res.data?.count === 'number') {
+        setUnreadCount(res.data.count);
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
 
-	return {
-		activityLogs: emptyLogs,
-		activityLoading,
-		unreadCount: 0,
-		refetchActivityLogs,
-		markAsRead,
-		markAllAsRead,
-	};
+  const refetchActivityLogs = useCallback(async () => {
+    setActivityLoading(true);
+    try {
+      await Promise.all([fetchNotifications(), fetchUnreadCount()]);
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [fetchNotifications, fetchUnreadCount]);
+
+  // Initial fetch
+  useEffect(() => {
+    void refetchActivityLogs();
+  }, [refetchActivityLogs]);
+
+  // Polling — only schedule unread count to keep traffic low
+  useEffect(() => {
+    if (!enablePolling) return;
+
+    const schedule = () => {
+      pollTimer.current = setTimeout(() => {
+        void fetchUnreadCount();
+        schedule();
+      }, pollingInterval);
+    };
+
+    schedule();
+    return () => {
+      if (pollTimer.current !== null) clearTimeout(pollTimer.current);
+    };
+  }, [enablePolling, pollingInterval, fetchUnreadCount]);
+
+  const markAsRead = useCallback(async (id: number | string) => {
+    try {
+      await notificationService.markRead(id);
+      setActivityLogs((prev) =>
+        prev.map((log) => (log.id === id ? { ...log, read: true } : log)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await notificationService.markAllRead();
+      setActivityLogs((prev) => prev.map((log) => ({ ...log, read: true })));
+      setUnreadCount(0);
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  return {
+    activityLogs,
+    activityLoading,
+    unreadCount,
+    refetchActivityLogs,
+    markAsRead,
+    markAllAsRead,
+  };
 };

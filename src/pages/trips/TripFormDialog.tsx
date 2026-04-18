@@ -12,6 +12,7 @@ import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesW
 import toast from 'react-hot-toast';
 import type { Trip } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { mergeVnAddressIntoPayload } from '@/utils/vnAddressForm';
 
 const normalizeTripStatus = (status?: string): string => {
   if (!status) return '';
@@ -82,7 +83,7 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
     onClose: handleClose,
   });
 
-  const handleSubmit = (values: Partial<Trip>) => {
+  const handleSubmit = (values: Partial<Trip> & Record<string, unknown>) => {
     const previousStatus = normalizeTripStatus(data?.data?.status);
     const nextStatus = normalizeTripStatus(values.status ?? data?.data?.status ?? 'pending');
 
@@ -106,17 +107,19 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
       return;
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...values,
       status: nextStatus || values.status,
     };
+    mergeVnAddressIntoPayload(payload, values, 'start_', 'start_point');
+    mergeVnAddressIntoPayload(payload, values, 'end_', 'end_point');
 
     if (isEdit && resolvedId) {
       updateItem(
         {
           resource: 'trips',
           id: resolvedId,
-          values: payload,
+          values: payload as Partial<Trip>,
         },
         {
           onSuccess: () => {
@@ -139,7 +142,7 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
       createItem(
         {
           resource: 'trips',
-          values: payload,
+          values: payload as Partial<Trip>,
         },
         {
           onSuccess: () => {

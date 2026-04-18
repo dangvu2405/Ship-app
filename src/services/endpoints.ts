@@ -40,7 +40,20 @@ export const ENDPOINTS = {
   vehicleAssignments: crud('/vehicle_assignments'),
   vehicleExpenses: crud('/vehicle_expenses'),
   customers: crud('/customers'),
-  trips: crud('/trips'),
+  trips: {
+    ...crud('/trips'),
+    assign:    (id: Id) => `/trips/${id}/assign`,
+    accept:    (id: Id) => `/trips/${id}/accept`,
+    start:     (id: Id) => `/trips/${id}/start`,
+    pickup:    (id: Id) => `/trips/${id}/pickup`,
+    transit:   (id: Id) => `/trips/${id}/transit`,
+    arrive:    (id: Id) => `/trips/${id}/arrive`,
+    complete:  (id: Id) => `/trips/${id}/complete`,
+    cancel:    (id: Id) => `/trips/${id}/cancel`,
+    delay:     (id: Id) => `/trips/${id}/delay`,
+    emergency: (id: Id) => `/trips/${id}/emergency`,
+    resume:    (id: Id) => `/trips/${id}/resume`,
+  },
   chat: {
     messages: '/chat/messages',
     messagesStream: '/chat/messages/stream',
@@ -52,17 +65,37 @@ export const ENDPOINTS = {
     notify: '/attendances/late/notify',
   },
   tripBonusRules: crud('/trip_bonus_rules'),
-  invoices: crud('/invoices'),
+  invoices: {
+    ...crud('/invoices'),
+    /** Phát hành hóa đơn (draft → issued, ký số nội bộ). */
+    issue:      (id: Id) => `/invoices/${id}/issue`,
+    /** Gửi hóa đơn lên CQT (issued → sent_cqt). */
+    sendCqt:    (id: Id) => `/invoices/${id}/send-cqt`,
+    /** Đánh dấu đã thanh toán. */
+    markPaid:   (id: Id) => `/invoices/${id}/mark-paid`,
+    /** Hủy hóa đơn (kèm lý do, gửi thông báo CQT nếu đã sent_cqt). */
+    cancel:     (id: Id) => `/invoices/${id}/cancel`,
+    /** Tải PDF hóa đơn điện tử. */
+    exportPdf:  (id: Id) => `/invoices/${id}/export-pdf`,
+    /** Gửi hóa đơn qua email cho khách hàng. */
+    sendEmail:  (id: Id) => `/invoices/${id}/send-email`,
+  },
   allowances: crud('/allowances'),
   deductions: crud('/deductions'),
   attendances: crud('/attendances'),
   payrolls: {
     ...crud('/payrolls'),
-    approve: (id: Id) => `/payrolls/${id}/approve`,
-    lock: (id: Id) => `/payrolls/${id}/lock`,
-    markPaid: (id: Id) => `/payrolls/${id}/mark-paid`,
-    export: (id: Id) => `/payrolls/${id}/export`,
-    mySalary: '/payrolls/my-salary',
+    approve:      (id: Id) => `/payrolls/${id}/approve`,
+    lock:         (id: Id) => `/payrolls/${id}/lock`,
+    markPaid:     (id: Id) => `/payrolls/${id}/mark-paid`,
+    export:       (id: Id) => `/payrolls/${id}/export`,
+    /** Xuất file khai báo BHXH D02-TS (xlsx/csv). */
+    exportBhxh:   (id: Id) => `/payrolls/${id}/export-bhxh`,
+    /** Xuất tờ khai thuế TNCN 05/KK-TNCN (xlsx). */
+    exportPit:    (id: Id) => `/payrolls/${id}/export-pit`,
+    /** Xuất phiếu lương từng nhân viên (pdf zip). */
+    exportPayslips: (id: Id) => `/payrolls/${id}/export-payslips`,
+    mySalary:     '/payrolls/my-salary',
     driverHistory: (driverId: Id) => `/payrolls/driver/${driverId}`,
   },
   payrollAdjustments: {
@@ -129,5 +162,18 @@ export const ENDPOINTS = {
       base: '/v2/employees',
       byId: (id: Id) => `/v2/employees/${id}`,
     },
+  },
+  notifications: {
+    base: '/notifications',
+    byId: (id: Id) => `/notifications/${id}`,
+    /** Đánh dấu một thông báo đã đọc. */
+    markRead:    (id: Id) => `/notifications/${id}/read`,
+    /** Đánh dấu tất cả đã đọc. */
+    markAllRead: '/notifications/read-all',
+    /** Lấy số chưa đọc (lightweight). */
+    unreadCount: '/notifications/unread-count',
+  },
+  activityLogs: {
+    base: '/activity-logs',
   },
 } as const;

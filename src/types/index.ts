@@ -150,6 +150,8 @@ export interface Vehicle {
   capacity?: number;
   status: string;
   office_id: number;
+  /** URL ảnh xe sau upload (POST `/upload`) */
+  image_url?: string;
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
@@ -227,6 +229,15 @@ export interface Driver {
   deleted_at?: string | null;
 }
 
+/** Trạng thái hóa đơn điện tử */
+export type EInvoiceStatus =
+  | 'draft'       // Nháp, chưa phát hành
+  | 'issued'      // Đã phát hành (ký số)
+  | 'sent_cqt'   // Đã gửi CQT (cơ quan thuế)
+  | 'accepted'    // CQT chấp nhận
+  | 'paid'        // Đã thanh toán
+  | 'cancelled';  // Đã hủy (gửi thông báo CQT nếu đã sent_cqt)
+
 export interface Invoice {
   id: number;
   code: string;
@@ -247,6 +258,33 @@ export interface Invoice {
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
+
+  // E-invoice fields (Hóa đơn điện tử)
+  einvoice_status?: EInvoiceStatus;
+  /** Số hóa đơn (sequential, assigned on issue) */
+  einvoice_no?: string;
+  /** Ký hiệu hóa đơn, e.g. C23TAA */
+  einvoice_serial?: string;
+  /** Mẫu số hóa đơn, e.g. 01GTKT0/001 */
+  einvoice_template?: string;
+  /** Mã CQT do cơ quan thuế cấp sau khi gửi */
+  cqt_code?: string;
+  /** Thời điểm gửi CQT */
+  cqt_sent_at?: string;
+  /** Thời điểm CQT phản hồi */
+  cqt_response_at?: string;
+  /** Kết quả CQT: "accepted" | "rejected" | null */
+  cqt_result?: string;
+  /** Lý do CQT từ chối hoặc hủy */
+  cqt_message?: string;
+  /** Nhà cung cấp HĐĐT: "viettel" | "misa" | "fpt" */
+  einvoice_provider?: string;
+  /** URL xem/tải hóa đơn PDF từ nhà cung cấp */
+  einvoice_pdf_url?: string;
+  /** Lý do hủy hóa đơn */
+  cancel_reason?: string;
+  /** Thời điểm ký số */
+  signed_at?: string;
 }
 
 export interface VehicleAssignment {
@@ -375,11 +413,12 @@ export interface PayrollDetail {
   deduction: number;
   leave_unpaid_deduction?: number;
   violation_deduction?: number;
-  /** Renamed from fuel_cost — chi phí xăng vượt định mức */
+  /** Chi phí xăng vượt định mức */
   fuel_excess_deduction: number;
   /** @deprecated Dùng fuel_excess_deduction */
   fuel_cost?: number;
   fuel_saving_bonus?: number;
+  /** Thuế TNCN (PIT) */
   tax: number;
   net_salary: number;
   leave_days_paid?: number;
@@ -388,6 +427,41 @@ export interface PayrollDetail {
   total_distance_km?: number;
   driver_id?: number;
   driver?: { id: number; name?: string };
+
+  // ── BHXH / Social Insurance breakdown ──────────────────────────────
+  /** Lương làm căn cứ đóng BHXH (tối đa 20 × lương cơ sở). */
+  si_salary_base?: number;
+  /** BHXH phần NLĐ (8%). */
+  bhxh_employee?: number;
+  /** BHYT phần NLĐ (1.5%). */
+  bhyt_employee?: number;
+  /** BHTN phần NLĐ (1%). */
+  bhtn_employee?: number;
+  /** Tổng BHXH+BHYT+BHTN phần NLĐ (10.5%). */
+  total_si_employee?: number;
+  /** BHXH phần NSDLĐ (17.5%) — không trừ vào lương. */
+  bhxh_employer?: number;
+  /** BHYT phần NSDLĐ (3%). */
+  bhyt_employer?: number;
+  /** BHTN phần NSDLĐ (1%). */
+  bhtn_employer?: number;
+  /** BHTNLĐ-BNN phần NSDLĐ (0.5%). */
+  bhtnld_bnn_employer?: number;
+  /** Tổng chi phí BHXH phần NSDLĐ (22%). */
+  total_si_employer?: number;
+
+  // ── PIT / Thuế TNCN breakdown ───────────────────────────────────────
+  /** Lương gross trước khi trừ BHXH. */
+  gross_salary?: number;
+  /** Thu nhập chịu thuế (gross - SI employee). */
+  taxable_income?: number;
+  /** Số người phụ thuộc. */
+  dependants_count?: number;
+  /** Thu nhập tính thuế (sau giảm trừ gia cảnh). */
+  assessable_income?: number;
+  /** Thuế TNCN phải nộp (= tax field). */
+  pit?: number;
+
   meta_json?: Record<string, unknown>;
   created_by?: number;
   updated_by?: number;
@@ -420,7 +494,8 @@ export interface PaginatedResponse<T> {
 }
 
 export interface ActivityLog {
-  id: number;
+  /** Laravel DB notifications dùng UUID string; log hoạt động tổng hợp có thể là number. */
+  id: number | string;
   type: 'create' | 'update' | 'delete' | 'system' | 'user';
   resource: string; // 'company', 'employee', 'vehicle', 'trip', 'payroll', 'user'
   resource_id?: number;

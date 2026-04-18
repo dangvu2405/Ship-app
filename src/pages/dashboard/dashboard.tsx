@@ -94,30 +94,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-4 px-4 pb-6 lg:px-6">
       <Card styles={{ body: { padding: 0 } }}>
-        <div
-          style={{
-            background: "linear-gradient(135deg, #1e3a5f 0%, #1b2f4a 100%)",
-            color: "#fff",
-            padding: "16px 20px",
-            borderTopLeftRadius: 8,
-            borderTopRightRadius: 8,
-          }}
-        >
-          <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-            <div>
-              <Typography.Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12 }}>
-                {t("dashboard.overview")}
-              </Typography.Text>
-              <Typography.Title level={3} style={{ margin: 0, color: "#fff", fontSize: 30, lineHeight: "36px" }}>
-                Data Details
-              </Typography.Title>
-            </div>
-            <Space>
-              <Button>{t("common.save")}</Button>
-              <Button>...</Button>
-            </Space>
-          </Flex>
-        </div>
+     
 
         <div style={{ padding: 20 }}>
 
@@ -128,14 +105,6 @@ export default function Dashboard() {
               onChange={setCompanyId}
               options={companies.map((company) => ({ label: company.name, value: company.id }))}
               placeholder={t("dashboard.filterByCompany")}
-              style={{ minWidth: 240 }}
-              allowClear
-            />
-            <Select
-              value={officeId}
-              onChange={setOfficeId}
-              options={offices.map((office) => ({ label: office.name, value: office.id }))}
-              placeholder={t("offices.title")}
               style={{ minWidth: 240 }}
               allowClear
             />

@@ -28,7 +28,6 @@ export function VehiclesList() {
   const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
@@ -62,23 +61,21 @@ export function VehiclesList() {
 
   const safeRefetch = useSafeRefetch('vehicles-vehicleslist', refetch);
 
+  const applyStatusFilter = (raw: string) => {
+    const next = raw === 'all' ? undefined : raw;
+    setAppliedStatus(next);
+    setCurrent(1);
+  };
+
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
-    setAppliedStatus(selectedStatus);
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
     setSearchKeyword('');
-    setSelectedStatus(undefined);
     setAppliedKeyword('');
     setAppliedStatus(undefined);
-    setCurrent(1);
-  };
-
-  const handleStatusTabChange = (value: string) => {
-    setSelectedStatus(value === 'all' ? undefined : value);
-    setAppliedStatus(value === 'all' ? undefined : value);
     setCurrent(1);
   };
 
@@ -131,7 +128,7 @@ export function VehiclesList() {
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
-  const pageSize = 3;
+  const pageSize = 15;
 
   return (
     <>
@@ -147,9 +144,9 @@ export function VehiclesList() {
       />
 
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
-        <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
-
-          <ListPageFilters variant="grid-4">
+        <Tabs activeKey={appliedStatus ?? 'all'} onChange={applyStatusFilter} items={statusTabsItems} />
+        <div className="contents min-w-0 w-full">
+          <ListPageFilters variant="grid-2">
             <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
@@ -157,87 +154,91 @@ export function VehiclesList() {
             />
             <Select
               className="list-page-filters__radix-select"
-              value={selectedStatus ?? 'all'}
+              value={appliedStatus ?? 'all'}
               options={statusSelectOptions}
-              onChange={(value) => setSelectedStatus(value === 'all' ? undefined : String(value))}
+              onChange={(v) => applyStatusFilter(String(v))}
               placeholder={t('common.status')}
             />
+          </ListPageFilters>
+          <div className="list-page-filters__btn-row">
             <ListPageFilters.Actions
               onSearch={handleSearchFilters}
               onReset={handleClearFilters}
               busy={isFetching && !isLoading}
             />
-          </ListPageFilters>
+          </div>
+        </div>
 
-          {isError ? (
-            <ErrorState
-              title={t('common.loadError')}
-              description={t('common.tryAgainDescription')}
-              onRetry={() => void safeRefetch(true)}
-            />
-          ) : (
-            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-              <List
-                itemLayout="vertical"
-                size="large"
-                dataSource={listData}
-                locale={{
-                  emptyText: t('emptyState.listDescription', { resource: t('vehicles.title') }),
-                }}
-                pagination={{
-                  current,
-                  total,
-                  pageSize,
-                  onChange: setCurrent,
-                }}
-                footer={(
-                  <div>
-                    <b>vehicles</b> footer part
-                  </div>
-                )}
-                renderItem={(item, index) => (
-                  <List.Item
-                    key={item.id}
-                    actions={[
-                      <Button key="view" type="text" size="small" icon={<EyeOutlined />} onClick={() => show('vehicles', item.id)} />,
-                      <Button key="edit" type="text" size="small" icon={<EditOutlined />} onClick={() => handleOpenDialog('edit', item.id)} />,
-                      <Button key="delete" type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(item)} />,
-                    ]}
-                    extra={(
-                      <img
-                        draggable={false}
-                        width={272}
-                        alt="vehicle"
-                        src="https://gw.alipayobjects.com/zos/rmsportal/mqaQswcyDLcXyDKnZfES.png"
-                      />
+        {isError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => void safeRefetch(true)}
+          />
+        ) : (
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <List
+              itemLayout="vertical"
+              size="large"
+              dataSource={listData}
+              locale={{
+                emptyText: t('emptyState.listDescription', { resource: t('vehicles.title') }),
+              }}
+              pagination={{
+                current,
+                total,
+                pageSize,
+                onChange: setCurrent,
+              }}
+              renderItem={(item) => (
+                <List.Item
+                  key={item.id}
+                  actions={[
+                    <Button key="view" type="text" size="small" icon={<EyeOutlined aria-hidden />} aria-label={t('common.view')} onClick={() => show('vehicles', item.id)} />,
+                    <Button key="edit" type="text" size="small" icon={<EditOutlined aria-hidden />} aria-label={t('common.edit')} onClick={() => handleOpenDialog('edit', item.id)} />,
+                    <Button key="delete" type="text" size="small" danger icon={<DeleteOutlined aria-hidden />} aria-label={t('common.delete')} onClick={() => handleDelete(item)} />,
+                  ]}
+                >
+                  <List.Item.Meta
+                    avatar={(() => {
+                      const imageUrl = item.image_url?.trim();
+                      return imageUrl ? (
+                        <Avatar src={imageUrl} alt="" shape="square" size={64} className="shrink-0" />
+                      ) : (
+                        <Avatar
+                          shape="square"
+                          size={64}
+                          className="shrink-0 bg-muted text-muted-foreground"
+                        >
+                          <span className="px-1 text-center text-[10px] font-medium leading-tight">
+                            {t('vehicles.listNoImage')}
+                          </span>
+                        </Avatar>
+                      );
+                    })()}
+                    title={(
+                      <Button type="link" style={{ padding: 0 }} onClick={() => show('vehicles', item.id)}>
+                        {item.plate_number}
+                      </Button>
                     )}
-                  >
-                    <List.Item.Meta
-                      avatar={<Avatar src={`https://api.dicebear.com/7.x/miniavs/svg?seed=${item.id ?? index}`} />}
-                      title={(
-                        <Button type="link" style={{ padding: 0 }} onClick={() => show('vehicles', item.id)}>
-                          {item.plate_number}
-                        </Button>
-                      )}
-                      description={(
-                        <Space wrap size={[8, 8]}>
-                          <span>{`${t('vehicles.type')}: ${item.type || '-'}`}</span>
-                          <span>{`${t('vehicles.brand')}: ${item.brand || '-'}`}</span>
-                          <span>{`${t('vehicles.model')}: ${item.model || '-'}`}</span>
-                          <span>{`${t('vehicles.year')}: ${item.year || '-'}`}</span>
-                          <span>{`${t('vehicles.capacity')}: ${item.capacity ? `${item.capacity} ${t('vehicles.capacityUnit')}` : '-'}`}</span>
-                          <Tag color={item.status === 'active' ? 'success' : 'default'}>
-                            {item.status === 'active' ? t('common.active') : t('common.inactive')}
-                          </Tag>
-                        </Space>
-                      )}
-                    />
-                    {t('vehicles.description')}
-                  </List.Item>
-                )}
-              />
-            </PageLoadingOverlay>
-          )}
+                    description={(
+                      <Space wrap size={[8, 8]}>
+                        <span>{`${t('vehicles.type')}: ${item.type || '-'}`}</span>
+                        <span>{`${t('vehicles.brand')}: ${item.brand || '-'}`}</span>
+                        <span>{`${t('vehicles.model')}: ${item.model || '-'}`}</span>
+                        <span>{`${t('vehicles.year')}: ${item.year || '-'}`}</span>
+                        <span>{`${t('vehicles.capacity')}: ${item.capacity ? `${item.capacity} ${t('vehicles.capacityUnit')}` : '-'}`}</span>
+                        <Tag color={item.status === 'active' ? 'success' : 'default'}>
+                          {item.status === 'active' ? t('common.active') : t('common.inactive')}
+                        </Tag>
+                      </Space>
+                    )}
+                  />
+                </List.Item>
+              )}
+            />
+          </PageLoadingOverlay>
+        )}
       </Card>
 
       <DeleteConfirmDialog

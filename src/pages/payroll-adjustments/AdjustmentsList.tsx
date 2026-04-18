@@ -23,7 +23,7 @@ import { PayrollAdjustment, Employee, Payroll } from '@/types';
 import toast from 'react-hot-toast';
 import payrollAdjustmentService from '@/services/payroll-adjustment.service';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
-import { formatMoney } from '@/utils/formatters';
+import { formatMoney } from '@/utils/displayFormat';
 import { useAuth } from '@/hooks/useAuth';
 
 const STATUS_COLORS: Record<string, string> = {

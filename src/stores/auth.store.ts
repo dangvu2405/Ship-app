@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createSafeStorage } from '@/lib/safe-storage';
+import { queryClient } from '@/lib/query-client';
 import { Tenant, User } from '@/types';
 import authService from '@/services/auth.service';
 import toast from 'react-hot-toast';
@@ -80,7 +81,7 @@ export const useAuthStore = create<AuthState>()(
             if (accessToken) setAuthToken(accessToken);
             if (refreshToken) setRefreshToken(refreshToken);
 
-            const user = response.data.user;
+            const user: User = { ...response.data.user, tenants: response.data.tenants ?? response.data.user.tenants ?? [] };
             const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
 
             set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
@@ -140,11 +141,15 @@ export const useAuthStore = create<AuthState>()(
 
       selectTenant: (tenantId: number) => {
         setTenantId(tenantId);
+        // Clear all cached queries so the new tenant's data loads fresh
+        queryClient.clear();
         set({ currentTenantId: tenantId, pendingTenants: [] });
       },
 
       switchTenant: () => {
         clearTenantId();
+        // Clear cache — user is leaving this tenant's data context
+        queryClient.clear();
         set((state) => ({
           currentTenantId: null,
           pendingTenants: state.user?.tenants ?? [],

@@ -22,6 +22,8 @@ interface ImportMetaEnv {
   readonly VITE_AUTH_FORGOT_PASSWORD_VERIFY_PATH?: string;
   readonly VITE_APP_NAME?: string;
   readonly VITE_APP_VERSION?: string;
+  /** Origin or same-origin path for NHTSA vPIC (vehicle catalog). */
+  readonly VITE_VPIC_BASE_URL?: string;
 }
 
 interface ImportMeta {

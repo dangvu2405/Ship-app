@@ -15,6 +15,7 @@ import type { Company } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { usePermission } from '@/hooks/usePermission';
 import { getCompanyCreateFeatureFlags } from '@/utils/companyCreateFeatures';
+import { mergeVnAddressIntoPayload } from '@/utils/vnAddressForm';
 
 interface CompanyFormDialogProps {
   open?: boolean;
@@ -66,13 +67,16 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
     onClose: handleClose,
   });
 
-  const handleSubmit = (values: Partial<Company>) => {
+  const handleSubmit = (values: Partial<Company> & Record<string, unknown>) => {
+    const payload: Record<string, unknown> = { ...values };
+    mergeVnAddressIntoPayload(payload, values, '', 'address');
+
     if (isEdit && resolvedId) {
       updateItem(
         {
           resource: 'companies',
           id: resolvedId,
-          values,
+          values: payload as Partial<Company>,
         },
         {
           onSuccess: () => {
@@ -95,7 +99,7 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
       createItem(
         {
           resource: 'companies',
-          values,
+          values: payload as Partial<Company>,
         },
         {
           onSuccess: () => {

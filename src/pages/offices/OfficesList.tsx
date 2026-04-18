@@ -178,66 +178,58 @@ export function OfficesList() {
         }
       />
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
-          <ListPageFilters variant="grid-4">
+        <Form form={filterForm} layout="vertical" requiredMark={false} colon={false} className="contents min-w-0 w-full">
+          <ListPageFilters variant="grid-2">
             <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
               onChange={setSearchKeyword}
             />
-
-            <Form
-              form={filterForm}
-              layout="vertical"
-              requiredMark={false}
-              colon={false}
-              className="contents min-w-0 w-full"
-            >
-              <FormItemSelect
-                noStyle
-                name="company_id"
-                label={null}
+            <FormItemSelect
+              style={{ margin : 0 }}
+              name="company_id"
+              label={null}
                 placeholder={t('companies.title')}
                 options={companiesSelect.options}
                 showSearch
                 allowClear
                 loading={companiesSelect.isLoading || companiesSelect.isFetchingNextPage}
                 prefix={<ApartmentOutlined aria-hidden />}
-                classNames={{ root: 'list-page-filters__select' }}
                 onPopupScroll={companiesSelect.onPopupScroll}
                 optionFilterProp="label"
-              />
-            </Form>
-
+            />
+          </ListPageFilters>
+          <div className="list-page-filters__btn-row">
             <ListPageFilters.Actions
               onSearch={handleSearchFilters}
               onReset={handleClearFilters}
               busy={isFetching && !isLoading}
             />
-          </ListPageFilters>
-
-          {isError ? (
-            <ErrorState
-              title={t('common.loadError')}
-              description={t('common.tryAgainDescription')}
-              onRetry={() => refetch()}
+          </div>
+        </Form>
+        {isError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => refetch()}
+          />
+        ) : (
+          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+            <DataTable<Office>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('offices', r.id)}
+              emptyMessage={t('common.noData')}
+              emptyDescription={t('emptyState.listDescription', { resource: t('offices.title') })}
+              emptyAction={
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
+                  {t('offices.createOffice')}
+                </Button>
+              }
+              pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
             />
-          ) : (
-            <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-              <DataTable<Office>
-                data={listData}
-                columns={columns}
-                onRowClick={(r) => show('offices', r.id)}
-                emptyMessage={t('common.noData')}
-                emptyDescription={t('emptyState.listDescription', { resource: t('offices.title') })}
-                emptyAction={
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
-                    {t('offices.createOffice')}
-                  </Button>
-                }
-                pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
-              />
-            </PageLoadingOverlay>
-          )}
+          </PageLoadingOverlay>
+        )}
       </Card>
       <DeleteConfirmDialog
         open={deleteOpen}
