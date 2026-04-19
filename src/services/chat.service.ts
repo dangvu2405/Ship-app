@@ -8,7 +8,8 @@ import {
   normalizeSendMessageDonePayload,
   normalizeSendMessagePayload,
 } from '@/utils/chatResponse';
-import { API_BASE_URL, STORAGE_KEYS } from '@/utils/constants';
+import { API_BASE_URL } from '@/utils/constants';
+import { getAuthToken, getTenantId } from '@/lib/auth-session';
 
 export interface SendChatMessagePayload {
   content?: string;
@@ -91,15 +92,15 @@ class ChatService {
   }
 
   async sendMessageStream(payload: SendChatMessagePayload, handlers: StreamHandlers = {}): Promise<StreamDoneEvent | undefined> {
-    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-    const tenantId = localStorage.getItem(STORAGE_KEYS.TENANT_ID);
+    const token = getAuthToken();
+    const tenantId = getTenantId();
     const response = await fetch(`${API_BASE_URL}${ENDPOINTS.chat.messagesStream}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
         ...(token    ? { Authorization: `Bearer ${token}` } : {}),
-        ...(tenantId ? { 'X-Tenant-ID': tenantId }         : {}),
+        ...(tenantId ? { 'X-Tenant-ID': String(tenantId) } : {}),
       },
       body: JSON.stringify(this.toApiPayload(payload)),
     });

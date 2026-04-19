@@ -1,8 +1,8 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
 import { API_BASE_URL, API_ROOT_BASE_URL, AUTH_REFRESH_ENABLED, STORAGE_KEYS } from '@/utils/constants';
+import { createDedupedCaller } from '@/utils/dedupe';
 import toast from 'react-hot-toast';
-import { ROUTES } from '@/routes';
-import { clearAuthToken, getRefreshToken, setAuthToken, setRefreshToken } from '@/lib/auth-session';
+import { clearAuthToken, getAuthToken, getRefreshToken, getTenantId, setAuthToken, setRefreshToken } from '@/lib/auth-session';
 import { ENDPOINTS } from '@/services/endpoints';
 import {
   ErrorMode,
@@ -25,38 +25,40 @@ declare module 'axios' {
   }
 }
 
-const TOAST_DEDUPE_WINDOW_MS = 1500;
-const toastTimestamps = new Map<string, number>();
-
+const shouldShowToast = createDedupedCaller(1500);
 const showDedupedErrorToast = (key: string, message: string) => {
-  const now = Date.now();
-  const lastShown = toastTimestamps.get(key);
-
-  if (lastShown && now - lastShown < TOAST_DEDUPE_WINDOW_MS) {
-    return;
-  }
-
-  toastTimestamps.set(key, now);
-  toast.error(message);
+  if (shouldShowToast(key)) toast.error(message);
 };
 
-// ── 409 Conflict type → user-facing messages ──────────────────────────────────
-const CONFLICT_MESSAGES: Record<string, string> = {
-  already_approved: 'Đã được duyệt bởi người khác. Vui lòng làm mới trang.',
-  currently_calculating: 'Đang được tính toán. Vui lòng thử lại sau 30 giây.',
-  state_changed: 'Trạng thái đã thay đổi. Vui lòng làm mới trang.',
-  already_locked: 'Đã bị khóa bởi admin khác. Vui lòng làm mới trang.',
-  already_paid: 'Đã được thanh toán. Không thể thay đổi.',
-  duplicate_entry: 'Bản ghi trùng lặp. Vui lòng kiểm tra lại.',
+// ── 409 Conflict type → user-facing messages (bilingual EN/VI) ───────────────
+const CONFLICT_MESSAGES: Record<string, { en: string; vi: string }> = {
+  already_approved:     { en: 'Already approved by someone else. Please refresh the page.', vi: 'Đã được duyệt bởi người khác. Vui lòng làm mới trang.' },
+  currently_calculating:{ en: 'Currently being calculated. Please try again in 30 seconds.', vi: 'Đang được tính toán. Vui lòng thử lại sau 30 giây.' },
+  state_changed:        { en: 'State has changed. Please refresh the page.', vi: 'Trạng thái đã thay đổi. Vui lòng làm mới trang.' },
+  already_locked:       { en: 'Locked by another admin. Please refresh the page.', vi: 'Đã bị khóa bởi admin khác. Vui lòng làm mới trang.' },
+  already_paid:         { en: 'Already paid. Cannot be changed.', vi: 'Đã được thanh toán. Không thể thay đổi.' },
+  duplicate_entry:      { en: 'Duplicate record. Please check again.', vi: 'Bản ghi trùng lặp. Vui lòng kiểm tra lại.' },
 };
+
+let _cachedLocale: 'en' | 'vi' | null = null;
+const getUiLocale = (): 'en' | 'vi' => {
+  if (_cachedLocale !== null) return _cachedLocale;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.APP_STORAGE);
+    if (raw) _cachedLocale = (JSON.parse(raw)?.state?.locale as 'en' | 'vi') ?? 'vi';
+  } catch { /* ignore */ }
+  return _cachedLocale ?? 'vi';
+};
+export const clearLocaleCache = () => { _cachedLocale = null; };
 
 const get409Message = (error: AxiosError): string => {
   const data = error.response?.data as { conflict_type?: string; message?: string } | undefined;
   const conflictType = data?.conflict_type;
+  const locale = getUiLocale();
   if (conflictType && CONFLICT_MESSAGES[conflictType]) {
-    return CONFLICT_MESSAGES[conflictType];
+    return CONFLICT_MESSAGES[conflictType][locale];
   }
-  return data?.message || 'Xung đột nghiệp vụ. Vui lòng làm mới và thử lại.';
+  return data?.message || (locale === 'en' ? 'Business conflict. Please refresh and try again.' : 'Xung đột nghiệp vụ. Vui lòng làm mới và thử lại.');
 };
 
 // ── Token refresh queue ───────────────────────────────────────────────────────
@@ -79,10 +81,11 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 const forceLogout = () => {
   clearAuthToken();
-  showDedupedErrorToast('401-session-expired', 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-  if (window.location.pathname !== ROUTES.login) {
-    window.location.href = ROUTES.login;
-  }
+  const msg = getUiLocale() === 'en'
+    ? 'Session expired. Please log in again.'
+    : 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+  showDedupedErrorToast('401-session-expired', msg);
+  window.dispatchEvent(new CustomEvent('auth:force-logout'));
 };
 
 /** Attempt to refresh access token using refresh token. Returns new access token or null. */
@@ -136,14 +139,13 @@ api.interceptors.request.use(
       config.baseURL = API_ROOT_BASE_URL;
       delete config.useApiRoot;
     }
-    // Get token from localStorage (set by authProvider after login)
-    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    const token = getAuthToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    const tenantId = localStorage.getItem(STORAGE_KEYS.TENANT_ID);
+    const tenantId = getTenantId();
     if (tenantId) {
-      config.headers['X-Tenant-ID'] = tenantId;
+      config.headers['X-Tenant-ID'] = String(tenantId);
     }
     return config;
   },

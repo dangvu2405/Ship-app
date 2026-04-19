@@ -22,16 +22,16 @@ interface TripStatusConfig {
 
 const STATUS_CONFIG: Record<TripStatus, TripStatusConfig> = {
   pending:         { labelKey: 'trips.statusPending',        color: '#8c8c8c', tagColor: 'default' },
-  assigned:        { labelKey: 'trips.statusAssigned',       color: '#1677ff', tagColor: 'blue' },
-  driver_accepted: { labelKey: 'trips.statusDriverAccepted', color: '#0958d9', tagColor: 'geekblue' },
-  en_route_pickup: { labelKey: 'trips.statusEnRoutePickup',  color: '#fa8c16', tagColor: 'orange' },
-  picked_up:       { labelKey: 'trips.statusPickedUp',       color: '#faad14', tagColor: 'gold' },
-  in_transit:      { labelKey: 'trips.statusInTransit',      color: '#13c2c2', tagColor: 'cyan' },
-  arrived:         { labelKey: 'trips.statusArrived',        color: '#52c41a', tagColor: 'lime' },
-  completed:       { labelKey: 'trips.statusCompleted',      color: '#52c41a', tagColor: 'success' },
-  cancelled:       { labelKey: 'trips.statusCancelled',      color: '#ff4d4f', tagColor: 'error' },
-  delayed:         { labelKey: 'trips.statusDelayed',        color: '#fa541c', tagColor: 'volcano' },
-  emergency:       { labelKey: 'trips.statusEmergency',      color: '#a8071a', tagColor: 'red' },
+  assigned:        { labelKey: 'trips.statusAssigned',       color: 'blue',    tagColor: 'blue' },
+  driver_accepted: { labelKey: 'trips.statusDriverAccepted', color: 'geekblue',tagColor: 'geekblue' },
+  en_route_pickup: { labelKey: 'trips.statusEnRoutePickup',  color: 'orange',  tagColor: 'orange' },
+  picked_up:       { labelKey: 'trips.statusPickedUp',       color: 'gold',    tagColor: 'gold' },
+  in_transit:      { labelKey: 'trips.statusInTransit',      color: 'cyan',    tagColor: 'cyan' },
+  arrived:         { labelKey: 'trips.statusArrived',        color: 'lime',    tagColor: 'lime' },
+  completed:       { labelKey: 'trips.statusCompleted',      color: 'success', tagColor: 'success' },
+  cancelled:       { labelKey: 'trips.statusCancelled',      color: 'error',   tagColor: 'error' },
+  delayed:         { labelKey: 'trips.statusDelayed',        color: 'volcano', tagColor: 'volcano' },
+  emergency:       { labelKey: 'trips.statusEmergency',      color: 'red',     tagColor: 'red' },
 };
 
 export function getTripStatusConfig(status: string): TripStatusConfig {

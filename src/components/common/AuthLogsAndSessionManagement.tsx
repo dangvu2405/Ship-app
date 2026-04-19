@@ -506,5 +506,3 @@ export const AuthLogsAndSessionManagement = () => {
     </Card>
   );
 };
-
-export default AuthLogsAndSessionManagement;

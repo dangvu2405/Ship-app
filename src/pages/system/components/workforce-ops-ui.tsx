@@ -10,7 +10,7 @@ import {
   VIOLATION_STATUS_COLOR,
   type ActionConfirmState,
   type DetailKind,
-} from '@/components/system/workforce-ops.constants';
+} from '@/pages/system/components/workforce-ops.constants';
 
 export function StatusTag({ value, colorMap }: { value: string; colorMap: Record<string, string> }) {
   return <Tag color={colorMap[value] ?? 'default'}>{formatStatusLabel(value)}</Tag>;

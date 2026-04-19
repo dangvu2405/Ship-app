@@ -20,7 +20,7 @@ import workforceOpsService from '@/services/workforce-ops.service';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { useDriverDayMap } from '@/hooks/use-driver-day-map';
-import { ScheduleDayCell } from '@/components/drivers/ScheduleDayCell';
+import { ScheduleDayCell } from '@/pages/drivers/components/ScheduleDayCell';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
@@ -28,7 +28,7 @@ import {
   type WorkStatusFilter,
   driverOfficeId,
   toFiniteNumber,
-} from '@/components/drivers/driver-schedule.constants';
+} from '@/pages/drivers/components/driver-schedule.constants';
 
 export function useDriverSchedulePage() {
   const { t } = useTranslation();
@@ -51,9 +51,10 @@ export function useDriverSchedulePage() {
   const { data: officesData } = useList<Office>({ resource: 'offices', pagination: { current: 1, pageSize: 200 } });
   const { data, isLoading } = useList<Driver>({
     resource: 'drivers',
-    pagination: { current: 1, pageSize: 500 },
+    pagination: { current: 1, pageSize: 200 },
     sorters: [{ field: 'id', order: 'asc' }],
     filters: driversListFilters,
+    queryOptions: { enabled: selectedOfficeId !== null },
   });
   const { data: vehiclesData } = useList<Vehicle>({ resource: 'vehicles', pagination: { current: 1, pageSize: 200 } });
 

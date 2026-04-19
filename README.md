@@ -1,236 +1,266 @@
-# ERP Admin Dashboard
+# Ship ERP — Admin Dashboard
 
-A complete Admin Dashboard for ERP Mini System (HR + Fleet + Payroll) built with React, TypeScript, and Vite. The application lives in a single Vite package under `src/`.
+A production-grade ERP admin dashboard for HR, Fleet, and Payroll management built with React 18, TypeScript, Ant Design 5, and the [Refine](https://refine.dev/) meta-framework.
 
 ## Tech Stack
 
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **TailwindCSS** - Styling
-- **React Router v6** - Routing
-- **Axios** - HTTP client
-- **Recharts** - Charts
-- **Zustand** - State management
-- **React Hot Toast** - Notifications
+| Concern | Library |
+|---|---|
+| Framework | React 18 + [Refine v4](https://refine.dev/) |
+| Language | TypeScript 5 (strict mode) |
+| Build tool | Vite 7 |
+| UI components | Ant Design v5 + `@refinedev/antd` |
+| Styling | TailwindCSS v3 + SCSS |
+| Routing | React Router v6 (managed by Refine) |
+| Global state | Zustand (persisted to localStorage) |
+| Server state | TanStack React Query v5 |
+| HTTP client | Axios (with interceptors) |
+| Charts | Recharts |
+| Validation | Zod v4 |
+| i18n | Custom hook — locales in `src/locales/` |
+| Notifications | React Hot Toast |
 
 ## Project Structure
 
 ```
-/
-├── components.json       # Optional shadcn-style paths (chart helpers under src/components/ui)
-├── src/                  # Application source
-│   ├── components/       # Reusable components
-│   │   ├── common/       # Common components (Breadcrumb, PageHeader, etc.)
-│   │   ├── form/         # Form field helpers (Ant Design Form)
-│   │   ├── table/        # Table components (DataTable, Pagination)
-│   │   └── ui/           # Chart helpers (e.g. Recharts shell)
-│   ├── layouts/          # Layout components
-│   │   └── AppLayout.tsx
-│   ├── pages/            # Page components
-│   │   ├── auth/         # Authentication pages
-│   │   ├── dashboard/    # Dashboard page
-│   │   ├── employees/    # Employee management
-│   │   ├── payrolls/     # Payroll management
-│   │   ├── vehicles/     # Vehicle management
-│   │   ├── trips/        # Trip management
-│   │   └── ...
-│   ├── routes/           # Route configuration
-│   ├── services/         # API services
-│   ├── stores/           # Zustand stores
-│   ├── hooks/            # Custom hooks
-│   ├── utils/            # Utility functions
-│   ├── types/            # TypeScript types
-│   ├── providers/        # Context providers
-│   ├── locales/          # Internationalization
-│   └── shared/           # Shared utilities
-├── docs/                 # Documentation
-├── public/               # Static assets
-└── package.json          # Root package.json
+src/
+├── components/              # Generic, reusable components only
+│   ├── common/              # Shared UI (PageHeader, Breadcrumb, loaders, dialogs)
+│   │   └── index.ts
+│   ├── form/                # Ant Design form field wrappers
+│   │   └── index.ts
+│   ├── table/               # DataTable, ProfessionalAntTable, Pagination
+│   │   └── index.ts
+│   └── ui/                  # Chart helpers (Recharts wrapper)
+│
+├── layouts/                 # App layout components
+│   ├── AppLayout.tsx        # Root layout (Sider + Header + Content)
+│   ├── AppSidebar.tsx       # Navigation sidebar with menu items
+│   ├── SiteHeader.tsx       # Top header (search, theme toggle, notifications)
+│   ├── NavUser.tsx          # User avatar / profile dropdown
+│   └── index.ts
+│
+├── pages/                   # Route pages, feature-based
+│   ├── auth/                # login, register, forgot-password, tenant-selector
+│   ├── dashboard/
+│   │   ├── components/      # Dashboard-specific components
+│   │   │   ├── ChartAreaInteractive.tsx
+│   │   │   ├── DashboardChartSkeleton.tsx
+│   │   │   ├── DashboardRevenueByOffice.tsx
+│   │   │   ├── SectionCards.tsx
+│   │   │   └── index.ts
+│   │   └── dashboard.tsx
+│   ├── drivers/
+│   │   ├── components/      # Driver scheduling UI
+│   │   │   ├── ApplyScheduleModal.tsx
+│   │   │   ├── ScheduleDayCell.tsx
+│   │   │   ├── driver-schedule-modals.tsx
+│   │   │   ├── driver-schedule.constants.ts
+│   │   │   └── index.ts
+│   │   ├── DriversList.tsx
+│   │   ├── DriverFormDialog.tsx
+│   │   ├── DriverSchedulePage.tsx
+│   │   ├── DriverScheduleBulkPage.tsx
+│   │   └── use-driver-schedule-page.tsx
+│   ├── payrolls/
+│   │   ├── components/      # Payroll-specific components
+│   │   │   ├── PayrollSIBreakdown.tsx
+│   │   │   └── index.ts
+│   │   ├── PayrollsList.tsx
+│   │   ├── PayrollDetailPage.tsx
+│   │   └── PayrollFormDialog.tsx
+│   ├── system/
+│   │   ├── components/      # Workforce ops UI primitives
+│   │   │   ├── workforce-ops-ui.tsx
+│   │   │   ├── workforce-ops.constants.ts
+│   │   │   └── index.ts
+│   │   └── WorkforceOps.tsx
+│   ├── companies/           # CRUD pages
+│   ├── offices/
+│   ├── departments/
+│   ├── positions/
+│   ├── employees/
+│   ├── vehicles/
+│   ├── trips/
+│   ├── invoices/
+│   ├── customers/
+│   ├── users/
+│   ├── roles/
+│   ├── leave/
+│   ├── overtime/
+│   ├── violations/
+│   ├── allowances/
+│   ├── deductions/
+│   ├── reports/
+│   └── 404.tsx
+│
+├── providers/               # Refine providers
+│   ├── authProvider.tsx     # Refine auth adapter
+│   ├── dataProvider.tsx     # Refine data adapter (Axios-backed)
+│   ├── resources.tsx        # Refine resource definitions
+│   └── notificationProvider.ts
+│
+├── routes/
+│   ├── index.ts             # ROUTES enum (all path constants)
+│   └── appRouteConfig.tsx   # Dynamic CRUD route config for Refine
+│
+├── services/                # API service layer
+│   ├── api.ts               # Axios instance + interceptors
+│   ├── endpoints.ts         # All API endpoint constants
+│   ├── auth.service.ts
+│   ├── payroll.service.ts
+│   ├── invoice.service.ts
+│   ├── trip.service.ts
+│   ├── workforce-ops.service.ts
+│   └── ...
+│
+├── stores/                  # Zustand global state
+│   ├── auth.store.ts        # User, token, tenant (persisted)
+│   └── app.store.ts         # Theme, sidebar, locale (persisted)
+│
+├── hooks/                   # Custom React hooks
+│   ├── useAuth.ts
+│   ├── useTranslation.ts
+│   ├── usePermission.ts
+│   ├── useResourceListQuery.ts
+│   └── ...
+│
+├── lib/                     # Core infrastructure
+│   ├── query-client.ts      # TanStack React Query setup
+│   ├── auth-session.ts      # Token storage helpers
+│   └── safe-storage.ts      # localStorage/sessionStorage wrapper
+│
+├── shared/
+│   └── query/               # Query key factory (createResourceQueryKeys)
+│
+├── locales/                 # i18n translation files
+│   ├── en.ts
+│   └── vi.ts
+│
+├── types/
+│   └── index.ts             # All domain TypeScript types (~723 lines)
+│
+├── utils/                   # Pure utility functions
+│   ├── displayFormat.ts     # Date, money, number formatting
+│   ├── vnPayrollCalc.ts     # Vietnamese payroll/tax calculation
+│   ├── validation.ts        # Zod schemas
+│   ├── errorHandler.ts      # Error parsing & user-friendly messages
+│   └── ...
+│
+├── styles/
+│   ├── main.scss            # Global SCSS
+│   └── index.css            # Tailwind base + CSS variables
+│
+├── App.tsx                  # Root component (Refine + Router + Providers)
+└── main.tsx                 # Entry point
 ```
 
-## Installation
+## Getting Started
 
 ### Prerequisites
-- **Node.js**: Version 20.19.0 or higher (recommended: 22.12.0+)
-- **npm**: Latest version
-- **Backend**: Laravel API server running on `http://localhost:8080` (see backend documentation for setup)
 
-### Steps
+- **Node.js** ≥ 20.19.0 (recommended: 22.12.0+)
+- **npm** (latest)
+- A running backend API (see `docs/backend.md`)
 
-1. **Clone the repository:**
-
-```bash
-git clone <repository-url>
-cd ship-app
-```
-
-2. **Install dependencies:**
+### Setup
 
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-3. **Configure environment:**
+# 2. Configure environment
+cp .env.example .env
+# Edit VITE_API_ORIGIN to point at your backend
 
-Copy `.env.example` to `.env`. Đồng bộ với backend (`APP_URL` trong Laravel, không có `/api`):
-
-```env
-VITE_API_ORIGIN=http://localhost:8080
-```
-
-Dev mặc định gọi API qua `/api` (Vite proxy → `VITE_API_ORIGIN`). Chỉ cần `VITE_API_BASE_URL` nếu muốn URL đầy đủ tùy chỉnh.
-
-4. **Run development server:**
-
-```bash
+# 3. Start dev server (port 3000)
 npm run dev
 ```
 
-5. **Build for production:**
+### Environment Variables
+
+```env
+VITE_API_ORIGIN=http://localhost:8080   # Backend origin — no /api suffix
+VITE_APP_NAME=Ship ERP
+VITE_AUTH_FORGOT_PASSWORD_SEND_ENABLED=true
+VITE_AUTH_FORGOT_PASSWORD_VERIFY_ENABLED=true
+VITE_AUTO_LOGIN=true                   # Dev only: skip login screen
+VITE_DEMO_EMAIL=admin@abctransport.com
+VITE_DEMO_PASSWORD=password
+```
+
+In development, Vite proxies `/api/*` → `VITE_API_ORIGIN`. No CORS config needed locally.
+
+## Commands
 
 ```bash
-npm run build
+npm run dev       # Start Vite dev server (HMR, port 3000)
+npm run build     # TypeScript check + production build → dist/
+npm run preview   # Serve the production build locally
+npm run lint      # ESLint — strict, max 0 warnings
+npm run knip      # Detect unused files and exports
 ```
 
-## Features
+## Architecture
 
-### Authentication
-- JWT-based authentication
-- HttpOnly cookie support
-- Auto token refresh
-- Protected routes
-- Role-based access control
+### Routing
 
-### Dashboard
-- Statistics cards
-- Revenue charts
-- Trips charts
-- Real-time data
+All routes are defined in two files:
 
-### CRUD Operations
-- Reusable DataTable component
-- Pagination
-- Search and filters
-- Create/Edit/Delete operations
-- Confirmation modals
+- [`src/routes/index.ts`](src/routes/index.ts) — `ROUTES` enum with every path constant
+- [`src/routes/appRouteConfig.tsx`](src/routes/appRouteConfig.tsx) — lazy-loaded CRUD route config consumed by Refine
 
-### UI/UX
-- Responsive design
-- Dark/Light mode
-- Toast notifications
-- Loading states
-- Error handling
+Protected routes are wrapped in Refine's `<Authenticated>` guard. Multi-tenant flow redirects to `/select-tenant` before the main layout loads.
 
-## Routing
+### API Layer
 
-### Public Routes
-- `/login` - Login page
+1. **Axios instance** ([`src/services/api.ts`](src/services/api.ts)) — attaches Bearer token, handles 401 refresh, shows global error toasts. Custom flags: `skipToast`, `errorMode: 'global' | 'local' | 'silent'`.
+2. **Endpoint constants** ([`src/services/endpoints.ts`](src/services/endpoints.ts)) — all API paths in one place.
+3. **Service singletons** — one exported singleton per domain (`auth.service.ts`, `payroll.service.ts`, etc.) returning `ApiResponse<T>`.
 
-### Protected Routes
-- `/dashboard` - Dashboard
-- `/admin/employees` - Employee management
-- `/admin/payrolls` - Payroll management
-- `/admin/vehicles` - Vehicle management
-- `/admin/trips` - Trip management
-- `/admin/reports` - Reports
+### State Management
 
-## API Integration
+| Store | Key | Contents |
+|---|---|---|
+| `useAuthStore` | `auth-storage:v1` | user, token, tenants, `isAuthenticated` |
+| `useAppStore` | `app-storage:v1` | theme, sidebarOpen, locale |
 
-The app connects to Laravel backend API:
+Server state is handled by TanStack React Query via custom hooks in `src/hooks/`.
 
-- Dev: base `/api` + proxy tới `VITE_API_ORIGIN` (khớp `APP_URL` Laravel).
-- Prod / override: `VITE_API_BASE_URL` hoặc `VITE_API_ORIGIN` + `/api` (xem `src/utils/constants.ts`).
-- Authentication: HttpOnly cookies
-- Error handling: Axios interceptors
-- Auto refresh: Token refresh on 401
+### Component Conventions
 
-### Example API Calls
+- `src/components/` — **generic only**: form fields, table wrappers, common UI (PageHeader, loaders, dialogs)
+- `src/layouts/` — layout shell: sidebar, header, nav-user
+- `src/pages/<feature>/components/` — components used exclusively by that feature
+- Barrel `index.ts` in every component directory for clean imports
 
-```typescript
-import employeeService from '@/services/employee.service';
+### i18n
 
-// Get all employees
-const response = await employeeService.getAll({ page: 1, per_page: 10 });
-
-// Create employee
-const newEmployee = await employeeService.create({ name: 'John Doe', ... });
-
-// Update employee
-const updated = await employeeService.update(1, { name: 'Jane Doe' });
-
-// Delete employee
-await employeeService.delete(1);
+```ts
+import { useTranslation } from '@/hooks/useTranslation';
+const { t } = useTranslation();
+// t('key') pulls from src/locales/en.ts or vi.ts based on app locale
 ```
 
-## State Management
+Locale is stored in `useAppStore` and toggled via the language switcher in the header.
 
-Using Zustand for state management:
+## Key Domain Features
 
-### Auth Store
-```typescript
-import { useAuthStore } from '@/stores/auth.store';
-
-const { user, isAuthenticated, login, logout } = useAuthStore();
-```
-
-### App Store
-```typescript
-import { useAppStore } from '@/stores/app.store';
-
-const { theme, toggleTheme, sidebarOpen, toggleSidebar } = useAppStore();
-```
-
-## Components
-
-### DataTable
-Reusable table component with pagination:
-
-```tsx
-<DataTable
-  data={employees}
-  columns={columns}
-  loading={loading}
-  onRowClick={(item) => navigate(`/employees/${item.id}`)}
-/>
-```
-
-### Form Components
-```tsx
-<Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
-<Select label="Type" options={options} value={type} onChange={handleChange} />
-<Button onClick={handleSubmit} loading={isLoading}>Submit</Button>
-```
-
-## Development
-
-### Code Style
-- TypeScript strict mode
-- ESLint configured
-- Prettier (optional)
-
-### Testing
-```bash
-npm run test
-```
-
-### Linting
-```bash
-npm run lint
-```
-
-## Environment Variables
-
-- `VITE_API_ORIGIN` — Origin backend (giống `APP_URL`, không `/api`); dùng cho Vite proxy và build.
-- `VITE_API_BASE_URL` — URL đầy đủ tới `/api` (ghi đè mọi quy tắc, tuỳ chọn).
-- `VITE_PROXY_TARGET` — Alias cũ của `VITE_API_ORIGIN`.
+| Module | Description |
+|---|---|
+| **HR** | Companies, Offices, Departments, Positions, Employees |
+| **Fleet** | Vehicles, Vehicle Assignments, Vehicle Expenses |
+| **Drivers** | Driver profiles, scheduling (calendar + bulk), leave/OT/violations |
+| **Trips** | Full state machine: pending → assigned → accepted → started → completed |
+| **Invoices** | Lifecycle: draft → issued → sent_cqt → paid; PDF export; CQT integration |
+| **Payroll** | Monthly batches, BHXH/PIT exports, payslips, Vietnamese tax calculation |
+| **Workforce Ops** | Attendance, leave requests, overtime, violations — approval workflows |
+| **Users & Roles** | Role-based access control, permission matrix |
+| **Reports** | Revenue analytics by office, trip revenue, exportable reports |
 
 ## Browser Support
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+Latest versions of Chrome, Firefox, Safari, and Edge.
 
 ## License
 

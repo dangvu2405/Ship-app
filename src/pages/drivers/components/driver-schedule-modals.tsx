@@ -18,7 +18,7 @@ import {
 import type { FormInstance } from 'antd/es/form';
 import dayjs from 'dayjs';
 import type { DriverSchedule } from '@/types';
-import { SCHEDULE_STATUS_COLOR, SHIFT_OPTIONS, scheduleStatusLabel } from '@/components/drivers/driver-schedule.constants';
+import { SCHEDULE_STATUS_COLOR, SHIFT_OPTIONS, scheduleStatusLabel } from '@/pages/drivers/components/driver-schedule.constants';
 
 export interface DriverScheduleCreateModalProps {
   open: boolean;

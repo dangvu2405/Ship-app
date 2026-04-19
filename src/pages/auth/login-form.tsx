@@ -7,7 +7,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
-import { TEST_ACCOUNTS_ENABLED } from '@/utils/constants';
+import { DEMO_PASSWORD, TEST_ACCOUNTS_ENABLED } from '@/utils/constants';
 
 export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   const navigate = useNavigate();
@@ -54,7 +54,7 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
     if (isBusy) return;
     try {
       setIsSubmitting(true);
-      await login(accEmail, 'password');
+      await login(accEmail, DEMO_PASSWORD);
       navigateAfterLogin();
     } catch {
       toast.error(t('auth.loginFailed'));

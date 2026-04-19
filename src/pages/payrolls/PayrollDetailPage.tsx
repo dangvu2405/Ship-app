@@ -12,6 +12,7 @@ import {
   Timeline,
   Tooltip,
   Typography,
+  theme,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -23,7 +24,7 @@ import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
-import { PayrollSIBreakdown } from '@/components/payroll/PayrollSIBreakdown';
+import { PayrollSIBreakdown } from '@/pages/payrolls/components/PayrollSIBreakdown';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Payroll, PayrollDetail } from '@/types';
 import payrollService from '@/services/payroll.service';
@@ -52,6 +53,7 @@ export function PayrollDetailPage() {
   const { user, hasRole } = useAuth();
   const resolvedId = id ? Number(id) : undefined;
   const isAdmin = hasRole('admin');
+  const { token } = theme.useToken();
 
   const { data, isLoading, refetch } = useOne<Payroll>({
     resource: 'payrolls',
@@ -312,17 +314,17 @@ export function PayrollDetailPage() {
             <Space>
               {t('payrolls.employerCostSection')}
               <Tooltip title={t('payrolls.siRateNote')}>
-                <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+                <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
               </Tooltip>
             </Space>
           }>
             <Flex gap={24} wrap="wrap">
               <Statistic title={t('payrolls.grossSalary')}       value={fmtVND(employerCostSummary.totalGross)} />
-              <Statistic title={t('payrolls.totalSIEmployee')}   value={fmtVND(employerCostSummary.totalSIEmployee)} valueStyle={{ color: '#cf1322' }} />
-              <Statistic title={t('payrolls.pit')}               value={fmtVND(employerCostSummary.totalPIT)} valueStyle={{ color: '#cf1322' }} />
-              <Statistic title={t('payrolls.netSalary')}         value={fmtVND(employerCostSummary.totalNet)} valueStyle={{ color: '#3f8600' }} />
-              <Statistic title={t('payrolls.totalSIEmployer')}   value={fmtVND(employerCostSummary.totalSIEmployer)} valueStyle={{ color: '#d46b08' }} />
-              <Statistic title={t('payrolls.totalEmployerCost')} value={fmtVND(employerCostSummary.totalCost)} valueStyle={{ color: '#1677ff' }} />
+              <Statistic title={t('payrolls.totalSIEmployee')}   value={fmtVND(employerCostSummary.totalSIEmployee)} valueStyle={{ color: token.colorError }} />
+              <Statistic title={t('payrolls.pit')}               value={fmtVND(employerCostSummary.totalPIT)} valueStyle={{ color: token.colorError }} />
+              <Statistic title={t('payrolls.netSalary')}         value={fmtVND(employerCostSummary.totalNet)} valueStyle={{ color: token.colorSuccess }} />
+              <Statistic title={t('payrolls.totalSIEmployer')}   value={fmtVND(employerCostSummary.totalSIEmployer)} valueStyle={{ color: token.colorWarning }} />
+              <Statistic title={t('payrolls.totalEmployerCost')} value={fmtVND(employerCostSummary.totalCost)} valueStyle={{ color: token.colorPrimary }} />
             </Flex>
           </Card>
 
@@ -391,7 +393,7 @@ export function PayrollDetailPage() {
                     const si = calcSI(gross);
                     const total = row.total_si_employer ?? si.totalSIEmployer;
                     return (
-                      <Typography.Text style={{ color: '#d46b08' }}>{formatMoney(total, { withCurrency: true })}</Typography.Text>
+                      <Typography.Text style={{ color: token.colorWarning }}>{formatMoney(total, { withCurrency: true })}</Typography.Text>
                     );
                   },
                 },

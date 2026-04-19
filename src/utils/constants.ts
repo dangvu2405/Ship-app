@@ -89,6 +89,7 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth-token:v1',
   REFRESH_TOKEN: 'refresh-token:v1',
   TENANT_ID: 'tenant-id:v1',
+  APP_STORAGE: 'app-storage:v1',
 } as const;
 
 /**
@@ -100,9 +101,9 @@ export const AUTH_REFRESH_ENABLED = import.meta.env.VITE_AUTH_REFRESH_ENABLED ==
 // Auto-login is opt-in only via env flag
 export const AUTO_LOGIN_ENABLED = import.meta.env.VITE_AUTO_LOGIN === 'true';
 
-// Demo credentials (can be overridden via env variables)
-export const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL || 'admin@abctransport.com';
-export const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD || 'password';
+// Demo credentials — only rendered when TEST_ACCOUNTS_ENABLED is true (dev only)
+export const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? '';
+export const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? '';
 export const TEST_ACCOUNTS_ENABLED = import.meta.env.VITE_TEST_ACCOUNTS === 'true';
 
 export const ROUTES = LEGACY_ROUTES;

@@ -2,8 +2,8 @@ import { Fragment, Suspense, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Layout, theme } from 'antd';
 import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
-import { AppSidebarContent } from '@/components/app-sidebar';
-import { SiteHeader } from '@/components/site-header';
+import { AppSidebarContent } from '@/layouts/AppSidebar';
+import { SiteHeader } from '@/layouts/SiteHeader';
 import { FloatingChatAssistant } from '@/components/common/FloatingChatAssistant';
 import { useAppStore } from '@/stores/app.store';
 

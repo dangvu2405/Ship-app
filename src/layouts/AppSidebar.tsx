@@ -14,7 +14,7 @@ import {
   SafetyCertificateOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { NavUser } from '@/components/nav-user';
+import { NavUser } from '@/layouts/NavUser';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';

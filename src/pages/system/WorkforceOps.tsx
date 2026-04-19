@@ -44,8 +44,8 @@ import {
   DEFAULT_ACTION_CONFIRM,
   type ActionConfirmState,
   type DetailKind,
-} from '@/components/system/workforce-ops.constants';
-import { StatusTag, ActionConfirmModal, DetailDescriptions } from '@/components/system/workforce-ops-ui';
+} from '@/pages/system/components/workforce-ops.constants';
+import { StatusTag, ActionConfirmModal, DetailDescriptions } from '@/pages/system/components/workforce-ops-ui';
 
 type TabKey = 'schedule' | 'attendance' | 'leave' | 'overtime' | 'violations';
 

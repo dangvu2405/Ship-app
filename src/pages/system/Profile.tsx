@@ -11,6 +11,7 @@ import {
   Space,
   Tag,
   Typography,
+  theme,
 } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth.store';
@@ -19,6 +20,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 export const Profile = () => {
   const { user } = useAuthStore();
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const initial = (user?.username || 'U').charAt(0).toUpperCase();
 
   return (
@@ -34,7 +36,7 @@ export const Profile = () => {
         <Col xs={24} lg={8}>
           <Card>
             <Flex vertical align="center" gap="middle">
-              <Avatar size={96} style={{ background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)' }}>
+              <Avatar size={96} style={{ background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorPrimaryActive} 100%)` }}>
                 {initial}
               </Avatar>
               <div style={{ textAlign: 'center' }}>
@@ -52,7 +54,7 @@ export const Profile = () => {
               <Flex vertical gap="small" style={{ width: '100%' }}>
                 <Flex justify="space-between" align="center">
                   <Typography.Text type="secondary">{t('profile.status')}</Typography.Text>
-                  <Tag bordered={false} color="success">
+                  <Tag variant="borderless" color="success">
                     {t('common.active')}
                   </Tag>
                 </Flex>

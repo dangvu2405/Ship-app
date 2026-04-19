@@ -1,6 +1,6 @@
 import { Refine, Authenticated } from '@refinedev/core';
 import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
 import { Toaster } from 'react-hot-toast';
 import { Fragment, Suspense, useEffect, type ReactNode } from 'react';
@@ -13,7 +13,7 @@ import { AppLayout } from './layouts/AppLayout';
 import { useAppStore } from './stores/app.store';
 import { useAuthStore } from './stores/auth.store';
 import { ROUTES } from '@/routes';
-import { appNotificationProvider } from './providers/notificationProvider';
+import { useAppNotificationProvider } from './providers/notificationProvider';
 import {
   AppPages,
   crudRoutes,
@@ -22,6 +22,16 @@ import {
   singleRoutes,
 } from './routes/appRouteConfig';
 import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
+
+function ForceLogoutHandler() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handler = () => navigate(ROUTES.login, { replace: true });
+    window.addEventListener('auth:force-logout', handler);
+    return () => window.removeEventListener('auth:force-logout', handler);
+  }, [navigate]);
+  return null;
+}
 
 /** Redirect về /select-tenant nếu user đã đăng nhập nhưng chưa chọn tenant (multi-tenant). */
 function TenantGuard({ children }: { children: ReactNode }) {
@@ -48,6 +58,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ForceLogoutHandler />
       <QueryClientProvider client={queryClient}>
       <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
       <AntdApp>
@@ -56,7 +67,7 @@ function App() {
         authProvider={authProvider}
         routerProvider={routerProvider}
         resources={resources}
-        notificationProvider={appNotificationProvider}
+        notificationProvider={useAppNotificationProvider}
         options={{
           syncWithLocation: true,
           warnWhenUnsavedChanges: true,

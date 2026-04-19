@@ -5,8 +5,8 @@ import { useList } from "@refinedev/core"
 import dayjs from "dayjs"
 import { useDashboardStats } from "@/hooks/useDashboardStats"
 import { useDashboardTripRevenue } from "@/hooks/useDashboardTripRevenue"
-import { DashboardRevenueByOffice } from "@/components/dashboard/DashboardRevenueByOffice"
-import { DashboardChartSkeleton } from "@/components/dashboard/DashboardChartSkeleton"
+import { DashboardRevenueByOffice } from "@/pages/dashboard/components/DashboardRevenueByOffice"
+import { DashboardChartSkeleton } from "@/pages/dashboard/components/DashboardChartSkeleton"
 import { useDashboardRevenueByOffice } from "@/hooks/useDashboardRevenueByOffice"
 import { lazyWithMinDelay } from "@/utils/lazyWithMinDelay"
 import reportsService from "@/services/reports.service"
@@ -15,7 +15,7 @@ import type { Company, Office } from "@/types"
 import { useTranslation } from "@/hooks/useTranslation"
 
 const ChartAreaInteractive = lazyWithMinDelay(() =>
-  import("@/components/chart-area-interactive").then((m) => ({ default: m.ChartAreaInteractive })),
+  import("@/pages/dashboard/components/ChartAreaInteractive").then((m) => ({ default: m.ChartAreaInteractive })),
 )
 
 export default function Dashboard() {

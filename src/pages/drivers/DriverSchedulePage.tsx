@@ -4,14 +4,14 @@ import { Link } from 'react-router-dom';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ApplyScheduleModal } from '@/components/drivers/ApplyScheduleModal';
+import { ApplyScheduleModal } from '@/pages/drivers/components/ApplyScheduleModal';
 import {
   DriverScheduleCreateModal,
   DriverScheduleDetailModal,
   DriverScheduleOverrideModal,
   DriverScheduleRejectModal,
-} from '@/components/drivers/driver-schedule-modals';
-import { toFiniteNumber } from '@/components/drivers/driver-schedule.constants';
+} from '@/pages/drivers/components/driver-schedule-modals';
+import { toFiniteNumber } from '@/pages/drivers/components/driver-schedule.constants';
 import { LeaveList } from '@/pages/leave/LeaveList';
 import { OvertimeList } from '@/pages/overtime/OvertimeList';
 import { ViolationsList } from '@/pages/violations/ViolationsList';
