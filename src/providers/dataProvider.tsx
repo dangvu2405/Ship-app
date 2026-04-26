@@ -1,4 +1,4 @@
-import { DataProvider, BaseRecord, GetListParams, GetOneParams, CreateParams, UpdateParams, CrudFilter } from '@refinedev/core';
+import { DataProvider, BaseRecord, GetListParams, GetOneParams, CreateParams, UpdateParams, CrudFilter, type CustomParams } from '@refinedev/core';
 import simpleRestDataProvider from '@refinedev/simple-rest';
 import { API_BASE_URL } from '@/utils/constants';
 import api from '@/services/api';
@@ -86,6 +86,22 @@ export const dataProvider: DataProvider = {
     await api.delete(`/${resource}/${id}`);
     return {
       data: { id } as TData,
+    };
+  },
+
+  custom: async <TData extends BaseRecord = BaseRecord>(params: CustomParams) => {
+    const { url, method, payload, query, headers } = params;
+    const response = await api.request<unknown>({
+      url,
+      method: method as string,
+      params: query,
+      data: payload,
+      headers,
+    });
+    const body = response.data;
+    throwIfEnvelopeFailed(body);
+    return {
+      data: unwrapEnvelope<TData>(body),
     };
   },
 };

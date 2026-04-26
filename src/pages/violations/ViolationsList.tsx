@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -13,7 +13,8 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { useList } from '@refinedev/core';
+import { type CrudFilter } from '@refinedev/core';
+import { usePaginatedResourceSelectOptions } from '@/hooks/usePaginatedResourceSelectOptions';
 import { PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
@@ -21,7 +22,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Company, Driver } from '@/types';
+import type { Driver } from '@/types';
 import violationService from '@/services/violation.service';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 import { formatMoney } from '@/utils/displayFormat';
@@ -92,32 +93,29 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
   const list = listData?.data ?? [];
   const total = listData?.total ?? 0;
 
-  const { data: driversData } = useList<Driver>({ resource: 'drivers', pagination: { current: 1, pageSize: 200 } });
-  const { data: companiesData } = useList<Company>({ resource: 'companies', pagination: { current: 1, pageSize: 200 } });
+  const driverFilters = useMemo<CrudFilter[]>(() => {
+    const f: CrudFilter[] = [];
+    if (companyId) f.push({ field: 'company_id', operator: 'eq', value: companyId });
+    if (officeId) f.push({ field: 'office_id', operator: 'eq', value: officeId });
+    return f;
+  }, [companyId, officeId]);
 
-  const filteredDrivers = useMemo(
-    () => (driversData?.data ?? []).filter((d) => {
-      if (officeId && d.employee?.office_id !== officeId) return false;
-      if (companyId) {
-        const driverCompanyId = d.employee?.office?.company_id;
-        if (driverCompanyId != null && driverCompanyId !== companyId) return false;
-      }
-      return true;
-    }),
-    [driversData?.data, officeId, companyId],
-  );
+  const { options: driverOptions, onPopupScroll: onDriverScroll } = usePaginatedResourceSelectOptions<Driver>({
+    resource: 'drivers',
+    filters: driverFilters,
+    mapOption: useCallback((d: Driver) => ({ label: d.employee?.name ?? `Tài xế #${d.id}`, value: d.id }), []),
+  });
 
-  const driverOptions = useMemo(
-    () => filteredDrivers.map((d) => ({ label: d.employee?.name ?? `Tài xế #${d.id}`, value: d.id })),
-    [filteredDrivers],
-  );
+  const companyFilters = useMemo<CrudFilter[]>(() => {
+    if (!companyId) return [];
+    return [{ field: 'id', operator: 'eq', value: companyId }];
+  }, [companyId]);
 
-  const companyOptions = useMemo(
-    () => (companiesData?.data ?? [])
-      .filter((c) => (companyId ? c.id === companyId : true))
-      .map((c) => ({ label: c.name, value: c.id })),
-    [companiesData?.data, companyId],
-  );
+  const { options: companyOptions, onPopupScroll: onCompanyScroll } = usePaginatedResourceSelectOptions({
+    resource: 'companies',
+    filters: companyFilters,
+    mapOption: useCallback((c: { id: number; name: string }) => ({ label: c.name, value: c.id }), []),
+  });
 
   useEffect(() => {
     if (embedded && companyId) createForm.setFieldValue('company_id', companyId);
@@ -253,11 +251,11 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
           }}
         >
           <Form.Item name="driver_id" label="Tài xế" rules={[{ required: true, message: 'Chọn tài xế' }]}>
-            <Select showSearch placeholder="Chọn tài xế" options={driverOptions}
+            <Select showSearch placeholder="Chọn tài xế" options={driverOptions} onPopupScroll={onDriverScroll}
               filterOption={(inp, opt) => String(opt?.label ?? '').toLowerCase().includes(inp.toLowerCase())} />
           </Form.Item>
           <Form.Item name="company_id" label="Công ty" rules={[{ required: true, message: 'Chọn công ty' }]}>
-            <Select placeholder="Chọn công ty" options={companyOptions} disabled={embedded && !!companyId} />
+            <Select placeholder="Chọn công ty" options={companyOptions} onPopupScroll={onCompanyScroll} disabled={embedded && !!companyId} />
           </Form.Item>
           <Form.Item name="type" label="Loại vi phạm" rules={[{ required: true, message: 'Chọn loại vi phạm' }]}>
             <Select options={[...VIOLATION_TYPES]} />

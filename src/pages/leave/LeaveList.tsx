@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -13,8 +13,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { useList } from '@refinedev/core';
-import { useQuery } from '@tanstack/react-query';
+import { useCustom, useList } from '@refinedev/core';
 import { PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
@@ -24,6 +23,7 @@ import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Driver } from '@/types';
 import leaveService from '@/services/leave.service';
+import { ENDPOINTS } from '@/services/endpoints';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 import { ROUTES } from '@/routes';
 import toast from 'react-hot-toast';
@@ -37,7 +37,6 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
   const [current, setCurrent] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -83,6 +82,16 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     [filteredDrivers],
   );
 
+  const { data: leaveTypesResult } = useCustom<LeaveType[]>({
+    url: ENDPOINTS.leaveOps.types,
+    method: 'get',
+    queryOptions: { staleTime: 5 * 60 * 1000 },
+  });
+  const leaveTypes = useMemo(
+    () => (leaveTypesResult?.data as LeaveType[] | null | undefined) ?? [],
+    [leaveTypesResult?.data],
+  );
+
   const leaveTypeOptions = useMemo(
     () => leaveTypes.map((lt) => ({
       label: `${lt.name}${lt.is_paid ? ' (có lương)' : ' (không lương)'}`,
@@ -90,12 +99,6 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     })),
     [leaveTypes],
   );
-
-  useEffect(() => {
-    leaveService.listTypes()
-      .then((res) => { if (Array.isArray(res.data)) setLeaveTypes(res.data as LeaveType[]); })
-      .catch(() => {/* silent */});
-  }, []);
 
   const runAction = async (id: number, fn: () => Promise<unknown>, successMsg: string) => {
     setBusyId(id);
@@ -188,15 +191,13 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
   const selectedDriverId = Form.useWatch('driver_id', createForm);
   const selectedLeaveTypeId = Form.useWatch('leave_type_id', createForm);
 
-  const { data: balanceData, isLoading: isLoadingBalance } = useQuery({
-    queryKey: ['leave-balance', selectedDriverId, selectedLeaveTypeId],
-    queryFn: async () => {
-      if (!selectedDriverId || !selectedLeaveTypeId) return null;
-      const res = await leaveService.getBalance(selectedDriverId, selectedLeaveTypeId);
-      return res.data;
-    },
-    enabled: !!selectedDriverId && !!selectedLeaveTypeId,
+  const { data: balanceResult, isLoading: isLoadingBalance } = useCustom({
+    url: ENDPOINTS.leaveOps.balance,
+    method: 'get',
+    config: { query: { driver_id: selectedDriverId, leave_type_id: selectedLeaveTypeId } },
+    queryOptions: { enabled: !!selectedDriverId && !!selectedLeaveTypeId },
   });
+  const balanceData = balanceResult?.data as { available: number; total: number; used: number; pending: number } | null | undefined;
 
   return (
     <>

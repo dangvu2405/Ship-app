@@ -1,7 +1,6 @@
 import { Suspense, useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
 import { Alert, Button, Card, DatePicker, Flex, Select, Space, Typography } from "antd"
-import { useList } from "@refinedev/core"
+import { useCustom, useList } from "@refinedev/core"
 import dayjs from "dayjs"
 import { useDashboardStats } from "@/hooks/useDashboardStats"
 import { useDashboardTripRevenue } from "@/hooks/useDashboardTripRevenue"
@@ -9,7 +8,8 @@ import { DashboardRevenueByOffice } from "@/pages/dashboard/components/Dashboard
 import { DashboardChartSkeleton } from "@/pages/dashboard/components/DashboardChartSkeleton"
 import { useDashboardRevenueByOffice } from "@/hooks/useDashboardRevenueByOffice"
 import { lazyWithMinDelay } from "@/utils/lazyWithMinDelay"
-import reportsService from "@/services/reports.service"
+import type { PayrollSummaryData } from "@/services/reports.service"
+import { ENDPOINTS } from "@/services/endpoints"
 import { formatMoney } from "@/utils/displayFormat"
 import type { Company, Office } from "@/types"
 import { useTranslation } from "@/hooks/useTranslation"
@@ -63,18 +63,20 @@ export default function Dashboard() {
     year: period.year,
   })
 
-  const payrollSummaryQuery = useQuery({
-    queryKey: ["dashboard-payroll-summary", effectiveCompanyId ?? null, period.month, period.year],
-    queryFn: async () => {
-      if (!effectiveCompanyId) return null
-      const response = await reportsService.getPayrollSummary(effectiveCompanyId, period.month, period.year)
-      if (!response.success) {
-        throw new Error(response.message || "Failed to load payroll summary")
-      }
-      return response.data ?? null
+  const {
+    data: payrollSummaryResult,
+    isLoading: payrollSummaryLoading,
+    isError: payrollSummaryIsError,
+    error: payrollSummaryError,
+  } = useCustom<PayrollSummaryData>({
+    url: ENDPOINTS.reports.payrollSummary,
+    method: "get",
+    config: {
+      query: { company_id: effectiveCompanyId, month: period.month, year: period.year },
     },
-    enabled: effectiveCompanyId != null,
+    queryOptions: { enabled: effectiveCompanyId != null },
   })
+  const payrollSummaryData = payrollSummaryResult?.data
 
   /** Luôn dùng báo cáo theo tháng/năm đã chọn — stats API không gắn period nên không trộn với KPI chuyến hoàn thành. */
   const revenueTotal = clientRevenueTotal
@@ -161,14 +163,14 @@ export default function Dashboard() {
           <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.total ?? 0}</Typography.Title></Card>
           <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.completedTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{revenueTripCount}</Typography.Title></Card>
           <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalRevenue")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{statsLoading || revenueLoading ? t("common.loading") : formatMoney(revenueTotal, { withCurrency: true })}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll Net</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{formatMoney(payrollSummaryQuery.data?.total_net ?? 0, { withCurrency: true })}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll Net</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{formatMoney(payrollSummaryData?.total_net ?? 0, { withCurrency: true })}</Typography.Title></Card>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-5">
           <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeCompanies")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.companies?.active ?? 0}</Typography.Title></Card>
           <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeEmployees")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.employees?.active ?? 0}</Typography.Title></Card>
           <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeVehicles")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.vehicles?.active ?? 0}</Typography.Title></Card>
           <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Pending trips</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.pending ?? 0}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll employees</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{payrollSummaryQuery.data?.employees_count ?? 0}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll employees</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{payrollSummaryData?.employees_count ?? 0}</Typography.Title></Card>
         </div>
 
         {statsError ? (
@@ -226,16 +228,16 @@ export default function Dashboard() {
 
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <Card className="rounded-xl border" size="small" title="Payroll snapshot">
-            {payrollSummaryQuery.isLoading ? (
+            {payrollSummaryLoading ? (
               <Typography.Text type="secondary">{t("common.loading")}</Typography.Text>
-            ) : payrollSummaryQuery.error ? (
-              <Alert type="error" showIcon message={(payrollSummaryQuery.error as Error).message} />
-            ) : payrollSummaryQuery.data ? (
+            ) : payrollSummaryIsError ? (
+              <Alert type="error" showIcon message={((payrollSummaryError as unknown) as Error | null)?.message ?? t("common.loadError")} />
+            ) : payrollSummaryData ? (
               <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                <Flex justify="space-between"><Typography.Text type="secondary">Payroll ID</Typography.Text><Typography.Text>{payrollSummaryQuery.data.payroll?.id ?? "-"}</Typography.Text></Flex>
-                <Flex justify="space-between"><Typography.Text type="secondary">Status</Typography.Text><Typography.Text>{payrollSummaryQuery.data.payroll?.status ?? "-"}</Typography.Text></Flex>
-                <Flex justify="space-between"><Typography.Text type="secondary">Employees</Typography.Text><Typography.Text>{payrollSummaryQuery.data.employees_count ?? 0}</Typography.Text></Flex>
-                <Flex justify="space-between"><Typography.Text type="secondary">Total net</Typography.Text><Typography.Text strong>{formatMoney(payrollSummaryQuery.data.total_net ?? 0, { withCurrency: true })}</Typography.Text></Flex>
+                <Flex justify="space-between"><Typography.Text type="secondary">Payroll ID</Typography.Text><Typography.Text>{payrollSummaryData.payroll?.id ?? "-"}</Typography.Text></Flex>
+                <Flex justify="space-between"><Typography.Text type="secondary">Status</Typography.Text><Typography.Text>{payrollSummaryData.payroll?.status ?? "-"}</Typography.Text></Flex>
+                <Flex justify="space-between"><Typography.Text type="secondary">Employees</Typography.Text><Typography.Text>{payrollSummaryData.employees_count ?? 0}</Typography.Text></Flex>
+                <Flex justify="space-between"><Typography.Text type="secondary">Total net</Typography.Text><Typography.Text strong>{formatMoney(payrollSummaryData.total_net ?? 0, { withCurrency: true })}</Typography.Text></Flex>
               </Space>
             ) : (
               <Typography.Text type="secondary">{t("common.noData")}</Typography.Text>

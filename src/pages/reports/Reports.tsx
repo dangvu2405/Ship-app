@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useList } from '@refinedev/core';
+import { useCustom, useList } from '@refinedev/core';
 import { DownloadOutlined } from '@ant-design/icons';
 import { Button, Card, Flex, Select, Typography } from 'antd';
 import {
@@ -18,10 +18,9 @@ import {
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
-import reportsService from '@/services/reports.service';
 import type { Company } from '@/types';
 import type { PayrollSummaryData } from '@/services/reports.service';
-import { notifyErrorOnce } from '@/utils/errorToast';
+import { ENDPOINTS } from '@/services/endpoints';
 import { downloadCsvRows } from '@/utils/csvDownload';
 import { formatMoney } from '@/utils/displayFormat';
 import BuildingIcon from 'lucide-react/dist/esm/icons/building-2';
@@ -180,19 +179,6 @@ export function Reports() {
   const [dateRange, setDateRange] = useState<'month' | 'quarter' | 'year'>('month');
   const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'trips' | 'drivers'>('overview');
 
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const [companiesCount, setCompaniesCount] = useState<number | null>(null);
-  const [payrollsInPeriod, setPayrollsInPeriod] = useState<number | null>(null);
-  const [snapshotErrorMessage, setSnapshotErrorMessage] = useState('');
-
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [payrollSummary, setPayrollSummary] = useState<PayrollSummaryData | null | undefined>(undefined);
-  const [summaryErrorMessage, setSummaryErrorMessage] = useState('');
-  const summaryRequestRef = useRef<{ inFlight: boolean; key: string; lastAt: number }>({
-    inFlight: false,
-    key: '',
-    lastAt: 0,
-  });
 
   const { data: companiesData, isLoading: companiesLoading } = useList<Company>({
     resource: 'companies',
@@ -234,78 +220,32 @@ export function Reports() {
     label: String(currentYear - 2 + i),
   }));
 
-  const loadSnapshot = useCallback(async () => {
-    try {
-      setSnapshotErrorMessage('');
-      setSnapshotLoading(true);
-      const res = await reportsService.getDashboard(month, year);
-      if (res.success && res.data && typeof res.data === 'object') {
-        const d = res.data as Record<string, unknown>;
-        setCompaniesCount(Number(d.companies_count ?? 0));
-        setPayrollsInPeriod(Number(d.payrolls_count ?? 0));
-      } else {
-        setCompaniesCount(null);
-        setPayrollsInPeriod(null);
-        setSnapshotErrorMessage(res.message ?? t('reports.snapshotLoadFailed'));
-      }
-    } catch (e) {
-      setCompaniesCount(null);
-      setPayrollsInPeriod(null);
-      const message = notifyErrorOnce('reports-snapshot', e, { fallbackMessage: t('reports.snapshotLoadFailed') });
-      setSnapshotErrorMessage(message);
-    } finally {
-      setSnapshotLoading(false);
-    }
-  }, [month, year, t]);
+  const {
+    data: snapshotResult,
+    isLoading: snapshotLoading,
+    isError: snapshotIsError,
+    refetch: refetchSnapshot,
+  } = useCustom<Record<string, unknown>>({
+    url: ENDPOINTS.reports.dashboard,
+    method: 'get',
+    config: { query: { month, year } },
+  });
+  const snapshotRaw = snapshotResult?.data as Record<string, unknown> | null | undefined;
+  const companiesCount: number | null = snapshotRaw ? Number(snapshotRaw.companies_count ?? 0) : null;
+  const payrollsInPeriod: number | null = snapshotRaw ? Number(snapshotRaw.payrolls_count ?? 0) : null;
 
-  const loadPayrollSummary = useCallback(
-    async (force = false) => {
-      const cid = Number(companyId);
-      if (!cid) {
-        setPayrollSummary(undefined);
-        return;
-      }
-      const requestKey = `${cid}-${month}-${year}`;
-      const nowTs = Date.now();
-      const sameKey = summaryRequestRef.current.key === requestKey;
-      if (!force) {
-        if (sameKey && summaryRequestRef.current.inFlight) return;
-        if (sameKey && nowTs - summaryRequestRef.current.lastAt < 1200) return;
-      }
-
-      summaryRequestRef.current = { inFlight: true, key: requestKey, lastAt: nowTs };
-      try {
-        setSummaryErrorMessage('');
-        setSummaryLoading(true);
-        const res = await reportsService.getPayrollSummary(cid, month, year);
-        if (res.success) {
-          setPayrollSummary(res.data ?? null);
-        } else {
-          setPayrollSummary(null);
-          setSummaryErrorMessage(res.message ?? t('reports.summaryLoadFailed'));
-        }
-      } catch (e) {
-        const message = notifyErrorOnce('reports-payroll-summary', e, { fallbackMessage: t('reports.summaryLoadFailed') });
-        setSummaryErrorMessage(message);
-        setPayrollSummary(null);
-      } finally {
-        setSummaryLoading(false);
-        summaryRequestRef.current = { inFlight: false, key: requestKey, lastAt: Date.now() };
-      }
-    },
-    [companyId, month, year, t]
-  );
-
-  useEffect(() => {
-    void loadSnapshot();
-  }, [loadSnapshot]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadPayrollSummary();
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [loadPayrollSummary]);
+  const {
+    data: summaryResult,
+    isLoading: summaryLoading,
+    isError: summaryIsError,
+    refetch: refetchSummary,
+  } = useCustom<PayrollSummaryData>({
+    url: ENDPOINTS.reports.payrollSummary,
+    method: 'get',
+    config: { query: { company_id: Number(companyId), month, year } },
+    queryOptions: { enabled: !!companyId },
+  });
+  const payrollSummary = (summaryResult?.data ?? null) as PayrollSummaryData | null;
 
   useEffect(() => {
     if (!companies.length) {
@@ -572,13 +512,13 @@ export function Reports() {
                 disabled={snapshotLoading}
               />
             </div>
-            <Button onClick={() => void loadSnapshot()} loading={snapshotLoading}>
+            <Button onClick={() => void refetchSnapshot()} loading={snapshotLoading}>
               {t('reports.refresh')}
             </Button>
           </Flex>
-          {snapshotErrorMessage ? (
+          {snapshotIsError ? (
             <Typography.Paragraph type="danger" className="mb-4 text-sm">
-              {snapshotErrorMessage}
+              {t('reports.snapshotLoadFailed')}
             </Typography.Paragraph>
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -618,16 +558,16 @@ export function Reports() {
               />
             </div>
             <Button
-              onClick={() => void loadPayrollSummary(true)}
+              onClick={() => void refetchSummary()}
               loading={summaryLoading}
               disabled={!companyId}
             >
               {t('reports.refresh')}
             </Button>
           </Flex>
-          {summaryErrorMessage ? (
+          {summaryIsError ? (
             <Typography.Paragraph type="danger" className="mb-4 text-sm">
-              {summaryErrorMessage}
+              {t('reports.summaryLoadFailed')}
             </Typography.Paragraph>
           ) : null}
           {summaryLoading ? (

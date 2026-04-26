@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useInvalidate, useList, useNavigation, type CrudFilter } from '@refinedev/core';
 import { Alert, Button, Card, Flex, Input, InputNumber, Progress, Select, Tag, Typography } from 'antd';
 import { EyeOutlined, PlusOutlined } from '@ant-design/icons';
@@ -10,7 +9,6 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Company, Payroll, PayrollDetail } from '@/types';
-import { dataProvider } from '@/providers/dataProvider';
 import { ROUTES } from '@/routes';
 import { PayrollFormDialog } from './PayrollFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
@@ -80,28 +78,12 @@ export function PayrollsList() {
     return items;
   }, [companyFilter, yearFilter]);
 
-  const { data: payrollRowsForChart = [] } = useQuery({
-    queryKey: ['payrolls-chart-year', chartListFilters],
-    queryFn: async () => {
-      const all: Payroll[] = [];
-      let page = 1;
-      const pageSize = 100;
-      for (;;) {
-        const res = await dataProvider.getList<Payroll>({
-          resource: 'payrolls',
-          pagination: { current: page, pageSize },
-          filters: chartListFilters,
-        });
-        const batch = res.data ?? [];
-        all.push(...batch);
-        const total = res.total ?? batch.length;
-        if (batch.length < pageSize || all.length >= total) break;
-        page += 1;
-        if (page > 40) break;
-      }
-      return all;
-    },
+  const { data: chartData } = useList<Payroll>({
+    resource: 'payrolls',
+    pagination: { current: 1, pageSize: 50 },
+    filters: chartListFilters,
   });
+  const payrollRowsForChart = useMemo(() => chartData?.data ?? [], [chartData?.data]);
 
   const { data, isLoading, isError, refetch } = useResourceListQuery<Payroll>({
     resource: 'payrolls',

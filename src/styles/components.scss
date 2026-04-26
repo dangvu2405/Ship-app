@@ -434,24 +434,24 @@
     flex-shrink: 0;
     flex-direction: column;
     justify-content: center;
-    background: #f5f5f5;
-    padding: 40px 32px 72px;
+    background: #ffffff;
+    padding: 40px 32px 68px;
 
     @media (min-width: 1024px) {
-      width: clamp(380px, 37vw, 440px);
-      padding: 48px 40px 72px;
+      width: clamp(400px, 38vw, 456px);
+      padding: 48px 40px 68px;
     }
 
     @media (min-width: 1280px) {
-      width: 460px;
-      padding: 48px 48px 72px;
+      width: 456px;
+      padding: 48px;
     }
   }
 
   &__content {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 48px;
   }
 
   &__brand {
@@ -485,7 +485,7 @@
 
   &__footer {
     position: absolute;
-    bottom: 20px;
+    bottom: 24px;
     left: 32px;
     right: 32px;
     font-size: 12px;
