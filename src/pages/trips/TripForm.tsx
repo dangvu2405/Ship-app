@@ -5,8 +5,8 @@ import {
   FormItemNumber,
   FormItemSelect,
   FormItemText,
-  VnAdminAddressFields,
 } from '@/components/form';
+import { VnAdminAddressFields } from '@/components/form/vn-admin-address-fields';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Customer, Driver, Trip, Vehicle } from '@/types';
 import { TERMINAL_TRIP_STATUSES } from '@/utils/tripStatus';

@@ -8,6 +8,12 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface SocialLoginCredentials {
+  provider: 'google' | 'facebook' | 'apple';
+  access_token?: string;
+  id_token?: string;
+}
+
 export interface RegisterData {
   username: string;
   email: string;
@@ -42,7 +48,18 @@ class AuthService {
     access_token?: string;
     refresh_token?: string;
   }>> {
-    const response = await api.post(ENDPOINTS.auth.login, credentials);
+    const response = await api.post(ENDPOINTS.auth.login, credentials, { skipErrorToast: true, errorMode: 'silent' });
+    return response.data;
+  }
+
+  async socialLogin(credentials: SocialLoginCredentials): Promise<ApiResponse<{
+    user: User;
+    tenants?: import('@/types').Tenant[];
+    token?: string;
+    access_token?: string;
+    refresh_token?: string;
+  }>> {
+    const response = await api.post(ENDPOINTS.auth.socialLogin, credentials, { skipErrorToast: true, errorMode: 'silent' });
     return response.data;
   }
 

@@ -1,6 +1,7 @@
 import { Form } from 'antd';
 import { useList } from '@refinedev/core';
-import { FormAccordionSections, FormItemSelect, FormItemText, VnAdminAddressFields } from '@/components/form';
+import { FormAccordionSections, FormItemSelect, FormItemText } from '@/components/form';
+import { VnAdminAddressFields } from '@/components/form/vn-admin-address-fields';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Company, Office } from '@/types';
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ComponentProps, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type ComponentProps, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -7,11 +7,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
-import { DEMO_PASSWORD, TEST_ACCOUNTS_ENABLED } from '@/utils/constants';
+import { DEMO_PASSWORD, GOOGLE_OAUTH_CLIENT_ID, TEST_ACCOUNTS_ENABLED } from '@/utils/constants';
 
 export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { login, socialLogin } = useAuthStore();
   const { t } = useTranslation();
   const { token } = theme.useToken();
 
@@ -19,7 +19,10 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [testAccounts, setTestAccounts] = useState<{ role: string; role_display: string; email: string }[]>([]);
+  const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
   const isBusy = isSubmitting;
+  const socialBusy = isSubmitting || isSocialSubmitting;
+  const socialRedirectUri = useMemo(() => `${window.location.origin}${ROUTES.googleCallback}`, []);
 
   useEffect(() => {
     if (!TEST_ACCOUNTS_ENABLED) return;
@@ -30,6 +33,42 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+    if (!hash) return;
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token') ?? undefined;
+    const idToken = params.get('id_token') ?? undefined;
+    const oauthState = params.get('state');
+    const storedState = sessionStorage.getItem('google-oauth-state');
+
+    if (!accessToken && !idToken) return;
+    if (!oauthState || !storedState || oauthState !== storedState) {
+      toast.error(t('auth.loginFailed'));
+      window.history.replaceState(null, '', ROUTES.login);
+      return;
+    }
+
+    sessionStorage.removeItem('google-oauth-state');
+    window.history.replaceState(null, '', ROUTES.login);
+
+    void (async () => {
+      try {
+        setIsSocialSubmitting(true);
+        await socialLogin({
+          provider: 'google',
+          access_token: accessToken,
+          id_token: idToken,
+        });
+        navigateAfterLogin();
+      } catch {
+        toast.error(t('auth.loginFailed'));
+      } finally {
+        setIsSocialSubmitting(false);
+      }
+    })();
+  }, [navigate, socialLogin, t]);
 
   const navigateAfterLogin = () => {
     const { currentTenantId } = useAuthStore.getState();
@@ -67,11 +106,34 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
     toast(t('auth.featureUnavailable'), { icon: 'ℹ️' });
   };
 
+  const handleGoogleLogin = () => {
+    if (socialBusy) return;
+    if (!GOOGLE_OAUTH_CLIENT_ID) {
+      toast.error(t('auth.googleOAuthNotConfigured'));
+      return;
+    }
+
+    const state = crypto.randomUUID();
+    sessionStorage.setItem('google-oauth-state', state);
+    const params = new URLSearchParams({
+      client_id: GOOGLE_OAUTH_CLIENT_ID,
+      redirect_uri: socialRedirectUri,
+      response_type: 'token id_token',
+      scope: 'openid email profile',
+      include_granted_scopes: 'true',
+      prompt: 'select_account',
+      nonce: state,
+      state,
+    });
+
+    window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+  };
+
   const socialBtn = (
     icon: ReactNode,
     label: string,
   ) => (
-    <Button block size="large" onClick={handleUnavailableAction} aria-label={label}>
+    <Button block size="large" onClick={handleGoogleLogin} aria-label={label} loading={socialBusy}>
       {icon}
     </Button>
   );
@@ -79,7 +141,7 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div className={cn('min-h-screen flex items-center justify-center p-4', className)} style={{ background: token.colorFillAlter }} {...props}>
       <div style={{ width: '100%', maxWidth: 896 }}>
-        <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden', boxShadow: token.boxShadowSecondary }}>
+        <Card variant="borderless" styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden', boxShadow: token.boxShadowSecondary }}>
           <Row gutter={0}>
             <Col xs={24} md={12}>
               <form onSubmit={handleSubmit} style={{ padding: '32px 40px' }}>

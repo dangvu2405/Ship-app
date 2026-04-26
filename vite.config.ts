@@ -38,6 +38,19 @@ export default defineConfig(({ mode }) => {
   },
   build: {
     chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('recharts')) return 'charts-vendor';
+          if (id.includes('@ant-design') || id.includes('/antd/')) return 'antd-vendor';
+          if (id.includes('@refinedev')) return 'refine-vendor';
+          if (id.includes('@tanstack/react-query')) return 'query-vendor';
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'react-vendor';
+          return;
+        },
+      },
+    },
   },
   resolve: {
     alias: {

@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigation } from '@refinedev/core';
-import { Avatar, Button, Card, Form, List, Space, Tabs, Tag } from 'antd';
+import { Button, Card, Form, List, Space, Tabs, Tag } from 'antd';
+import { NoImageAvatar } from '@/components/common/NoImageAvatar';
 import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -146,9 +147,15 @@ export function DriversList() {
         }
       />
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">{t('drivers.title')}</h2>
+          <p className="text-sm text-slate-500">
+            {total} {t('common.records')}
+          </p>
+        </div>
         <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
         <Form form={filterForm} layout="vertical" requiredMark={false} colon={false} className="contents min-w-0 w-full">
-          <ListPageFilters variant="grid-2">
+          <ListPageFilters variant="grid-2" className="rounded-xl border bg-white p-4">
             <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
@@ -188,7 +195,7 @@ export function DriversList() {
                 emptyText: t('emptyState.listDescription', { resource: t('drivers.title') }),
               }}
               pagination={{ current, total, pageSize, onChange: setCurrent }}
-              renderItem={(item, index) => {
+              renderItem={(item) => {
                   const statusLabel =
                     item.available_status === 'available'
                       ? t('drivers.statusAvailable')
@@ -235,16 +242,7 @@ export function DriversList() {
                       ]}
                     >
                       <List.Item.Meta
-                        avatar={(
-                          <Avatar
-                            src={
-                              item.employee?.avatar_url?.trim()
-                                ? item.employee.avatar_url
-                                : `https://api.dicebear.com/7.x/miniavs/svg?seed=${encodeURIComponent(String(item.employee_id ?? item.id ?? index))}`
-                            }
-                            alt=""
-                          />
-                        )}
+                        avatar={<NoImageAvatar src={item.employee?.avatar_url} shape="circle" />}
                         title={
                           <Button type="link" style={{ padding: 0 }} onClick={() => show('drivers', item.id)}>
                             {item.employee?.name ?? `#${item.employee_id}`}

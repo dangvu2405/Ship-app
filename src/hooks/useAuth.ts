@@ -4,16 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes';
 
 export const useAuth = () => {
-  const {
-    user,
-    isAuthenticated,
-    isLoading,
-    checkAuth,
-    currentTenantId,
-    pendingTenants,
-    selectTenant,
-    switchTenant,
-  } = useAuthStore();
+  const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const navigate = useNavigate();
 
   const normalizeRole = (role: string): string => role.trim().toLowerCase();
@@ -38,12 +29,11 @@ export const useAuth = () => {
   };
 
   const hasPermission = (permission: string): boolean => {
+    if (hasRole('admin')) return true;
     return user?.roles?.some((r) =>
       r.permissions?.some((p) => p.code === permission || p.name === permission)
     ) ?? false;
   };
-
-  const currentTenant = user?.tenants?.find((t) => t.id === currentTenantId) ?? null;
 
   return {
     user,
@@ -52,10 +42,5 @@ export const useAuth = () => {
     requireAuth,
     hasRole,
     hasPermission,
-    currentTenantId,
-    currentTenant,
-    pendingTenants,
-    selectTenant,
-    switchTenant,
   };
 };

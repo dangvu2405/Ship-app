@@ -13,6 +13,8 @@ import reportsService from "@/services/reports.service"
 import { formatMoney } from "@/utils/displayFormat"
 import type { Company, Office } from "@/types"
 import { useTranslation } from "@/hooks/useTranslation"
+import { PageHeader } from "@/components/common/PageHeader"
+import { ROUTES } from "@/routes"
 
 const ChartAreaInteractive = lazyWithMinDelay(() =>
   import("@/pages/dashboard/components/ChartAreaInteractive").then((m) => ({ default: m.ChartAreaInteractive })),
@@ -23,6 +25,7 @@ export default function Dashboard() {
   const [companyId, setCompanyId] = useState<number | undefined>(undefined)
   const [officeId, setOfficeId] = useState<number | undefined>(undefined)
   const [selectedDate, setSelectedDate] = useState(dayjs())
+  const [timeRange, setTimeRange] = useState<"7months" | "30d" | "7d">("7months")
   const period = useMemo(() => {
     return { month: selectedDate.month() + 1, year: selectedDate.year() }
   }, [selectedDate])
@@ -94,12 +97,37 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 px-4 pb-6 lg:px-6">
-      <Card styles={{ body: { padding: 0 } }}>
-     
+      <PageHeader title={t("dashboard.title")} breadcrumb={[{ label: t("dashboard.title"), path: ROUTES.dashboard }]} />
 
-        <div style={{ padding: 20 }}>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">{t("dashboard.title")}</h2>
+          <p className="text-sm text-slate-500">{dayjs().format("DD/MM/YYYY")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {[
+            { value: "7months", label: "7 tháng" },
+            { value: "30d", label: "30 ngày" },
+            { value: "7d", label: "7 ngày" },
+          ].map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => setTimeRange(item.value as "7months" | "30d" | "7d")}
+              className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                timeRange === item.value
+                  ? "bg-blue-600 text-white"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <div className="rounded-md border bg-muted/20 p-3">
+      <Card className="rounded-xl border shadow-sm" styles={{ body: { padding: 20 } }}>
+        <div className="rounded-xl border bg-white p-4">
           <Flex gap={12} wrap="wrap">
             <Select
               value={effectiveCompanyId}
@@ -129,18 +157,18 @@ export default function Dashboard() {
           </Flex>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.total ?? 0}</Typography.Title></Card>
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.completedTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{revenueTripCount}</Typography.Title></Card>
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalRevenue")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{statsLoading || revenueLoading ? t("common.loading") : formatMoney(revenueTotal, { withCurrency: true })}</Typography.Title></Card>
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll Net</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{formatMoney(payrollSummaryQuery.data?.total_net ?? 0, { withCurrency: true })}</Typography.Title></Card>
+        <div className="mt-4 grid gap-4 md:grid-cols-4">
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.total ?? 0}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.completedTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{revenueTripCount}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalRevenue")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{statsLoading || revenueLoading ? t("common.loading") : formatMoney(revenueTotal, { withCurrency: true })}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll Net</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{formatMoney(payrollSummaryQuery.data?.total_net ?? 0, { withCurrency: true })}</Typography.Title></Card>
         </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-5">
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeCompanies")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.companies?.active ?? 0}</Typography.Title></Card>
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeEmployees")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.employees?.active ?? 0}</Typography.Title></Card>
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeVehicles")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.vehicles?.active ?? 0}</Typography.Title></Card>
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Pending trips</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.pending ?? 0}</Typography.Title></Card>
-          <Card size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll employees</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{payrollSummaryQuery.data?.employees_count ?? 0}</Typography.Title></Card>
+        <div className="mt-4 grid gap-4 md:grid-cols-5">
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeCompanies")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.companies?.active ?? 0}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeEmployees")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.employees?.active ?? 0}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeVehicles")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.vehicles?.active ?? 0}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Pending trips</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.pending ?? 0}</Typography.Title></Card>
+          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll employees</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{payrollSummaryQuery.data?.employees_count ?? 0}</Typography.Title></Card>
         </div>
 
         {statsError ? (
@@ -163,7 +191,7 @@ export default function Dashboard() {
               offices={offices}
             />
           </Suspense>
-          <Card title={t("dashboard.topOffices")} size="small">
+          <Card className="rounded-xl border" title={t("dashboard.topOffices")} size="small">
             {rankingLoading ? (
               <Typography.Text type="secondary">{t("common.loading")}</Typography.Text>
             ) : topOfficeRows.length === 0 ? (
@@ -197,7 +225,7 @@ export default function Dashboard() {
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
-          <Card size="small" title="Payroll snapshot">
+          <Card className="rounded-xl border" size="small" title="Payroll snapshot">
             {payrollSummaryQuery.isLoading ? (
               <Typography.Text type="secondary">{t("common.loading")}</Typography.Text>
             ) : payrollSummaryQuery.error ? (
@@ -213,7 +241,7 @@ export default function Dashboard() {
               <Typography.Text type="secondary">{t("common.noData")}</Typography.Text>
             )}
           </Card>
-          <Card size="small" title="Fleet utilization">
+          <Card className="rounded-xl border" size="small" title="Fleet utilization">
             <Space direction="vertical" size={10} style={{ width: "100%" }}>
               {[
                 { label: t("dashboard.cards.activeVehicles"), value: stats?.vehicles?.active ?? 0, total: Math.max(stats?.vehicles?.total ?? 1, 1) },
@@ -235,7 +263,7 @@ export default function Dashboard() {
               })}
             </Space>
           </Card>
-          <Card size="small" title="Operations health">
+          <Card className="rounded-xl border" size="small" title="Operations health">
             <Space direction="vertical" size={8} style={{ width: "100%" }}>
               <Flex justify="space-between"><Typography.Text type="secondary">Completion rate</Typography.Text><Typography.Text>{Math.round(((stats?.trips?.completed ?? 0) / Math.max(stats?.trips?.total ?? 1, 1)) * 100)}%</Typography.Text></Flex>
               <Flex justify="space-between"><Typography.Text type="secondary">Pending rate</Typography.Text><Typography.Text>{Math.round(((stats?.trips?.pending ?? 0) / Math.max(stats?.trips?.total ?? 1, 1)) * 100)}%</Typography.Text></Flex>
@@ -256,7 +284,6 @@ export default function Dashboard() {
             month={period.month}
             year={period.year}
           />
-        </div>
         </div>
       </Card>
     </div>

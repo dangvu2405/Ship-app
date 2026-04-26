@@ -13,6 +13,7 @@ import {
   Tabs,
   Tag,
   Typography,
+  theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -58,12 +59,15 @@ export const AuthLogsAndSessionManagement = () => {
   const { t } = useTranslation();
   const tRef = useRef(t);
 
+  const { token } = theme.useToken();
   const [summary, setSummary] = useState({ activeSessions: 0, failedLogins: 0 });
   const [sessions, setSessions] = useState<AuthSessionRow[]>([]);
   const [totalSessions, setTotalSessions] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [logoutConfirmId, setLogoutConfirmId] = useState<string | null>(null);
+  const [lockConfirmId, setLockConfirmId] = useState<string | null>(null);
 
   const [logDate, setLogDate] = useState(todayIso);
   const [auditLogs, setAuditLogs] = useState<AuthLogAuditRow[]>([]);
@@ -194,32 +198,8 @@ export const AuthLogsAndSessionManagement = () => {
     [t, currentPage, loadSummary, loadSessionsPage],
   );
 
-  const openLogoutConfirm = useCallback(
-    (sessionId: string) => {
-      Modal.confirm({
-        title: t('notificationCenter.sessions.confirmLogoutTitle'),
-        content: t('notificationCenter.sessions.confirmLogoutDescription'),
-        okText: t('notificationCenter.sessions.confirmLogout'),
-        cancelText: t('notificationCenter.sessions.cancel'),
-        onOk: () => runSessionAction('logout', sessionId),
-      });
-    },
-    [t, runSessionAction],
-  );
-
-  const openLockConfirm = useCallback(
-    (sessionId: string) => {
-      Modal.confirm({
-        title: t('notificationCenter.sessions.confirmLockTitle'),
-        content: t('notificationCenter.sessions.confirmLockDescription'),
-        okText: t('notificationCenter.sessions.confirmLock'),
-        cancelText: t('notificationCenter.sessions.cancel'),
-        okType: 'danger',
-        onOk: () => runSessionAction('lock', sessionId),
-      });
-    },
-    [t, runSessionAction],
-  );
+  const openLogoutConfirm = useCallback((sessionId: string) => setLogoutConfirmId(sessionId), []);
+  const openLockConfirm = useCallback((sessionId: string) => setLockConfirmId(sessionId), []);
 
   const sessionColumns: ColumnsType<AuthSessionRow> = useMemo(
     () => [
@@ -487,7 +467,7 @@ export const AuthLogsAndSessionManagement = () => {
             <Statistic
               title={t('notificationCenter.sessions.activeSessions')}
               value={summaryLoading ? '…' : summary.activeSessions}
-              valueStyle={{ color: '#3f8600' }}
+              valueStyle={{ color: token.colorSuccess }}
             />
           </Card>
         </Col>
@@ -496,13 +476,36 @@ export const AuthLogsAndSessionManagement = () => {
             <Statistic
               title={t('notificationCenter.sessions.failedLoginsToday')}
               value={summaryLoading ? '…' : summary.failedLogins}
-              valueStyle={{ color: '#cf1322' }}
+              valueStyle={{ color: token.colorError }}
             />
           </Card>
         </Col>
       </Row>
 
       <Tabs defaultActiveKey="sessions" items={tabItems} />
+
+      <Modal
+        open={logoutConfirmId !== null}
+        title={t('notificationCenter.sessions.confirmLogoutTitle')}
+        okText={t('notificationCenter.sessions.confirmLogout')}
+        cancelText={t('notificationCenter.sessions.cancel')}
+        onOk={() => { void runSessionAction('logout', logoutConfirmId!); setLogoutConfirmId(null); }}
+        onCancel={() => setLogoutConfirmId(null)}
+      >
+        {t('notificationCenter.sessions.confirmLogoutDescription')}
+      </Modal>
+
+      <Modal
+        open={lockConfirmId !== null}
+        title={t('notificationCenter.sessions.confirmLockTitle')}
+        okText={t('notificationCenter.sessions.confirmLock')}
+        cancelText={t('notificationCenter.sessions.cancel')}
+        okButtonProps={{ danger: true }}
+        onOk={() => { void runSessionAction('lock', lockConfirmId!); setLockConfirmId(null); }}
+        onCancel={() => setLockConfirmId(null)}
+      >
+        {t('notificationCenter.sessions.confirmLockDescription')}
+      </Modal>
     </Card>
   );
 };

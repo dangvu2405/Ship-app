@@ -223,6 +223,7 @@ export const en = {
     and: 'and',
     brandDescription: 'Manage your fleet, employees, and operations all in one place',
     featureUnavailable: 'This feature is not available yet.',
+    googleOAuthNotConfigured: 'Google OAuth client ID is not configured. Please set VITE_GOOGLE_OAUTH_CLIENT_ID.',
     forgotPasswordTitle: 'Reset password',
     forgotPasswordSubtitle: 'Enter the email for your account. If it exists, we will send reset instructions.',
     forgotPasswordSubmit: 'Send reset link',
@@ -246,6 +247,12 @@ export const en = {
     forgotPasswordChangeEmail: 'Use a different email',
     forgotPasswordSendUnavailable: 'Forgot password email endpoint is not enabled yet.',
     forgotPasswordResetUnavailable: 'Reset password endpoint is not enabled yet.',
+    networkError: 'Network error. Please check your connection.',
+    serverError: 'Server error. Please try again later.',
+    accountForbidden: 'Account is locked or does not have access.',
+    accountNotFound: 'Account does not exist.',
+    rateLimited: 'Too many attempts. Please wait a few minutes and try again.',
+    badRequest: 'Invalid request. Please check your information.',
   },
 
   // Dashboard
@@ -974,6 +981,7 @@ export const en = {
     switchTenant: 'Switch company',
     switchToLightMode: 'Switch to light mode',
     switchToDarkMode: 'Switch to dark mode',
+    toggleSidebar: 'Toggle Sidebar',
   },
 
   // Billing
@@ -1305,6 +1313,10 @@ export const en = {
     networkError: 'Network error. Please check your connection.',
     serverError: 'Server error. Please try again later.',
     accessDenied: 'Access denied',
+    accountForbidden: 'Account is locked or does not have access.',
+    accountNotFound: 'Account does not exist.',
+    rateLimited: 'Too many attempts. Please wait a few minutes and try again.',
+    badRequest: 'Invalid request. Please check your information.',
   },
 };
 

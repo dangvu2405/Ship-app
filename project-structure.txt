@@ -1,0 +1,317 @@
+├── docs/
+│   ├── AI_SPEC_CHAT_MODULE.md (17.6 KB)
+│   ├── audit-ship-app-from-agents-skills.md (11.5 KB)
+│   ├── backend.md (4.9 KB)
+│   ├── BAO_CAO_NOI_DUNG_FRONTEND_THONG_NHAT_BACKEND.md (7.5 KB)
+│   ├── DATA_GENERATION_PROMPT.md (2.3 KB)
+│   ├── design-system.md (19.4 KB)
+│   ├── ENDPOINTS_ALIGNMENT_FOR_BACKEND.md (3.4 KB)
+│   ├── FRONTEND_API.md (31.5 KB)
+│   ├── FRONTEND_ENDPOINTS_TEST_REPORT.md (4.1 KB)
+│   ├── FRONTEND_FULL_REPORT.md (43.0 KB)
+│   ├── FRONTEND_OVERVIEW_FOR_BACKEND.md (7.8 KB)
+│   ├── FRONTEND_PAYLOADS_BY_SCREEN.md (7.3 KB)
+│   ├── FRONTEND_RESPONSE_FIELDS_BY_RESOURCE.md (16.7 KB)
+│   ├── frontend.md (6.4 KB)
+│   ├── Thiết Kế Lại UI_UX Cho Sản Phẩm SaaS.md (60.4 KB)
+│   └── UI_IMPROVEMENT_COMPONENT_GUIDE_VI.md (0.0 KB)
+├── public/
+│   ├── animations/
+│   ├── lottie/
+│   │   ├── truck-dark-ui.lottie (17.2 KB)
+│   │   └── truck-light-ui.lottie (16.6 KB)
+│   ├── dotlottie-player.wasm (1832.7 KB)
+│   ├── favicon.ico (4.2 KB)
+│   └── payroll-detail-export-template.csv (0.1 KB)
+├── scripts/
+├── src/
+│   ├── components/
+│   │   ├── common/
+│   │   │   ├── chat/
+│   │   │   │   └── MessageRenderer.tsx (1.4 KB)
+│   │   │   ├── AppLoadingSpin.tsx (3.6 KB)
+│   │   │   ├── auth-logs-and-session-management.scss (0.7 KB)
+│   │   │   ├── AuthLogsAndSessionManagement.tsx (15.9 KB)
+│   │   │   ├── Breadcrumb.tsx (1.6 KB)
+│   │   │   ├── ChatAssistantPanel.tsx (19.9 KB)
+│   │   │   ├── DateTimeBadge.tsx (0.8 KB)
+│   │   │   ├── DeleteConfirmDialog.tsx (1.6 KB)
+│   │   │   ├── ErrorState.tsx (1.3 KB)
+│   │   │   ├── FileUploader.tsx (2.2 KB)
+│   │   │   ├── FloatingChatAssistant.tsx (6.6 KB)
+│   │   │   ├── LanguageSwitcher.tsx (0.6 KB)
+│   │   │   ├── ListPageFilters.tsx (2.3 KB)
+│   │   │   ├── LottieTruckLoader.tsx (1.2 KB)
+│   │   │   ├── NoImageAvatar.tsx (0.7 KB)
+│   │   │   ├── NotificationItem.tsx (3.3 KB)
+│   │   │   ├── NotificationPopup.tsx (5.0 KB)
+│   │   │   ├── PageHeader.tsx (2.5 KB)
+│   │   │   ├── PageLoadingOverlay.tsx (1.3 KB)
+│   │   │   ├── ProtectedRoute.tsx (1.1 KB)
+│   │   │   ├── ResourceFormModal.tsx (1.2 KB)
+│   │   │   ├── SearchField.tsx (0.6 KB)
+│   │   │   ├── TableSkeleton.tsx (0.9 KB)
+│   │   │   └── UnsavedChangesWarningDialog.tsx (1.2 KB)
+│   │   ├── form/
+│   │   │   ├── FormAccordionSections.tsx (1.8 KB)
+│   │   │   ├── FormItemNumber.tsx (3.2 KB)
+│   │   │   ├── FormItemSelect.tsx (5.8 KB)
+│   │   │   ├── FormItemSwitch.tsx (0.8 KB)
+│   │   │   ├── FormItemText.tsx (2.2 KB)
+│   │   │   ├── FormItemTextArea.tsx (1.8 KB)
+│   │   │   ├── FormItemUploadDragger.tsx (1.4 KB)
+│   │   │   ├── index.ts (0.8 KB)
+│   │   │   ├── README.md (9.0 KB)
+│   │   │   ├── types.ts (6.4 KB)
+│   │   │   └── vn-admin-address-fields.tsx (7.5 KB)
+│   │   ├── table/
+│   │   │   ├── DataTable.tsx (4.6 KB)
+│   │   │   ├── index.ts (0.1 KB)
+│   │   │   └── README.md (10.0 KB)
+│   │   └── ui/
+│   │       └── chart.tsx (10.2 KB)
+│   ├── dev/
+│   │   └── api-test/
+│   ├── features/
+│   │   └── payroll/
+│   ├── hooks/
+│   │   ├── use-driver-day-map.ts (2.1 KB)
+│   │   ├── use-mobile.tsx (0.6 KB)
+│   │   ├── useAuth.ts (1.2 KB)
+│   │   ├── useDashboardRevenueByOffice.ts (5.3 KB)
+│   │   ├── useDashboardRevenueChartData.ts (6.2 KB)
+│   │   ├── useDashboardStats.ts (2.0 KB)
+│   │   ├── useDashboardTripRevenue.ts (1.9 KB)
+│   │   ├── useFormDialogCloseGuard.ts (0.9 KB)
+│   │   ├── useGuardedAsync.ts (1.0 KB)
+│   │   ├── useNotifications.ts (3.0 KB)
+│   │   ├── usePaginatedResourceSelectOptions.ts (2.4 KB)
+│   │   ├── usePermission.ts (0.8 KB)
+│   │   ├── useResourceDeleteMutation.ts (0.7 KB)
+│   │   ├── useResourceListQuery.ts (0.9 KB)
+│   │   ├── useSafeRefetch.ts (0.6 KB)
+│   │   └── useTranslation.ts (2.7 KB)
+│   ├── layouts/
+│   │   ├── AppLayout.tsx (3.0 KB)
+│   │   ├── AppSidebar.tsx (7.4 KB)
+│   │   ├── NavUser.tsx (2.9 KB)
+│   │   └── SiteHeader.tsx (2.7 KB)
+│   ├── lib/
+│   │   ├── auth-session.ts (1.1 KB)
+│   │   ├── forgot-password-flow.ts (0.2 KB)
+│   │   ├── query-client.ts (0.5 KB)
+│   │   ├── safe-storage.ts (0.7 KB)
+│   │   └── utils.ts (0.2 KB)
+│   ├── locales/
+│   │   ├── en.ts (49.1 KB)
+│   │   ├── index.ts (0.3 KB)
+│   │   ├── README.md (2.3 KB)
+│   │   └── vi.ts (55.9 KB)
+│   ├── pages/
+│   │   ├── allowances/
+│   │   │   ├── AllowanceForm.tsx (1.2 KB)
+│   │   │   ├── AllowanceFormDialog.tsx (5.3 KB)
+│   │   │   └── AllowancesList.tsx (6.3 KB)
+│   │   ├── auth/
+│   │   │   ├── forgot-password-form.tsx (3.9 KB)
+│   │   │   ├── forgot-password-verify-form.tsx (7.7 KB)
+│   │   │   ├── login-form.tsx (9.5 KB)
+│   │   │   ├── register-form.tsx (8.7 KB)
+│   │   │   └── tenant-selector.tsx (4.9 KB)
+│   │   ├── companies/
+│   │   │   ├── CompaniesList.tsx (9.0 KB)
+│   │   │   ├── CompanyForm.tsx (4.8 KB)
+│   │   │   └── CompanyFormDialog.tsx (6.0 KB)
+│   │   ├── customers/
+│   │   │   ├── CustomerForm.tsx (2.2 KB)
+│   │   │   ├── CustomerFormDialog.tsx (5.2 KB)
+│   │   │   └── CustomersList.tsx (7.2 KB)
+│   │   ├── dashboard/
+│   │   │   ├── components/
+│   │   │   │   ├── ChartAreaInteractive.tsx (9.3 KB)
+│   │   │   │   ├── DashboardChartSkeleton.tsx (1.6 KB)
+│   │   │   │   ├── DashboardRevenueByOffice.tsx (3.3 KB)
+│   │   │   │   ├── index.ts (0.2 KB)
+│   │   │   │   └── SectionCards.tsx (6.2 KB)
+│   │   │   └── dashboard.tsx (14.3 KB)
+│   │   ├── deductions/
+│   │   │   ├── DeductionForm.tsx (1.0 KB)
+│   │   │   ├── DeductionFormDialog.tsx (5.2 KB)
+│   │   │   └── DeductionsList.tsx (5.9 KB)
+│   │   ├── departments/
+│   │   │   ├── DepartmentForm.tsx (2.8 KB)
+│   │   │   ├── DepartmentFormDialog.tsx (5.5 KB)
+│   │   │   └── DepartmentsList.tsx (8.8 KB)
+│   │   ├── dev/
+│   │   ├── drivers/
+│   │   │   ├── components/
+│   │   │   │   ├── ApplyScheduleModal.tsx (5.4 KB)
+│   │   │   │   ├── driver-schedule-modals.tsx (9.6 KB)
+│   │   │   │   ├── driver-schedule.constants.ts (1.7 KB)
+│   │   │   │   ├── index.ts (0.3 KB)
+│   │   │   │   └── ScheduleDayCell.tsx (4.8 KB)
+│   │   │   ├── DriverForm.tsx (13.3 KB)
+│   │   │   ├── DriverFormDialog.tsx (7.6 KB)
+│   │   │   ├── DriverScheduleBulkPage.tsx (20.1 KB)
+│   │   │   ├── DriverSchedulePage.tsx (13.6 KB)
+│   │   │   ├── DriversList.tsx (10.4 KB)
+│   │   │   └── use-driver-schedule-page.tsx (19.3 KB)
+│   │   ├── invoices/
+│   │   │   ├── InvoiceDetailPage.tsx (14.7 KB)
+│   │   │   ├── InvoiceForm.tsx (5.7 KB)
+│   │   │   ├── InvoiceFormDialog.tsx (5.8 KB)
+│   │   │   └── InvoicesList.tsx (8.2 KB)
+│   │   ├── leave/
+│   │   │   └── LeaveList.tsx (15.4 KB)
+│   │   ├── offices/
+│   │   │   ├── OfficeForm.tsx (2.4 KB)
+│   │   │   ├── OfficeFormDialog.tsx (5.2 KB)
+│   │   │   └── OfficesList.tsx (7.8 KB)
+│   │   ├── overtime/
+│   │   │   └── OvertimeList.tsx (14.6 KB)
+│   │   ├── payroll-adjustments/
+│   │   │   └── AdjustmentsList.tsx (8.3 KB)
+│   │   ├── payrolls/
+│   │   │   ├── components/
+│   │   │   │   ├── index.ts (0.1 KB)
+│   │   │   │   └── PayrollSIBreakdown.tsx (5.5 KB)
+│   │   │   ├── payroll-form-dialog-helpers.ts (3.4 KB)
+│   │   │   ├── payroll-form-dialog.scss (0.6 KB)
+│   │   │   ├── PayrollDetailPage.tsx (20.1 KB)
+│   │   │   ├── PayrollForm.tsx (4.1 KB)
+│   │   │   ├── PayrollFormDialog.tsx (12.7 KB)
+│   │   │   ├── payrolls-list.scss (0.8 KB)
+│   │   │   ├── PayrollsList.tsx (18.2 KB)
+│   │   │   └── use-payroll-form-dialog.ts (6.8 KB)
+│   │   ├── positions/
+│   │   │   ├── PositionForm.tsx (1.7 KB)
+│   │   │   ├── PositionFormDialog.tsx (5.2 KB)
+│   │   │   └── PositionsList.tsx (6.8 KB)
+│   │   ├── reports/
+│   │   │   └── Reports.tsx (14.7 KB)
+│   │   ├── roles/
+│   │   │   ├── RoleForm.tsx (1.5 KB)
+│   │   │   ├── RoleFormDialog.tsx (7.3 KB)
+│   │   │   └── RolesList.tsx (6.2 KB)
+│   │   ├── system/
+│   │   │   ├── components/
+│   │   │   │   ├── index.ts (0.1 KB)
+│   │   │   │   ├── workforce-ops-ui.tsx (6.8 KB)
+│   │   │   │   └── workforce-ops.constants.ts (1.3 KB)
+│   │   │   ├── Billing.tsx (1.2 KB)
+│   │   │   ├── Notifications.tsx (0.7 KB)
+│   │   │   ├── Profile.tsx (5.1 KB)
+│   │   │   ├── Settings.tsx (7.7 KB)
+│   │   │   ├── Users.tsx (0.7 KB)
+│   │   │   └── WorkforceOps.tsx (64.7 KB)
+│   │   ├── trip_bonus_rules/
+│   │   │   ├── TripBonusRuleForm.tsx (1.5 KB)
+│   │   │   ├── TripBonusRuleFormDialog.tsx (5.9 KB)
+│   │   │   └── TripBonusRulesList.tsx (6.7 KB)
+│   │   ├── trips/
+│   │   │   ├── TripDetailPage.tsx (8.5 KB)
+│   │   │   ├── TripForm.tsx (8.3 KB)
+│   │   │   ├── TripFormDialog.tsx (7.2 KB)
+│   │   │   └── TripsList.tsx (16.4 KB)
+│   │   ├── users/
+│   │   │   ├── UserForm.tsx (11.0 KB)
+│   │   │   ├── UserFormDialog.tsx (8.1 KB)
+│   │   │   └── UsersList.tsx (8.1 KB)
+│   │   ├── vehicle_assignments/
+│   │   │   ├── VehicleAssignmentForm.tsx (2.8 KB)
+│   │   │   ├── VehicleAssignmentFormDialog.tsx (6.0 KB)
+│   │   │   └── VehicleAssignmentsList.tsx (6.2 KB)
+│   │   ├── vehicle_expenses/
+│   │   │   ├── VehicleExpenseForm.tsx (3.9 KB)
+│   │   │   ├── VehicleExpenseFormDialog.tsx (5.4 KB)
+│   │   │   └── VehicleExpensesList.tsx (5.8 KB)
+│   │   ├── vehicles/
+│   │   │   ├── VehicleForm.tsx (10.2 KB)
+│   │   │   ├── VehicleFormDialog.tsx (7.1 KB)
+│   │   │   └── VehiclesList.tsx (9.0 KB)
+│   │   ├── violations/
+│   │   │   └── ViolationsList.tsx (19.9 KB)
+│   │   └── 404.tsx (1.0 KB)
+│   ├── providers/
+│   │   ├── authProvider.tsx (5.6 KB)
+│   │   ├── dataProvider.tsx (3.5 KB)
+│   │   ├── notificationProvider.ts (3.2 KB)
+│   │   └── resources.tsx (5.5 KB)
+│   ├── routes/
+│   │   ├── appRouteConfig.tsx (12.1 KB)
+│   │   └── index.ts (5.3 KB)
+│   ├── services/
+│   │   ├── http/
+│   │   │   ├── envelope.ts (0.8 KB)
+│   │   │   ├── errors.ts (0.6 KB)
+│   │   │   ├── index.ts (0.1 KB)
+│   │   │   ├── resourceClientFactory.ts (1.4 KB)
+│   │   │   └── types.ts (0.3 KB)
+│   │   ├── api.ts (9.8 KB)
+│   │   ├── auth-log.service.ts (1.9 KB)
+│   │   ├── auth.service.ts (2.6 KB)
+│   │   ├── chat.service.ts (5.3 KB)
+│   │   ├── dashboard.service.ts (2.8 KB)
+│   │   ├── endpoints.ts (6.5 KB)
+│   │   ├── invoice.service.ts (1.7 KB)
+│   │   ├── notification.service.ts (1.5 KB)
+│   │   ├── payroll-adjustment.service.ts (0.6 KB)
+│   │   ├── payroll.service.ts (3.1 KB)
+│   │   ├── permissions.service.ts (1.0 KB)
+│   │   ├── reports.service.ts (1.6 KB)
+│   │   ├── roles.service.ts (0.3 KB)
+│   │   ├── trip.service.ts (4.8 KB)
+│   │   ├── work-schedule.service.ts (1.1 KB)
+│   │   └── workforce-ops.service.ts (11.4 KB)
+│   ├── shared/
+│   │   └── query/
+│   │       ├── createResourceMutationHelpers.ts (0.2 KB)
+│   │       ├── createResourceQueryKeys.ts (0.4 KB)
+│   │       └── index.ts (0.1 KB)
+│   ├── stores/
+│   │   ├── app.store.ts (1.9 KB)
+│   │   └── auth.store.ts (5.9 KB)
+│   ├── styles/
+│   │   ├── components.scss (8.0 KB)
+│   │   ├── main.scss (0.6 KB)
+│   │   ├── utilities.scss (0.5 KB)
+│   │   └── variables.scss (2.7 KB)
+│   ├── test/
+│   ├── types/
+│   │   ├── index.ts (18.7 KB)
+│   │   └── lucide-react-icons.d.ts (0.3 KB)
+│   ├── utils/
+│   │   ├── chatPrompt.ts (1.7 KB)
+│   │   ├── chatResponse.ts (8.0 KB)
+│   │   ├── companyCreateFeatures.ts (1.0 KB)
+│   │   ├── constants.ts (3.9 KB)
+│   │   ├── csvDownload.ts (0.7 KB)
+│   │   ├── dedupe.ts (0.8 KB)
+│   │   ├── displayFormat.ts (2.3 KB)
+│   │   ├── errorHandler.ts (5.2 KB)
+│   │   ├── errorToast.ts (0.5 KB)
+│   │   ├── format.ts (1.6 KB)
+│   │   ├── lazyWithMinDelay.ts (1.0 KB)
+│   │   ├── publicFileUpload.ts (1.3 KB)
+│   │   ├── tripStatus.ts (5.6 KB)
+│   │   ├── validation.ts (1.4 KB)
+│   │   ├── vnAddressForm.ts (1.7 KB)
+│   │   ├── vnPayrollCalc.ts (7.2 KB)
+│   │   ├── vnProvincesOpenApi.ts (2.2 KB)
+│   │   └── vpicNhtsa.ts (2.0 KB)
+│   ├── App.tsx (3.5 KB)
+│   ├── index.css (10.2 KB)
+│   ├── main.tsx (0.3 KB)
+│   └── vite-env.d.ts (1.2 KB)
+├── AGENTS.md (2.5 KB)
+├── CLAUDE.md (6.5 KB)
+├── index.html (0.8 KB)
+├── knip.json (0.2 KB)
+├── package-lock.json (308.7 KB)
+├── package.json (1.8 KB)
+├── postcss.config.js (0.1 KB)
+├── README.md (10.0 KB)
+├── tailwind.config.js (2.8 KB)
+├── tsconfig.json (0.7 KB)
+├── tsconfig.node.json (0.2 KB)
+└── vite.config.ts (2.3 KB)

@@ -41,10 +41,10 @@ export const PageHeader = ({ title, description, breadcrumb, actions }: PageHead
       {breadcrumbItems && (
         <div
           style={{
-            marginBottom: 12,
+            marginBottom: 10,
             padding: '8px 12px',
             borderRadius: token.borderRadiusLG,
-            border: `1px solid ${token.colorBorderSecondary}`,
+            border: `1px solid ${token.colorBorder}`,
             background: token.colorBgContainer,
           }}
         >
@@ -53,18 +53,16 @@ export const PageHeader = ({ title, description, breadcrumb, actions }: PageHead
       )}
       <div
         style={{
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: token.borderRadiusLG * 1.25,
-          border: `1px solid ${token.colorBorderSecondary}`,
-          padding: 20,
-          background: `linear-gradient(90deg, ${token.colorBgContainer} 0%, ${token.colorBgContainer} 60%, ${token.colorPrimaryBg} 100%)`,
-          boxShadow: token.boxShadowTertiary,
+          borderRadius: token.borderRadiusLG,
+          border: `1px solid ${token.colorBorder}`,
+          padding: 18,
+          background: token.colorBgContainer,
+          boxShadow: token.boxShadowSecondary,
         }}
       >
         <Flex justify="space-between" align="flex-start" gap={16} wrap="wrap">
           <div>
-            <Typography.Title level={2} style={{ margin: 0 }}>
+            <Typography.Title level={3} style={{ margin: 0 }}>
               {title}
             </Typography.Title>
             {description && (

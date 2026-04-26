@@ -340,6 +340,12 @@ export function TripsList() {
       />
 
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">{t('trips.title')}</h2>
+          <p className="text-sm text-slate-500">
+            {total} {t('common.records')}
+          </p>
+        </div>
         <Form
           form={filterForm}
           layout="vertical"
@@ -352,7 +358,7 @@ export function TripsList() {
             }
           }}
         >
-          <ListPageFilters variant="grid-2">
+          <ListPageFilters variant="grid-2" className="rounded-xl border bg-white p-4">
             <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <FormItemSelect
                 noStyle

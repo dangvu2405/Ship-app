@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@refinedev/core';
-import { Avatar, Button, Card, List, Select, Space, Tabs, Tag } from 'antd';
+import { Button, Card, List, Select, Space, Tabs, Tag } from 'antd';
+import { NoImageAvatar } from '@/components/common/NoImageAvatar';
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
@@ -144,9 +145,15 @@ export function VehiclesList() {
       />
 
       <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">{t('vehicles.title')}</h2>
+          <p className="text-sm text-slate-500">
+            {total} {t('common.records')}
+          </p>
+        </div>
         <Tabs activeKey={appliedStatus ?? 'all'} onChange={applyStatusFilter} items={statusTabsItems} />
         <div className="contents min-w-0 w-full">
-          <ListPageFilters variant="grid-2">
+          <ListPageFilters variant="grid-2" className="rounded-xl border bg-white p-4">
             <ListPageFilters.Search
               placeholder={t('common.search')}
               value={searchKeyword}
@@ -200,22 +207,7 @@ export function VehiclesList() {
                   ]}
                 >
                   <List.Item.Meta
-                    avatar={(() => {
-                      const imageUrl = item.image_url?.trim();
-                      return imageUrl ? (
-                        <Avatar src={imageUrl} alt="" shape="square" size={64} className="shrink-0" />
-                      ) : (
-                        <Avatar
-                          shape="square"
-                          size={64}
-                          className="shrink-0 bg-muted text-muted-foreground"
-                        >
-                          <span className="px-1 text-center text-[10px] font-medium leading-tight">
-                            {t('vehicles.listNoImage')}
-                          </span>
-                        </Avatar>
-                      );
-                    })()}
+                    avatar={<NoImageAvatar src={item.image_url} />}
                     title={(
                       <Button type="link" style={{ padding: 0 }} onClick={() => show('vehicles', item.id)}>
                         {item.plate_number}

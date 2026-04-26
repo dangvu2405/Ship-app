@@ -396,8 +396,9 @@ export function PayrollsList() {
           </Flex>
         </div>
 
-        <Flex wrap="wrap" gap={12} style={{ marginBottom: 16 }}>
+        <Flex wrap="wrap" gap={12} style={{ marginBottom: 16, border: '1px solid #e2e8f0', borderRadius: 12, padding: 14, background: '#fff' }}>
           <Input
+            size="large"
             style={{ minWidth: 220 }}
             placeholder="Search payroll id, company, status, notes"
             value={keywordFilter}
@@ -405,6 +406,7 @@ export function PayrollsList() {
           />
           <Select
             allowClear
+            size="large"
             style={{ minWidth: 220 }}
             placeholder="Company"
             value={companyFilter}
@@ -416,6 +418,7 @@ export function PayrollsList() {
           />
           <Select
             allowClear
+            size="large"
             style={{ width: 140 }}
             placeholder="Month"
             value={monthFilter}
@@ -426,6 +429,7 @@ export function PayrollsList() {
             options={Array.from({ length: 12 }, (_, i) => ({ label: String(i + 1), value: i + 1 }))}
           />
           <InputNumber
+            size="large"
             style={{ width: 140 }}
             placeholder="Year"
             value={yearFilter}
@@ -436,6 +440,7 @@ export function PayrollsList() {
           />
           <Select
             allowClear
+            size="large"
             style={{ width: 160 }}
             placeholder="Status"
             value={statusFilter}

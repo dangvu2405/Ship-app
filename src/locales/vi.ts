@@ -223,6 +223,7 @@ export const vi = {
     and: 'và',
     brandDescription: 'Quản lý đội xe, nhân viên và hoạt động của bạn ở một nơi',
     featureUnavailable: 'Tính năng này chưa khả dụng.',
+    googleOAuthNotConfigured: 'Chưa cấu hình Google OAuth client ID. Vui lòng thêm VITE_GOOGLE_OAUTH_CLIENT_ID.',
     forgotPasswordTitle: 'Quên mật khẩu',
     forgotPasswordSubtitle:
       'Nhập email đăng ký tài khoản. Nếu tồn tại trong hệ thống, chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu.',
@@ -247,6 +248,12 @@ export const vi = {
     forgotPasswordChangeEmail: 'Đổi email khác',
     forgotPasswordSendUnavailable: 'Endpoint gửi email quên mật khẩu chưa được bật.',
     forgotPasswordResetUnavailable: 'Endpoint reset-password chưa được bật.',
+    networkError: 'Lỗi mạng. Vui lòng kiểm tra kết nối.',
+    serverError: 'Lỗi máy chủ. Vui lòng thử lại sau.',
+    accountForbidden: 'Tài khoản bị khóa hoặc không có quyền truy cập.',
+    accountNotFound: 'Tài khoản không tồn tại.',
+    rateLimited: 'Quá nhiều lần thử. Vui lòng đợi vài phút và thử lại.',
+    badRequest: 'Yêu cầu không hợp lệ. Vui lòng kiểm tra lại thông tin.',
   },
 
   // Dashboard
@@ -974,6 +981,7 @@ export const vi = {
     switchTenant: 'Đổi công ty',
     switchToLightMode: 'Chuyển sang chế độ sáng',
     switchToDarkMode: 'Chuyển sang chế độ tối',
+    toggleSidebar: 'Chuyển đổi thanh bên',
   },
 
   // Billing
@@ -1306,5 +1314,9 @@ export const vi = {
     networkError: 'Lỗi kết nối. Vui lòng kiểm tra kết nối mạng.',
     serverError: 'Lỗi máy chủ. Vui lòng thử lại sau.',
     accessDenied: 'Không có quyền truy cập',
+    accountForbidden: 'Tài khoản bị khóa hoặc không có quyền truy cập.',
+    accountNotFound: 'Tài khoản không tồn tại.',
+    rateLimited: 'Quá nhiều lần thử. Vui lòng đợi vài phút và thử lại.',
+    badRequest: 'Yêu cầu không hợp lệ. Vui lòng kiểm tra lại thông tin.',
   },
 };

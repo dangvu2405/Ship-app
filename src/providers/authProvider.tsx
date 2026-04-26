@@ -36,6 +36,7 @@ export const authProvider: AuthProvider = {
         },
       };
     } catch (error: unknown) {
+      console.log(error);
       const errorMessage = 
         error && typeof error === 'object' && 'response' in error
           ? (error as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -76,12 +77,6 @@ export const authProvider: AuthProvider = {
     if (!hasToken) {
       useAuthStore.getState().setUser(null);
       return UNAUTHENTICATED;
-    }
-
-    // If token exists and store already has user, accept immediately.
-    const storeState = getAuthStoreState();
-    if (storeState.isAuthenticated && storeState.user) {
-      return AUTHENTICATED;
     }
 
     // Try to get current user from API

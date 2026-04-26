@@ -1,6 +1,6 @@
 import { useMemo, type MouseEvent, type ReactNode } from 'react';
 import { InboxOutlined } from '@ant-design/icons';
-import { Card, Empty, Pagination, Spin, Table, theme } from 'antd';
+import { Card, Empty, Flex, Pagination, Spin, Table, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { cn } from '@/lib/utils';
 
@@ -89,7 +89,7 @@ export function DataTable<T extends { id: number }>({
         title: column.header,
         key: column.key,
         dataIndex: (column.dataIndex ?? column.key) as string | string[],
-        align: 'center' as const,
+        align: column.key === 'actions' ? ('right' as const) : ('left' as const),
         onCell:
           column.key === 'actions'
             ? () => ({
@@ -119,18 +119,17 @@ export function DataTable<T extends { id: number }>({
 
   return (
     <>
-      <Card
-        styles={{ body: { padding: 0 } }}
-        style={{ borderRadius: token.borderRadiusLG * 1.25, overflow: 'hidden' }}
-      >
+      <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: token.borderRadiusLG, overflow: 'hidden' }}>
         <Table<T>
           rowKey="id"
           columns={antColumns}
           dataSource={data}
           pagination={false}
           loading={false}
+          scroll={{ x: 'max-content' }}
           tableLayout="fixed"
           size="middle"
+          className="figma-data-table"
           locale={{
             emptyText:
               emptyDescription || emptyAction ? (
@@ -150,16 +149,22 @@ export function DataTable<T extends { id: number }>({
         />
       </Card>
       {pagination && pagination.total > pagination.pageSize && (
-        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <Flex justify="space-between" align="center" style={{ marginTop: 12 }}>
+          <div style={{ color: token.colorTextSecondary, fontSize: 13 }}>
+            {`${(pagination.current - 1) * pagination.pageSize + 1}-${Math.min(
+              pagination.current * pagination.pageSize,
+              pagination.total,
+            )} / ${pagination.total}`}
+          </div>
           <Pagination
             current={pagination.current}
             total={pagination.total}
             pageSize={pagination.pageSize}
             onChange={(page) => pagination.onPageChange(page)}
             showSizeChanger={false}
-            showTotal={(total, range) => `${range[0]}-${range[1]} / ${total}`}
+            showTotal={undefined}
           />
-        </div>
+        </Flex>
       )}
     </>
   );

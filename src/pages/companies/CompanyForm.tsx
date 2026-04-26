@@ -2,14 +2,14 @@ import { Form } from 'antd';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { Inbox } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { FormAccordionSectionSpec } from '@/components/form';
 import {
   FormAccordionSections,
   FormItemSelect,
   FormItemText,
   FormItemUploadDragger,
-  VnAdminAddressFields,
 } from '@/components/form';
+import type { FormAccordionSectionSpec } from '@/components/form/FormAccordionSections';
+import { VnAdminAddressFields } from '@/components/form/vn-admin-address-fields';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
 import type { Company } from '@/types';

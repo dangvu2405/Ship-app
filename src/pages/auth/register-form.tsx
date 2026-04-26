@@ -67,7 +67,7 @@ export function RegisterForm({ className, ...props }: ComponentProps<'div'>) {
       {...props}
     >
       <div style={{ width: '100%', maxWidth: 896 }}>
-        <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden', boxShadow: token.boxShadowSecondary }}>
+        <Card variant="borderless" styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden', boxShadow: token.boxShadowSecondary }}>
           <Row gutter={0}>
             <Col xs={24} md={12}>
               <form onSubmit={handleSubmit} style={{ padding: '32px 40px' }}>

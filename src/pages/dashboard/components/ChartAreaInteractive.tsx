@@ -142,13 +142,14 @@ export function ChartAreaInteractive({
         background: token.colorFillAlter,
         padding: 16,
       }}
+      className="rounded-xl"
     >
       {child}
     </div>
   )
 
   return (
-    <Card aria-label={t("dashboard.chart.revenueAriaSummary")}>
+    <Card aria-label={t("dashboard.chart.revenueAriaSummary")} className="rounded-xl border border-slate-200 shadow-sm">
       <Flex vertical gap={16}>
         <Row gutter={[16, 16]} align="top">
           <Col xs={24} md={14}>
@@ -163,7 +164,7 @@ export function ChartAreaInteractive({
             </Typography.Paragraph>
           </Col>
         </Row>
-        <Flex justify="flex-end" wrap="wrap" gap={8}>
+        <Flex justify="flex-end" wrap="wrap" gap={8} className="rounded-xl border border-slate-200 bg-slate-50 p-2">
           <div className="hidden md:block">
             <Segmented options={rangeSegmentedOptions} value={timeRange} onChange={(v) => setRange(String(v))} />
           </div>
@@ -182,7 +183,7 @@ export function ChartAreaInteractive({
       <div style={{ padding: "8px 0 0" }}>
         {loading ? (
           chartShell(
-            <Spin tip={t("common.loading")} />,
+            <Spin />,
           )
         ) : error ? (
           chartShell(

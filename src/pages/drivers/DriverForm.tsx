@@ -12,8 +12,8 @@ import {
   FormItemText,
   FormItemTextArea,
   FormItemUploadDragger,
-  VnAdminAddressFields,
 } from '@/components/form';
+import { VnAdminAddressFields } from '@/components/form/vn-admin-address-fields';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';

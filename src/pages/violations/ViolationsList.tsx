@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,45 +21,17 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Company, Driver, ViolationRecord } from '@/types';
-import workforceOpsService from '@/services/workforce-ops.service';
+import type { Company, Driver } from '@/types';
+import violationService from '@/services/violation.service';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 import { formatMoney } from '@/utils/displayFormat';
 import { ROUTES } from '@/routes';
 import toast from 'react-hot-toast';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { FileUploader } from '@/components/common/FileUploader';
+import type { ViolationRecord, ViolationsListProps } from './types';
+import { VIOLATION_TYPES, violationStatusColor, violationStatusLabel } from './types';
 
-const VIOLATION_TYPES = [
-  { label: 'Vượt tốc độ', value: 'speeding' },
-  { label: 'Lệch tuyến đường', value: 'route_deviation' },
-  { label: 'Lạm dụng nhiên liệu', value: 'fuel_misuse' },
-  { label: 'Hành vi', value: 'behavior' },
-  { label: 'Tai nạn', value: 'accident' },
-  { label: 'Khác', value: 'other' },
-];
-
-function violationStatusColor(status: string): string {
-  switch (status) {
-    case 'confirmed': return 'orange';
-    case 'disputed': return 'blue';
-    case 'waived': return 'default';
-    case 'deducted': return 'red';
-    default: return 'gold';
-  }
-}
-
-function violationStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    pending: 'Chờ xác nhận',
-    confirmed: 'Đã xác nhận',
-    disputed: 'Đang khiếu nại',
-    waived: 'Đã miễn',
-    deducted: 'Đã trừ lương',
-  };
-  return map[status] ?? status;
-}
-
-/** Dispute phải trong 3 ngày kể từ khi confirmed. */
 const DISPUTE_WINDOW_DAYS = 3;
 
 function getDisputeDeadline(confirmedAt: string | null | undefined): Date | null {
@@ -73,7 +45,7 @@ function getDisputeDeadline(confirmedAt: string | null | undefined): Date | null
 function canStillDispute(record: ViolationRecord): boolean {
   if (record.status !== 'confirmed') return false;
   const deadline = getDisputeDeadline(record.confirmed_at);
-  if (!deadline) return true; // nếu thiếu confirmed_at, cho phép (backend tự validate)
+  if (!deadline) return true;
   return new Date() < deadline;
 }
 
@@ -88,23 +60,12 @@ function formatTimeRemaining(deadline: Date): string {
   return `${mins} phút`;
 }
 
-interface ViolationsListProps {
-  companyId?: number;
-  officeId?: number;
-  embedded?: boolean;
-}
-
 export function ViolationsList({ companyId, officeId, embedded = false }: ViolationsListProps = {}) {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [list, setList] = useState<ViolationRecord[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
 
-  // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [resolveOpen, setResolveOpen] = useState(false);
@@ -115,6 +76,21 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
   const [disputeForm] = Form.useForm();
   const [resolveForm] = Form.useForm();
   const [waiveForm] = Form.useForm();
+
+  const filters = useMemo(() => ({
+    ...(officeId ? { office_id: officeId } : {}),
+    ...(statusFilter ? { status: statusFilter } : {}),
+  }), [officeId, statusFilter]);
+
+  const { data: listData, isLoading: loading, isError: error, refetch } = useResourceListQuery<ViolationRecord>({
+    resource: 'violations',
+    current,
+    pageSize: 20,
+    filters: Object.entries(filters).map(([field, value]) => ({ field, operator: 'eq' as const, value })),
+  });
+
+  const list = listData?.data ?? [];
+  const total = listData?.total ?? 0;
 
   const { data: driversData } = useList<Driver>({ resource: 'drivers', pagination: { current: 1, pageSize: 200 } });
   const { data: companiesData } = useList<Company>({ resource: 'companies', pagination: { current: 1, pageSize: 200 } });
@@ -132,10 +108,7 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
   );
 
   const driverOptions = useMemo(
-    () => filteredDrivers.map((d) => ({
-      label: d.employee?.name ?? `Tài xế #${d.id}`,
-      value: d.id,
-    })),
+    () => filteredDrivers.map((d) => ({ label: d.employee?.name ?? `Tài xế #${d.id}`, value: d.id })),
     [filteredDrivers],
   );
 
@@ -147,41 +120,15 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
   );
 
   useEffect(() => {
-    if (embedded && companyId) {
-      createForm.setFieldValue('company_id', companyId);
-    }
+    if (embedded && companyId) createForm.setFieldValue('company_id', companyId);
   }, [embedded, companyId, createForm, createOpen]);
-
-  const fetchList = useCallback(async (page = 1, status?: string) => {
-    setLoading(true);
-    setError(false);
-    try {
-      const result = await workforceOpsService.listViolations({
-        page,
-        per_page: 20,
-        ...(officeId ? { office_id: officeId } : {}),
-        ...(status ? { status } : {}),
-      });
-      setList(result.data);
-      setTotal(result.total);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [officeId]);
-
-  useMemo(() => {
-    void fetchList(current, statusFilter);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, statusFilter, officeId]);
 
   const runAction = async (id: number, fn: () => Promise<unknown>, successMsg: string) => {
     setBusyId(id);
     try {
       await fn();
       toast.success(successMsg);
-      await fetchList(current, statusFilter);
+      void refetch();
     } catch (err) {
       if (!shouldShowLocalErrorToast(err)) return;
       toast.error(getErrorMessage(err) ?? 'Thao tác thất bại');
@@ -191,40 +138,16 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
   };
 
   const columns = useMemo<DataTableColumn<ViolationRecord>[]>(() => [
-    {
-      key: 'driver_id',
-      header: 'Tài xế',
-      render: (r) => driverOptions.find((d) => d.value === r.driver_id)?.label ?? `#${r.driver_id}`,
-    },
-    {
-      key: 'type',
-      header: 'Loại vi phạm',
-      render: (r) => VIOLATION_TYPES.find((vt) => vt.value === r.type)?.label ?? r.type,
-    },
-    {
-      key: 'occurred_at',
-      header: 'Thời điểm',
-      render: (r) => <DateTimeBadge value={r.occurred_at} mode="datetime" />,
-    },
+    { key: 'driver_id', header: 'Tài xế', render: (r) => driverOptions.find((d) => d.value === r.driver_id)?.label ?? `#${r.driver_id}` },
+    { key: 'type', header: 'Loại vi phạm', render: (r) => VIOLATION_TYPES.find((vt) => vt.value === r.type)?.label ?? r.type },
+    { key: 'occurred_at', header: 'Thời điểm', render: (r) => <DateTimeBadge value={r.occurred_at} mode="datetime" /> },
     {
       key: 'description',
       header: 'Mô tả',
-      render: (r) => (
-        <Typography.Text ellipsis={{ tooltip: r.description }} style={{ maxWidth: 200 }}>
-          {r.description ?? '-'}
-        </Typography.Text>
-      ),
+      render: (r) => <Typography.Text ellipsis={{ tooltip: r.description }} style={{ maxWidth: 200 }}>{r.description ?? '-'}</Typography.Text>,
     },
-    {
-      key: 'penalty_amount',
-      header: 'Tiền phạt',
-      render: (r) => formatMoney(r.penalty_amount ?? 0, { withCurrency: true }),
-    },
-    {
-      key: 'status',
-      header: t('common.status'),
-      render: (r) => <Tag color={violationStatusColor(r.status)}>{violationStatusLabel(r.status)}</Tag>,
-    },
+    { key: 'penalty_amount', header: 'Tiền phạt', render: (r) => formatMoney(r.penalty_amount ?? 0, { withCurrency: true }) },
+    { key: 'status', header: t('common.status'), render: (r) => <Tag color={violationStatusColor(r.status)}>{violationStatusLabel(r.status)}</Tag> },
     {
       key: 'actions',
       header: t('common.actions'),
@@ -233,13 +156,9 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
         return (
           <Space size={4} onClick={(e) => e.stopPropagation()}>
             {r.status === 'pending' && (
-              <Button
-                size="small"
-                loading={isBusy}
-                onClick={() => void runAction(r.id, () => workforceOpsService.confirmViolation(r.id), 'Đã xác nhận vi phạm')}
-              >
-                Xác nhận
-              </Button>
+              <Button size="small" loading={isBusy}
+                onClick={() => void runAction(r.id, () => violationService.confirm(r.id), 'Đã xác nhận vi phạm')}
+              >Xác nhận</Button>
             )}
             {r.status === 'confirmed' && canStillDispute(r) && (
               <Button size="small" onClick={() => { setActiveRecord(r); disputeForm.resetFields(); setDisputeOpen(true); }}>
@@ -251,20 +170,14 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
                 })()}
               </Button>
             )}
-            {r.status === 'confirmed' && !canStillDispute(r) && (
-              <Tag color="default">Hết hạn khiếu nại</Tag>
-            )}
+            {r.status === 'confirmed' && !canStillDispute(r) && <Tag color="default">Hết hạn khiếu nại</Tag>}
             {r.status === 'disputed' && (
               <Button size="small" type="primary" onClick={() => { setActiveRecord(r); resolveForm.resetFields(); setResolveOpen(true); }}>
                 Giải quyết
               </Button>
             )}
             {(r.status === 'pending' || r.status === 'confirmed') && (
-              <Button
-                size="small"
-                danger
-                onClick={() => { setActiveRecord(r); waiveForm.resetFields(); setWaiveOpen(true); }}
-              >
+              <Button size="small" danger onClick={() => { setActiveRecord(r); waiveForm.resetFields(); setWaiveOpen(true); }}>
                 Miễn trừ
               </Button>
             )}
@@ -281,10 +194,7 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
         <PageHeader
           title="Vi phạm"
           description="Quản lý vi phạm tài xế, khiếu nại và giải quyết tranh chấp"
-          breadcrumb={[
-            { label: t('dashboard.title'), path: ROUTES.dashboard },
-            { label: 'Vi phạm' },
-          ]}
+          breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: 'Vi phạm' }]}
           actions={
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
               Ghi nhận vi phạm
@@ -300,11 +210,7 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
               Ghi nhận vi phạm
             </Button>
           )}
-          <Select
-            allowClear
-            style={{ width: 200 }}
-            placeholder="Lọc trạng thái"
-            value={statusFilter}
+          <Select allowClear style={{ width: 200 }} placeholder="Lọc trạng thái" value={statusFilter}
             onChange={(v) => { setCurrent(1); setStatusFilter(v); }}
             options={[
               { label: 'Chờ xác nhận', value: 'pending' },
@@ -317,42 +223,29 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
         </Space>
 
         {error ? (
-          <ErrorState
-            title={t('common.loadError')}
-            description={t('common.tryAgainDescription')}
-            onRetry={() => void fetchList(current, statusFilter)}
-          />
+          <ErrorState title={t('common.loadError')} description={t('common.tryAgainDescription')} onRetry={() => void refetch()} />
         ) : (
           <PageLoadingOverlay loading={loading} className="overflow-hidden rounded-lg">
             <DataTable<ViolationRecord>
-              data={list}
-              columns={columns}
-              emptyMessage={t('common.noData')}
-              emptyDescription="Chưa có vi phạm nào được ghi nhận"
+              data={list} columns={columns}
+              emptyMessage={t('common.noData')} emptyDescription="Chưa có vi phạm nào được ghi nhận"
               pagination={{ current, total, pageSize: 20, onPageChange: setCurrent }}
             />
           </PageLoadingOverlay>
         )}
       </Card>
 
-      {/* Create violation */}
-      <Modal
-        title="Ghi nhận vi phạm"
-        open={createOpen}
-        onCancel={() => setCreateOpen(false)}
-        onOk={() => createForm.submit()}
-        okText="Ghi nhận"
-        cancelText={t('common.cancel')}
+      <Modal title="Ghi nhận vi phạm" open={createOpen}
+        onCancel={() => setCreateOpen(false)} onOk={() => createForm.submit()}
+        okText="Ghi nhận" cancelText={t('common.cancel')}
       >
-        <Form
-          form={createForm}
-          layout="vertical"
+        <Form form={createForm} layout="vertical"
           onFinish={async (values) => {
             try {
-              await workforceOpsService.createViolation(values);
+              await violationService.create(values);
               toast.success('Đã ghi nhận vi phạm');
               setCreateOpen(false);
-              await fetchList(current, statusFilter);
+              void refetch();
             } catch (err) {
               if (!shouldShowLocalErrorToast(err)) return;
               toast.error(getErrorMessage(err) ?? 'Tạo vi phạm thất bại');
@@ -360,13 +253,14 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
           }}
         >
           <Form.Item name="driver_id" label="Tài xế" rules={[{ required: true, message: 'Chọn tài xế' }]}>
-            <Select showSearch placeholder="Chọn tài xế" options={driverOptions} filterOption={(inp, opt) => String(opt?.label ?? '').toLowerCase().includes(inp.toLowerCase())} />
+            <Select showSearch placeholder="Chọn tài xế" options={driverOptions}
+              filterOption={(inp, opt) => String(opt?.label ?? '').toLowerCase().includes(inp.toLowerCase())} />
           </Form.Item>
           <Form.Item name="company_id" label="Công ty" rules={[{ required: true, message: 'Chọn công ty' }]}>
             <Select placeholder="Chọn công ty" options={companyOptions} disabled={embedded && !!companyId} />
           </Form.Item>
           <Form.Item name="type" label="Loại vi phạm" rules={[{ required: true, message: 'Chọn loại vi phạm' }]}>
-            <Select options={VIOLATION_TYPES} />
+            <Select options={[...VIOLATION_TYPES]} />
           </Form.Item>
           <Form.Item name="occurred_at" label="Thời điểm xảy ra" rules={[{ required: true, message: 'Nhập thời điểm' }]}>
             <Input placeholder="YYYY-MM-DD HH:MM:SS" />
@@ -378,23 +272,14 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
             <InputNumber<number> style={{ width: '100%' }} min={0} formatter={(v) => String(v ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
           </Form.Item>
           <Form.Item name="evidence_urls" label="Bằng chứng (Hình ảnh/Video)">
-            <FileUploader 
-              buttonText="Tải lên bằng chứng" 
-              accept="image/*,video/*,.pdf" 
-              maxCount={5} 
-            />
+            <FileUploader buttonText="Tải lên bằng chứng" accept="image/*,video/*,.pdf" maxCount={5} />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* Dispute */}
-      <Modal
-        title="Khiếu nại vi phạm"
-        open={disputeOpen}
-        onCancel={() => setDisputeOpen(false)}
-        onOk={() => disputeForm.submit()}
-        okText="Gửi khiếu nại"
-        cancelText={t('common.cancel')}
+      <Modal title="Khiếu nại vi phạm" open={disputeOpen}
+        onCancel={() => setDisputeOpen(false)} onOk={() => disputeForm.submit()}
+        okText="Gửi khiếu nại" cancelText={t('common.cancel')}
       >
         <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
           Vi phạm #{activeRecord?.id} · {VIOLATION_TYPES.find((vt) => vt.value === activeRecord?.type)?.label} · {formatMoney(activeRecord?.penalty_amount ?? 0, { withCurrency: true })}
@@ -403,69 +288,51 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
           const deadline = getDisputeDeadline(activeRecord.confirmed_at);
           if (!deadline) return null;
           return (
-            <Alert
-              type={deadline.getTime() - Date.now() < 24 * 60 * 60 * 1000 ? 'error' : 'warning'}
-              showIcon
-              style={{ marginBottom: 12 }}
+            <Alert type={deadline.getTime() - Date.now() < 24 * 60 * 60 * 1000 ? 'error' : 'warning'} showIcon style={{ marginBottom: 12 }}
               message={`Còn ${formatTimeRemaining(deadline)} để khiếu nại`}
-              description="Hết thời hạn → vi phạm sẽ tự động trừ lương."
-            />
+              description="Hết thời hạn → vi phạm sẽ tự động trừ lương." />
           );
         })()}
-        <Form
-          form={disputeForm}
-          layout="vertical"
+        <Form form={disputeForm} layout="vertical"
           onFinish={async (values) => {
             if (!activeRecord) return;
             try {
-              await workforceOpsService.disputeViolation(activeRecord.id, values);
+              await violationService.dispute(activeRecord.id, values);
               toast.success('Đã gửi khiếu nại');
               setDisputeOpen(false);
-              await fetchList(current, statusFilter);
+              void refetch();
             } catch (err) {
               if (!shouldShowLocalErrorToast(err)) return;
               toast.error(getErrorMessage(err) ?? 'Gửi khiếu nại thất bại');
             }
           }}
         >
-          <Form.Item name="reason" label="Lý do khiếu nại" rules={[
-            { required: true, message: 'Nhập lý do' },
-            { min: 10, message: 'Lý do phải có ít nhất 10 ký tự' },
-          ]}>
+          <Form.Item name="reason" label="Lý do khiếu nại"
+            rules={[{ required: true, message: 'Nhập lý do' }, { min: 10, message: 'Lý do phải có ít nhất 10 ký tự' }]}
+          >
             <Input.TextArea rows={3} placeholder="Nêu lý do phản đối vi phạm (tối thiểu 10 ký tự)..." maxLength={2000} showCount />
           </Form.Item>
           <Form.Item name="evidence_urls" label="Bằng chứng khiếu nại">
-            <FileUploader 
-              buttonText="Tải lên minh chứng" 
-              accept="image/*,video/*,.pdf" 
-              maxCount={3} 
-            />
+            <FileUploader buttonText="Tải lên minh chứng" accept="image/*,video/*,.pdf" maxCount={3} />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* Resolve dispute */}
-      <Modal
-        title="Giải quyết khiếu nại"
-        open={resolveOpen}
-        onCancel={() => setResolveOpen(false)}
-        onOk={() => resolveForm.submit()}
-        okText="Xác nhận kết quả"
-        cancelText={t('common.cancel')}
+      <Modal title="Giải quyết khiếu nại" open={resolveOpen}
+        onCancel={() => setResolveOpen(false)} onOk={() => resolveForm.submit()}
+        okText="Xác nhận kết quả" cancelText={t('common.cancel')}
       >
         <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
           Vi phạm #{activeRecord?.id} · Tiền phạt: {formatMoney(activeRecord?.penalty_amount ?? 0, { withCurrency: true })}
         </Typography.Text>
-        <Form
-          form={resolveForm}
-          layout="vertical"
+        <Form form={resolveForm} layout="vertical"
           onFinish={async (values) => {
             if (!activeRecord) return;
             try {
-              await workforceOpsService.resolveViolationDispute(activeRecord.id, values as { resolution: 'upheld' | 'overturned'; resolution_note?: string });
+              await violationService.resolveDispute(activeRecord.id, values as { resolution: 'upheld' | 'overturned'; resolution_note?: string });
               toast.success('Đã giải quyết khiếu nại');
               setResolveOpen(false);
-              await fetchList(current, statusFilter);
+              void refetch();
             } catch (err) {
               if (!shouldShowLocalErrorToast(err)) return;
               toast.error(getErrorMessage(err) ?? 'Giải quyết thất bại');
@@ -486,29 +353,21 @@ export function ViolationsList({ companyId, officeId, embedded = false }: Violat
         </Form>
       </Modal>
 
-      {/* Waive */}
-      <Modal
-        title="Miễn trừ vi phạm"
-        open={waiveOpen}
-        onCancel={() => setWaiveOpen(false)}
-        onOk={() => waiveForm.submit()}
-        okText="Miễn trừ"
-        okButtonProps={{ danger: true }}
-        cancelText={t('common.cancel')}
+      <Modal title="Miễn trừ vi phạm" open={waiveOpen}
+        onCancel={() => setWaiveOpen(false)} onOk={() => waiveForm.submit()}
+        okText="Miễn trừ" okButtonProps={{ danger: true }} cancelText={t('common.cancel')}
       >
         <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
           Vi phạm #{activeRecord?.id} · Tiền phạt sẽ được hủy: {formatMoney(activeRecord?.penalty_amount ?? 0, { withCurrency: true })}
         </Typography.Text>
-        <Form
-          form={waiveForm}
-          layout="vertical"
+        <Form form={waiveForm} layout="vertical"
           onFinish={async (values) => {
             if (!activeRecord) return;
             try {
-              await workforceOpsService.waiveViolation(activeRecord.id, values.waive_reason as string);
+              await violationService.waive(activeRecord.id, values.waive_reason as string);
               toast.success('Đã miễn trừ vi phạm');
               setWaiveOpen(false);
-              await fetchList(current, statusFilter);
+              void refetch();
             } catch (err) {
               if (!shouldShowLocalErrorToast(err)) return;
               toast.error(getErrorMessage(err) ?? 'Miễn trừ thất bại');

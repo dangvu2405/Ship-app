@@ -17,6 +17,7 @@ export function SearchField({ value, onChange, placeholder, className }: SearchF
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-tertiary)' }} />}
+        size="large"
         style={{ width: '100%' }}
       />
     </div>

@@ -1,17 +1,13 @@
 import { useCallback, useState } from 'react';
 import type { FormInstance } from 'antd';
 
+import { useTranslation } from '@/hooks/useTranslation';
+
 type UseFormDialogCloseGuardOptions = {
   form: FormInstance;
   isViewMode: boolean;
   isSubmitting?: boolean;
   onClose: () => void;
-};
-
-export type UnsavedChangesWarningDialogController = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirmDiscard: () => void;
 };
 
 export const useFormDialogCloseGuard = ({
@@ -20,45 +16,35 @@ export const useFormDialogCloseGuard = ({
   isSubmitting = false,
   onClose,
 }: UseFormDialogCloseGuardOptions) => {
-  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-
-  const performClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
+  const { t } = useTranslation();
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
 
   const requestClose = useCallback(() => {
     if (isSubmitting) return;
 
     if (!isViewMode && form.isFieldsTouched(true)) {
-      setDiscardDialogOpen(true);
+      setUnsavedDialogOpen(true);
       return;
     }
 
-    performClose();
-  }, [form, isSubmitting, isViewMode, performClose]);
+    onClose();
+  }, [form, isSubmitting, isViewMode, onClose]);
 
-  const handleConfirmDiscard = useCallback(() => {
-    setDiscardDialogOpen(false);
-    performClose();
-  }, [performClose]);
+  const handleDialogOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      requestClose();
+    }
+  }, [requestClose]);
 
-  const handleDiscardDialogOpenChange = useCallback((open: boolean) => {
-    setDiscardDialogOpen(open);
-  }, []);
-
-  const handleDialogOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      if (!nextOpen) {
-        requestClose();
-      }
+  const unsavedChangesWarningProps = {
+    open: unsavedDialogOpen,
+    onOpenChange: setUnsavedDialogOpen,
+    onConfirmDiscard: () => {
+      setUnsavedDialogOpen(false);
+      onClose();
     },
-    [requestClose],
-  );
-
-  const unsavedChangesWarningProps: UnsavedChangesWarningDialogController = {
-    open: discardDialogOpen,
-    onOpenChange: handleDiscardDialogOpenChange,
-    onConfirmDiscard: handleConfirmDiscard,
+    title: t('unsavedChanges.title'),
+    description: t('unsavedChanges.description'),
   };
 
   return {

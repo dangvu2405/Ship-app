@@ -1,5 +1,5 @@
 /**
- * Đồng bộ với ship-app-api `routes/api.php`: nhóm versioned `/api/v1/...`.
+ * Đồng bộ với ship-app-api `routes/api.php`: nhóm `/api/...`.
  * @see ship-app-api/docs/FRONTEND_API_ENDPOINTS.md
  */
 
@@ -10,10 +10,10 @@ function resolveApiPrefix(): string {
   if (p) {
     return p.startsWith('/') ? p : `/${p}`;
   }
-  return '/api/v1';
+  return '/api';
 }
 
-/** Gốc REST versioned (axios baseURL), mặc định `/api/v1` — khớp `VITE_API_PREFIX` trong FRONTEND_API_ENDPOINTS. */
+/** Gốc REST (axios baseURL), mặc định `/api`. */
 export const API_PREFIX = resolveApiPrefix();
 
 function trimTrailingSlashes(s: string): string {
@@ -32,25 +32,16 @@ export function resolveApiRootBaseUrl(versionedBase: string): string {
 /** Origin backend: scheme + host + port, không có path (khớp APP_URL của Laravel). */
 const DEFAULT_API_ORIGIN = 'http://localhost:8080';
 
-/** Chuẩn hóa env cũ kết thúc `/api` thành `/api/v1`. */
-function normalizeExplicitApiBase(url: string): string {
-  const t = trimTrailingSlashes(url);
-  if (/\/api$/i.test(t) && !/\/v1$/i.test(t)) {
-    return `${t}/v1`;
-  }
-  return t;
-}
-
 /**
  * Base URL cho axios / Refine simple-rest:
- * 1. `VITE_API_BASE_URL` — …/api/v1 (hoặc …/api → tự thêm /v1).
- * 2. Dev: `/api/v1` → Vite proxy `/api` tới backend.
- * 3. Prod: `VITE_API_ORIGIN` + `VITE_API_PREFIX` (mặc định `/api/v1`).
+ * 1. `VITE_API_BASE_URL` — URL đầy đủ tới `/api`.
+ * 2. Dev: `/api` → Vite proxy tới backend.
+ * 3. Prod: `VITE_API_ORIGIN` + `VITE_API_PREFIX` (mặc định `/api`).
  */
 function resolveApiBaseUrl(): string {
   const explicit = import.meta.env.VITE_API_BASE_URL?.trim();
   if (explicit) {
-    return normalizeExplicitApiBase(explicit);
+    return trimTrailingSlashes(explicit);
   }
 
   if (import.meta.env.DEV) {
@@ -67,7 +58,7 @@ function resolveApiBaseUrl(): string {
 
 export const API_BASE_URL = resolveApiBaseUrl();
 
-/** Gốc `/api` (không có /v1) — dùng với `useApiRoot` trên axios. */
+/** Gốc `/api` — dùng với `useApiRoot` trên axios. */
 export const API_ROOT_BASE_URL = resolveApiRootBaseUrl(API_BASE_URL);
 
 const normalizeApiPath = (path: string): string => {
@@ -105,6 +96,7 @@ export const AUTO_LOGIN_ENABLED = import.meta.env.VITE_AUTO_LOGIN === 'true';
 export const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? '';
 export const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? '';
 export const TEST_ACCOUNTS_ENABLED = import.meta.env.VITE_TEST_ACCOUNTS === 'true';
+export const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID?.trim() ?? '';
 
 export const ROUTES = LEGACY_ROUTES;
 

@@ -1,5 +1,7 @@
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { DotLottieReact, setWasmUrl } from '@lottiefiles/dotlottie-react';
 import { useAppStore } from '@/stores/app.store';
+
+setWasmUrl('/dotlottie-player.wasm');
 
 /** Light UI (nền sáng) — animation xe tối màu. */
 const LOTTIE_LIGHT_UI = '/lottie/truck-light-ui.lottie';

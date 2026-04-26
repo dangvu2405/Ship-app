@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -22,56 +22,21 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataTable, type DataTableColumn } from '@/components/table';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Driver, LeaveRequest } from '@/types';
-import workforceOpsService from '@/services/workforce-ops.service';
+import type { Driver } from '@/types';
+import leaveService from '@/services/leave.service';
+import { useResourceListQuery } from '@/hooks/useResourceListQuery';
 import { ROUTES } from '@/routes';
 import toast from 'react-hot-toast';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { FileUploader } from '@/components/common/FileUploader';
-
-interface LeaveType {
-  id: number;
-  code: string;
-  name: string;
-  is_paid?: boolean;
-  annual_quota_days?: number;
-}
-
-function leaveStatusColor(status: string): string {
-  switch (status) {
-    case 'approved': return 'success';
-    case 'rejected': return 'error';
-    case 'cancelled': return 'default';
-    default: return 'processing';
-  }
-}
-
-function leaveStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    pending: 'Chờ duyệt',
-    submitted: 'Đã gửi',
-    approved: 'Đã duyệt',
-    rejected: 'Từ chối',
-    cancelled: 'Đã hủy',
-  };
-  return map[status] ?? status;
-}
-
-interface LeaveListProps {
-  companyId?: number;
-  officeId?: number;
-  embedded?: boolean;
-}
+import type { LeaveListProps, LeaveRequest, LeaveType } from './types';
+import { leaveStatusColor, leaveStatusLabel } from './types';
 
 export function LeaveList({ companyId, officeId, embedded = false }: LeaveListProps = {}) {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [list, setList] = useState<LeaveRequest[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -80,6 +45,21 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
 
   const [createForm] = Form.useForm();
   const [rejectForm] = Form.useForm();
+
+  const filters = useMemo(() => ({
+    ...(officeId ? { office_id: officeId } : {}),
+    ...(statusFilter ? { status: statusFilter } : {}),
+  }), [officeId, statusFilter]);
+
+  const { data: listData, isLoading: loading, isError: error, refetch } = useResourceListQuery<LeaveRequest>({
+    resource: 'leave-requests',
+    current,
+    pageSize: 20,
+    filters: Object.entries(filters).map(([field, value]) => ({ field, operator: 'eq' as const, value })),
+  });
+
+  const list = listData?.data ?? [];
+  const total = listData?.total ?? 0;
 
   const { data: driversData } = useList<Driver>({ resource: 'drivers', pagination: { current: 1, pageSize: 200 } });
 
@@ -112,44 +92,17 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
   );
 
   useEffect(() => {
-    workforceOpsService.listLeaveTypes()
-      .then((res) => {
-        const data = res.data;
-        if (Array.isArray(data)) setLeaveTypes(data as LeaveType[]);
-      })
+    leaveService.listTypes()
+      .then((res) => { if (Array.isArray(res.data)) setLeaveTypes(res.data as LeaveType[]); })
       .catch(() => {/* silent */});
   }, []);
-
-  const fetchList = useCallback(async (page = 1, status?: string) => {
-    setLoading(true);
-    setError(false);
-    try {
-      const result = await workforceOpsService.listLeave({
-        page,
-        per_page: 20,
-        ...(officeId ? { office_id: officeId } : {}),
-        ...(status ? { status } : {}),
-      });
-      setList(result.data);
-      setTotal(result.total);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [officeId]);
-
-  useMemo(() => {
-    void fetchList(current, statusFilter);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, statusFilter, officeId]);
 
   const runAction = async (id: number, fn: () => Promise<unknown>, successMsg: string) => {
     setBusyId(id);
     try {
       await fn();
       toast.success(successMsg);
-      await fetchList(current, statusFilter);
+      void refetch();
     } catch (err) {
       if (!shouldShowLocalErrorToast(err)) return;
       toast.error(getErrorMessage(err) ?? 'Thao tác thất bại');
@@ -209,35 +162,21 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
           <Space size={4} onClick={(e) => e.stopPropagation()}>
             {canApprove && (
               <>
-                <Button
-                  size="small"
-                  type="primary"
-                  loading={isBusy}
-                  onClick={() => void runAction(r.id, () => workforceOpsService.approveLeave(r.id), 'Đã duyệt đơn nghỉ phép')}
-                >
-                  Duyệt
-                </Button>
-                <Button
-                  size="small"
-                  danger
+                <Button size="small" type="primary" loading={isBusy}
+                  onClick={() => void runAction(r.id, () => leaveService.approve(r.id), 'Đã duyệt đơn nghỉ phép')}
+                >Duyệt</Button>
+                <Button size="small" danger
                   onClick={() => { setActiveRecord(r); rejectForm.resetFields(); setRejectOpen(true); }}
-                >
-                  Từ chối
-                </Button>
+                >Từ chối</Button>
               </>
             )}
             {canCancel && (
-              <Button
-                size="small"
-                onClick={() => void runAction(r.id, () => workforceOpsService.cancelLeave(r.id), 'Đã hủy đơn nghỉ phép')}
-              >
-                Hủy
-              </Button>
+              <Button size="small"
+                onClick={() => void runAction(r.id, () => leaveService.cancel(r.id), 'Đã hủy đơn nghỉ phép')}
+              >Hủy</Button>
             )}
             {r.rejection_reason && r.status === 'rejected' && (
-              <Typography.Text type="danger" style={{ fontSize: 12 }}>
-                {r.rejection_reason}
-              </Typography.Text>
+              <Typography.Text type="danger" style={{ fontSize: 12 }}>{r.rejection_reason}</Typography.Text>
             )}
           </Space>
         );
@@ -253,7 +192,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     queryKey: ['leave-balance', selectedDriverId, selectedLeaveTypeId],
     queryFn: async () => {
       if (!selectedDriverId || !selectedLeaveTypeId) return null;
-      const res = await workforceOpsService.getLeaveBalance(selectedDriverId, selectedLeaveTypeId);
+      const res = await leaveService.getBalance(selectedDriverId, selectedLeaveTypeId);
       return res.data;
     },
     enabled: !!selectedDriverId && !!selectedLeaveTypeId,
@@ -303,7 +242,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
-            onRetry={() => void fetchList(current, statusFilter)}
+            onRetry={() => void refetch()}
           />
         ) : (
           <PageLoadingOverlay loading={loading} className="overflow-hidden rounded-lg">
@@ -318,7 +257,6 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
         )}
       </Card>
 
-      {/* Create leave modal */}
       <Modal
         title="Tạo đơn nghỉ phép"
         open={createOpen}
@@ -332,10 +270,10 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
           layout="vertical"
           onFinish={async (values) => {
             try {
-              await workforceOpsService.createLeave(values as Partial<LeaveRequest>);
+              await leaveService.create(values as Partial<LeaveRequest>);
               toast.success('Đã tạo đơn nghỉ phép');
               setCreateOpen(false);
-              await fetchList(current, statusFilter);
+              void refetch();
             } catch (err) {
               if (!shouldShowLocalErrorToast(err)) return;
               toast.error(getErrorMessage(err) ?? 'Tạo đơn thất bại');
@@ -343,7 +281,8 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
           }}
         >
           <Form.Item name="driver_id" label="Tài xế" rules={[{ required: true, message: 'Chọn tài xế' }]}>
-            <Select showSearch placeholder="Chọn tài xế" options={driverOptions} filterOption={(inp, opt) => String(opt?.label ?? '').toLowerCase().includes(inp.toLowerCase())} />
+            <Select showSearch placeholder="Chọn tài xế" options={driverOptions}
+              filterOption={(inp, opt) => String(opt?.label ?? '').toLowerCase().includes(inp.toLowerCase())} />
           </Form.Item>
           <Form.Item name="leave_type_id" label="Loại nghỉ phép" rules={[{ required: true, message: 'Chọn loại phép' }]}>
             <Select placeholder="Chọn loại nghỉ phép" options={leaveTypeOptions} />
@@ -394,16 +333,11 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
             <Input.TextArea rows={2} placeholder="Lý do nghỉ phép..." maxLength={1000} />
           </Form.Item>
           <Form.Item name="attachment_urls" label="Tài liệu đính kèm (nếu có)">
-            <FileUploader 
-              buttonText="Tải lên minh chứng" 
-              accept=".pdf,image/*" 
-              maxCount={3} 
-            />
+            <FileUploader buttonText="Tải lên minh chứng" accept=".pdf,image/*" maxCount={3} />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* Reject modal */}
       <Modal
         title="Từ chối đơn nghỉ phép"
         open={rejectOpen}
@@ -422,10 +356,10 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
           onFinish={async (values) => {
             if (!activeRecord) return;
             try {
-              await workforceOpsService.rejectLeave(activeRecord.id, values.rejection_reason as string);
+              await leaveService.reject(activeRecord.id, values.rejection_reason as string);
               toast.success('Đã từ chối đơn nghỉ phép');
               setRejectOpen(false);
-              await fetchList(current, statusFilter);
+              void refetch();
             } catch (err) {
               if (!shouldShowLocalErrorToast(err)) return;
               toast.error(getErrorMessage(err) ?? 'Từ chối thất bại');

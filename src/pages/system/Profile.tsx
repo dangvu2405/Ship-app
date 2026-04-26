@@ -54,7 +54,7 @@ export const Profile = () => {
               <Flex vertical gap="small" style={{ width: '100%' }}>
                 <Flex justify="space-between" align="center">
                   <Typography.Text type="secondary">{t('profile.status')}</Typography.Text>
-                  <Tag variant="borderless" color="success">
+                  <Tag bordered={false} color="success">
                     {t('common.active')}
                   </Tag>
                 </Flex>

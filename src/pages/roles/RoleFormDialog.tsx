@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Form, Space } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Form } from 'antd';
 import { useLocation, useParams } from 'react-router-dom';
 import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
-import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { RoleForm, type RoleFormValues } from './RoleForm';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
-import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
+import ArrowLeftIcon from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import type { Role } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
@@ -35,7 +36,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
   const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
   const isEdit = hasRecordId && !isViewMode;
   const dialogOpen = isControlled ? open : true;
-  const [permissionOptions, setPermissionOptions] = useState<{ label: string; value: number; code: string }[]>([]);
+  const [permissionOptions, setPermissionOptions] = useState<{ label: string; value: number }[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +48,6 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
             rows.map((p) => ({
               label: [p.code, p.name].filter(Boolean).join(' — ') || String(p.id),
               value: p.id,
-              code: p.code ?? String(p.id),
             }))
           );
         }
@@ -77,7 +77,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
     }
   };
 
-  const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
+  const { requestClose, handleDialogOpenChange } = useFormDialogCloseGuard({
     form,
     isViewMode,
     isSubmitting: isLoading,
@@ -87,9 +87,6 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
   const handleSubmit = (values: RoleFormValues) => {
     const { permission_ids = [], name, description } = values;
     const roleFields = { name, description };
-    const selectedPermissionCodes = permission_ids
-      .map((id) => permissionOptions.find((opt) => opt.value === id)?.code)
-      .filter((code): code is string => Boolean(code));
 
     if (isEdit && resolvedId) {
       updateItem(
@@ -97,7 +94,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
         {
           onSuccess: async () => {
             try {
-              await syncRolePermissions(resolvedId, selectedPermissionCodes);
+              await syncRolePermissions(resolvedId, permission_ids);
             } catch (error) {
               toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('roles.permissions') }));
               return;
@@ -122,7 +119,7 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
           const newId = res?.data?.id;
           if (newId != null) {
             try {
-              await syncRolePermissions(newId, selectedPermissionCodes);
+              await syncRolePermissions(newId, permission_ids);
             } catch (error) {
               toast.error(getErrorMessage(error) || t('notifications.createError', { item: t('roles.permissions') }));
               return;
@@ -153,66 +150,55 @@ export function RoleFormDialog({ open, mode, recordId, onClose, onSuccess }: Rol
     });
   }, [hasRecordId, data?.data, form]);
 
-  const title = isViewMode ? t('common.view') : isEdit ? t('roles.editRole') : t('roles.createRole');
-  const description = isViewMode
-    ? t('roles.editDescription')
-    : isEdit
-      ? t('roles.editDescription')
-      : t('roles.createDescription');
-
-  const footer = (
-    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-      <Button icon={<ArrowLeftOutlined />} onClick={requestClose}>
-        {t('common.back')}
-      </Button>
-      {!isViewMode ? (
-        <Button type="primary" onClick={() => form.submit()} loading={isLoading}>
-          {isEdit ? t('common.update') : t('common.create')}
-        </Button>
-      ) : (
-        <span />
-      )}
-    </Space>
-  );
-
-  const body =
-    hasRecordId && isLoadingData ? (
-      <TableSkeleton rows={4} columns={1} />
-    ) : (
-      <>
-        <Alert
-          type="info"
-          message={t('formGuides.title')}
-          description={t('formGuides.role')}
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-        <Form
-          form={form}
-          onFinish={handleSubmit}
-          layout="vertical"
-          validateTrigger={['onBlur', 'onSubmit']}
-          initialValues={{ permission_ids: [] }}
-          disabled={isViewMode}
-        >
-          <RoleForm permissionOptions={permissionOptions} permissionsLoading={permissionsLoading} />
-        </Form>
-      </>
+  if (hasRecordId && isLoadingData) {
+    return (
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{isViewMode ? t('common.view') : t('roles.editRole')}</DialogTitle>
+          </DialogHeader>
+          <TableSkeleton rows={4} columns={1} />
+        </DialogContent>
+      </Dialog>
     );
+  }
 
   return (
-    <>
-      <ResourceFormModal
-        open={dialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        title={title}
-        description={description}
-        footer={footer}
-        width={896}
-      >
-        {body}
-      </ResourceFormModal>
-      <UnsavedChangesWarningDialog {...unsavedChangesWarningProps} />
-    </>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle>{isViewMode ? t('common.view') : isEdit ? t('roles.editRole') : t('roles.createRole')}</DialogTitle>
+          <DialogDescription>{isViewMode ? t('roles.editDescription') : isEdit ? t('roles.editDescription') : t('roles.createDescription')}</DialogDescription>
+        </DialogHeader>
+        <div className="px-6 pb-6 space-y-4">
+          <Alert>
+            <AlertTitle>{t('formGuides.title')}</AlertTitle>
+            <AlertDescription>{t('formGuides.role')}</AlertDescription>
+          </Alert>
+
+          <Form
+            form={form}
+            onFinish={handleSubmit}
+            layout="vertical"
+            validateTrigger={["onBlur", "onSubmit"]}
+            initialValues={{ permission_ids: [] }}
+            disabled={isViewMode}
+          >
+            <RoleForm permissionOptions={permissionOptions} permissionsLoading={permissionsLoading} />
+          </Form>
+        </div>
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+          <Button variant="outline" type="button" onClick={requestClose} className="gap-2">
+            <ArrowLeftIcon className="h-4 w-4" />
+            {t('common.back')}
+          </Button>
+          {!isViewMode ? (
+            <Button type="submit" onClick={() => form.submit()} disabled={isLoading}>
+              {isLoading ? t('common.loading') : isEdit ? t('common.update') : t('common.create')}
+            </Button>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -50,7 +50,7 @@ export function FormAccordionSections({
 
   return (
     <Collapse
-      variant="borderless"
+      bordered={false}
       defaultActiveKey={defaultActiveKey ? [defaultActiveKey] : undefined}
       className={className ?? "form-accordion-sections flex w-full flex-col gap-2 bg-transparent"}
       expandIconPosition="end"

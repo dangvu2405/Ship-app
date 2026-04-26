@@ -14,6 +14,7 @@ const createCrudRoutes = (segment: string) => ({
 export const ROUTES = {
   root: '/',
   login: '/login',
+  googleCallback: '/auth/google/callback',
   register: '/register',
   forgotPassword: '/forgot-password',
   forgotPasswordVerify: '/forgot-password/verify',

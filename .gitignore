@@ -34,3 +34,4 @@ dist-ssr
 
 # Test artifacts (keep in CI logs, not git)
 TEST_RESULTS.md
+.gitnexus

@@ -15,6 +15,7 @@ export const ENDPOINTS = {
   },
   auth: {
     login: '/auth/login',
+    socialLogin: '/auth/social/login',
     logout: '/auth/logout',
     refresh: '/auth/refresh',
     register: '/auth/register',

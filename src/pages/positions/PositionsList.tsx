@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useDelete, useList, useNavigation } from '@refinedev/core';
-import { Button, Card } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/common/PageHeader';
-import { ListPageFilters } from '@/components/common/ListPageFilters';
-import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
+import { SearchField } from '@/components/common/SearchField';
+import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
-import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { PositionFormDialog } from './PositionFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
+import { Plus, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Position } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -28,7 +29,7 @@ export function PositionsList() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
 
-  const { data, isLoading, isFetching, isError, refetch } = useList<Position>({
+  const { data, isLoading, isError, refetch } = useList<Position>({
     resource: 'positions',
     pagination: { current, pageSize: 15 },
     filters: [
@@ -81,60 +82,12 @@ export function PositionsList() {
     );
   };
 
-  const columns: DataTableColumn<Position>[] = [
-    { key: 'code', header: t('companies.code'), dataIndex: 'code' },
-    { key: 'name', header: t('companies.name'), dataIndex: 'name' },
-    {
-      key: 'base_salary',
-      header: t('positions.baseSalary'),
-      dataIndex: 'base_salary',
-      render: (row) => formatMoney(row.base_salary),
-    },
-    { key: 'level', header: t('positions.level'), dataIndex: 'level' },
-    {
-      key: 'actions',
-      header: t('common.actions'),
-      render: (record) => (
-        <div className="flex gap-1">
-          <Button
-            type="text"
-            size="small"
-            icon={<EyeOutlined aria-hidden />}
-            aria-label={t('common.view')}
-            onClick={(e) => {
-              e.stopPropagation();
-              show('positions', record.id);
-            }}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined aria-hidden />}
-            aria-label={t('common.edit')}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenDialog('edit', record.id);
-            }}
-          />
-          <Button
-            type="text"
-            size="small"
-            danger
-            icon={<DeleteOutlined aria-hidden />}
-            aria-label={t('common.delete')}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelected(record);
-              setDeleteOpen(true);
-            }}
-          />
-        </div>
-      ),
-    },
-  ];
-
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
+  const pageSize = 15;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const showingFrom = total === 0 ? 0 : (current - 1) * pageSize + 1;
+  const showingTo = Math.min(current * pageSize, total);
 
   return (
     <>
@@ -146,50 +99,164 @@ export function PositionsList() {
           { label: t('positions.title') },
         ]}
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
+          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
+            <Plus className="h-4 w-4" />
             {t('positions.createPosition')}
           </Button>
         }
       />
-      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
-        <ListPageFilters variant="grid-2">
-          <ListPageFilters.Search
-            placeholder={t('common.search')}
-            value={searchKeyword}
-            onChange={setSearchKeyword}
-          />
-        </ListPageFilters>
-        <div className="list-page-filters__btn-row">
-          <ListPageFilters.Actions
-            onSearch={handleSearchFilters}
-            onReset={handleClearFilters}
-            busy={isFetching && !isLoading}
-          />
-        </div>
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="space-y-4 p-6">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">{t('positions.title')}</h2>
+            <p className="text-sm text-slate-500">
+              {total} {t('common.records')}
+            </p>
+          </div>
 
-        {isError ? (
+          <div className="rounded-xl border bg-white p-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <SearchField
+                placeholder={t('common.search')}
+                value={searchKeyword}
+                onChange={setSearchKeyword}
+              />
+
+              <Button type="button" onClick={handleSearchFilters}>
+                {t('common.search')}
+              </Button>
+
+              <Button type="button" variant="outline" onClick={handleClearFilters}>
+                {t('common.reset')}
+              </Button>
+            </div>
+          </div>
+
+        {isLoading ? (
+          <TableSkeleton rows={6} columns={6} />
+        ) : isError ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}
             onRetry={() => refetch()}
           />
         ) : (
-          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-            <DataTable<Position>
-              data={listData}
-              columns={columns}
-              onRowClick={(r) => show('positions', r.id)}
-              emptyMessage={t('common.noData')}
-              emptyDescription={t('emptyState.listDescription', { resource: t('positions.title') })}
-              emptyAction={
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
-                  {t('positions.createPosition')}
-                </Button>
-              }
-              pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
-            />
-          </PageLoadingOverlay>
+          <div className="overflow-hidden rounded-xl border">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] text-sm">
+                <thead className="border-b bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('companies.code')}</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('companies.name')}</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('positions.baseSalary')}</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('positions.level')}</th>
+                    <th className="px-4 py-3 text-right font-medium text-slate-500">{t('common.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {listData.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                        {t('common.noData')}
+                      </td>
+                    </tr>
+                  ) : (
+                    listData.map((record) => (
+                      <tr
+                        key={record.id}
+                        className="cursor-pointer transition-colors hover:bg-slate-50/70"
+                        onClick={() => show('positions', record.id)}
+                      >
+                        <td className="px-4 py-3">
+                          <span className="rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
+                            {record.code}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-800">{record.name}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline">{formatMoney(record.base_salary)}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{record.level ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700"
+                              aria-label={t('common.view')}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                show('positions', record.id);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-500 hover:text-amber-600"
+                              aria-label={t('common.edit')}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleOpenDialog('edit', record.id);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-500 hover:text-red-600"
+                              aria-label={t('common.delete')}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelected(record);
+                                setDeleteOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {total > 0 && (
+              <div className="flex items-center justify-between border-t px-4 py-3">
+                <p className="text-sm text-slate-500">
+                  {showingFrom}-{showingTo} / {total}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={current <= 1}
+                    onClick={() => setCurrent((prev) => Math.max(1, prev - 1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="px-2 text-sm text-slate-600">
+                    {current} / {totalPages}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={current >= totalPages}
+                    onClick={() => setCurrent((prev) => Math.min(totalPages, prev + 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
+      </CardContent>
       </Card>
       <DeleteConfirmDialog
         open={deleteOpen}

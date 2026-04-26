@@ -16,7 +16,7 @@ import type {
   PublicHoliday,
   Vehicle,
 } from '@/types';
-import workforceOpsService from '@/services/workforce-ops.service';
+import driverScheduleService from '@/services/driver-schedule.service';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { useDriverDayMap } from '@/hooks/use-driver-day-map';
@@ -254,7 +254,7 @@ export function useDriverSchedulePage() {
     }
     setScheduleLoading(true);
     try {
-      const result = await workforceOpsService.listDriverSchedules({
+      const result = await driverScheduleService.list({
         from: currentMonth.startOf('month').format('YYYY-MM-DD'),
         to: currentMonth.endOf('month').format('YYYY-MM-DD'),
         per_page: 200,
@@ -285,9 +285,9 @@ export function useDriverSchedulePage() {
     const to = currentMonth.endOf('month').format('YYYY-MM-DD');
     const driverParam = { driver_id: selectedDriverId };
     void Promise.all([
-      workforceOpsService.listLeaveRequests({ ...driverParam, from, to, status: 'approved', per_page: 200 }),
-      workforceOpsService.listAbsences({ ...driverParam, from, to, per_page: 200 }),
-      workforceOpsService.listPublicHolidays({ year: currentMonth.year() }),
+      driverScheduleService.listLeaveRequests({ ...driverParam, from, to, status: 'approved', per_page: 200 }),
+      driverScheduleService.listAbsences({ ...driverParam, from, to, per_page: 200 }),
+      driverScheduleService.listPublicHolidays({ year: currentMonth.year() }),
     ])
       .then(([lr, ab, ph]) => {
         setLeaveRequests(lr.data);
@@ -305,8 +305,8 @@ export function useDriverSchedulePage() {
         await Promise.all(
           ids.map((id) =>
             action === 'approve'
-              ? workforceOpsService.approveDriverSchedule(id)
-              : workforceOpsService.lockDriverSchedule(id),
+              ? driverScheduleService.approve(id)
+              : driverScheduleService.lock(id),
           ),
         );
         toast.success(action === 'approve' ? t('drivers.scheduleBulkApproveSuccess') : t('drivers.scheduleBulkLockSuccess'));
@@ -343,7 +343,7 @@ export function useDriverSchedulePage() {
     const id = detailSchedule.id;
     setActionLoading('hos');
     try {
-      const res = await workforceOpsService.checkDriverScheduleHos(id);
+      const res = await driverScheduleService.checkHos(id);
       if (res.data && !res.data.allowed) {
         setHosWarning(res.data.reason ?? 'Tài xế vượt giới hạn 12 giờ lái xe/ngày (HOS)');
         setActionLoading(null);
@@ -353,7 +353,7 @@ export function useDriverSchedulePage() {
       /* HOS unavailable */
     }
     setActionLoading(null);
-    void runScheduleAction('approve', () => workforceOpsService.approveDriverSchedule(id), 'Đã duyệt lịch');
+    void runScheduleAction('approve', () => driverScheduleService.approve(id), 'Đã duyệt lịch');
   }, [detailSchedule, runScheduleAction]);
 
   const handleApproveOverrideHos = useCallback(() => {
@@ -381,7 +381,7 @@ export function useDriverSchedulePage() {
       };
       const driver = drivers.find((d) => d.id === values.driver_id);
       setCreateLoading(true);
-      await workforceOpsService.createDriverSchedule({
+      await driverScheduleService.create({
         driver_id: values.driver_id,
         office_id: driver ? driverOfficeId(driver) ?? selectedOfficeId ?? undefined : selectedOfficeId ?? undefined,
         work_date: values.work_date.format('YYYY-MM-DD'),
@@ -442,17 +442,17 @@ export function useDriverSchedulePage() {
 
   const onSubmitDraft = useCallback(() => {
     if (!detailSchedule) return;
-    void runScheduleAction('submit', () => workforceOpsService.submitDriverSchedule(detailSchedule.id), 'Đã nộp lịch');
+    void runScheduleAction('submit', () => driverScheduleService.submit(detailSchedule.id), 'Đã nộp lịch');
   }, [detailSchedule, runScheduleAction]);
 
   const onLock = useCallback(() => {
     if (!detailSchedule) return;
-    void runScheduleAction('lock', () => workforceOpsService.lockDriverSchedule(detailSchedule.id), 'Đã khóa lịch');
+    void runScheduleAction('lock', () => driverScheduleService.lock(detailSchedule.id), 'Đã khóa lịch');
   }, [detailSchedule, runScheduleAction]);
 
   const onRejectConfirm = useCallback(() => {
     if (!detailSchedule) return;
-    void runScheduleAction('reject', () => workforceOpsService.rejectDriverSchedule(detailSchedule.id), 'Đã từ chối lịch');
+    void runScheduleAction('reject', () => driverScheduleService.reject(detailSchedule.id), 'Đã từ chối lịch');
     setRejectOpen(false);
     setRejectReason('');
   }, [detailSchedule, runScheduleAction]);
@@ -460,7 +460,7 @@ export function useDriverSchedulePage() {
   const onOverrideConfirm = useCallback(() => {
     if (!detailSchedule) return;
     const r = overrideReason.trim();
-    void runScheduleAction('override', () => workforceOpsService.overrideDriverSchedule(detailSchedule.id, r), 'Đã override lịch');
+    void runScheduleAction('override', () => driverScheduleService.override(detailSchedule.id, r), 'Đã override lịch');
     setOverrideOpen(false);
     setOverrideReason('');
   }, [detailSchedule, overrideReason, runScheduleAction]);

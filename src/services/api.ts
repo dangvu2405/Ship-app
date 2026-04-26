@@ -18,7 +18,7 @@ declare module 'axios' {
     skipToast?: boolean; // Skip automatic toast notification
     skipErrorToast?: boolean; // Skip only error toast
     errorMode?: ErrorMode; // Controls which layer owns error UI: global | local | silent
-    /** Gọi dưới `/api` (vd `/api/v2/...`), không dùng base `/api/v1`. */
+    /** Gọi trực tiếp dưới gốc `/api`, bỏ qua baseURL của instance. */
     useApiRoot?: boolean;
     /** @internal — set by refresh interceptor to prevent infinite retry loop. */
     _retry?: boolean;

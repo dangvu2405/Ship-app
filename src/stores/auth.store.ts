@@ -24,6 +24,7 @@ interface AuthState {
   /** Danh sách tenant chờ user chọn sau khi login (chỉ có khi user thuộc ≥ 2 tenant). */
   pendingTenants: Tenant[];
   login: (email: string, password: string) => Promise<void>;
+  socialLogin: (credentials: { provider: 'google' | 'facebook' | 'apple'; access_token?: string; id_token?: string }) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -75,6 +76,28 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true });
           const response = await authService.login({ email, password });
+          if (response.success && response.data?.user) {
+            const accessToken = response.data.access_token || response.data.token;
+            const refreshToken = response.data.refresh_token;
+            if (accessToken) setAuthToken(accessToken);
+            if (refreshToken) setRefreshToken(refreshToken);
+
+            const user: User = { ...response.data.user, tenants: response.data.tenants ?? response.data.user.tenants ?? [] };
+            const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
+
+            set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
+            toast.success('Login successful');
+          }
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      socialLogin: async (credentials: { provider: 'google' | 'facebook' | 'apple'; access_token?: string; id_token?: string }) => {
+        try {
+          set({ isLoading: true });
+          const response = await authService.socialLogin(credentials);
           if (response.success && response.data?.user) {
             const accessToken = response.data.access_token || response.data.token;
             const refreshToken = response.data.refresh_token;
