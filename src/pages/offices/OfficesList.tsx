@@ -8,10 +8,14 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
+import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { OfficeFormDialog } from './OfficeFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import PlusIcon from 'lucide-react/dist/esm/icons/plus';
+import EyeIcon from 'lucide-react/dist/esm/icons/eye';
+import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
+import TrashIcon from 'lucide-react/dist/esm/icons/trash-2';
 import type { Company, Office } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -95,12 +99,61 @@ export function OfficesList() {
     );
   };
 
+  const columns: DataTableColumn<Office>[] = [
+    { key: 'code', header: t('companies.code'), dataIndex: 'code' },
+    { key: 'name', header: t('companies.name'), dataIndex: 'name' },
+    {
+      key: 'company',
+      header: t('payrolls.company'),
+      render: (row) => row.company?.name ? <Badge variant="outline">{row.company.name}</Badge> : `—`,
+    },
+    { key: 'address', header: t('companies.address'), dataIndex: 'address' },
+    {
+      key: 'actions',
+      header: t('common.actions'),
+      render: (record) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              show('offices', record.id);
+            }}
+          >
+            <EyeIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDialog('edit', record.id);
+            }}
+          >
+            <PencilIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(record);
+              setDeleteOpen(true);
+            }}
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
-  const pageSize = 15;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const showingFrom = total === 0 ? 0 : (current - 1) * pageSize + 1;
-  const showingTo = Math.min(current * pageSize, total);
 
   return (
     <>
@@ -113,53 +166,44 @@ export function OfficesList() {
         ]}
         actions={
           <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-            <Plus className="h-4 w-4" />
+            <PlusIcon className="h-4 w-4" />
             {t('offices.createOffice')}
           </Button>
         }
       />
       <Card className="rounded-xl shadow-sm border">
         <CardContent className="p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">{t('offices.title')}</h2>
-            <p className="text-sm text-slate-500">
-              {total} {t('common.records')}
-            </p>
-          </div>
-
-          <div className="rounded-xl border bg-white p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <SearchField
-              placeholder={t('common.search')}
-              value={searchKeyword}
-              onChange={setSearchKeyword}
-            />
+          <SearchField
+            placeholder={t('common.search')}
+            value={searchKeyword}
+            onChange={setSearchKeyword}
+          />
 
-            <Select
-              allowClear
-              showSearch
-              placeholder={t('companies.title')}
-              value={selectedCompanyId}
-              onChange={setSelectedCompanyId}
-              options={(companiesData?.data ?? []).map((company) => ({
-                label: company.name,
-                value: company.id,
-              }))}
-              optionFilterProp="label"
-            />
+          <Select
+            allowClear
+            showSearch
+            placeholder={t('companies.title')}
+            value={selectedCompanyId}
+            onChange={setSelectedCompanyId}
+            options={(companiesData?.data ?? []).map((company) => ({
+              label: company.name,
+              value: company.id,
+            }))}
+            optionFilterProp="label"
+          />
 
-            <Button type="button" onClick={handleSearchFilters}>
-              {t('common.search')}
-            </Button>
+          <Button type="button" onClick={handleSearchFilters}>
+            {t('common.search')}
+          </Button>
 
-            <Button type="button" variant="outline" onClick={handleClearFilters}>
-              {t('common.reset')}
-            </Button>
-          </div>
+          <Button type="button" variant="outline" onClick={handleClearFilters}>
+            {t('common.reset')}
+          </Button>
           </div>
 
           {isLoading ? (
-            <TableSkeleton rows={6} columns={6} />
+            <TableSkeleton rows={5} columns={columns.length} />
           ) : isError ? (
             <ErrorState
               title={t('common.loadError')}
@@ -167,120 +211,13 @@ export function OfficesList() {
               onRetry={() => refetch()}
             />
           ) : (
-            <div className="overflow-hidden rounded-xl border">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] text-sm">
-                  <thead className="border-b bg-slate-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-medium text-slate-500">{t('companies.code')}</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-500">{t('companies.name')}</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-500">{t('payrolls.company')}</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-500">{t('companies.address')}</th>
-                      <th className="px-4 py-3 text-right font-medium text-slate-500">{t('common.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {listData.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
-                          {t('common.noData')}
-                        </td>
-                      </tr>
-                    ) : (
-                      listData.map((record) => (
-                        <tr
-                          key={record.id}
-                          className="cursor-pointer transition-colors hover:bg-slate-50/70"
-                          onClick={() => show('offices', record.id)}
-                        >
-                          <td className="px-4 py-3">
-                            <span className="rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
-                              {record.code}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-medium text-slate-800">{record.name}</td>
-                          <td className="px-4 py-3">
-                            {record.company?.name ? <Badge variant="outline">{record.company.name}</Badge> : '—'}
-                          </td>
-                          <td className="max-w-[280px] truncate px-4 py-3 text-slate-600">{record.address}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700"
-                                aria-label={t('common.view')}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  show('offices', record.id);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-slate-500 hover:text-amber-600"
-                                aria-label={t('common.edit')}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  handleOpenDialog('edit', record.id);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-slate-500 hover:text-red-600"
-                                aria-label={t('common.delete')}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setSelected(record);
-                                  setDeleteOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {total > 0 && (
-                <div className="flex items-center justify-between border-t px-4 py-3">
-                  <p className="text-sm text-slate-500">
-                    {showingFrom}-{showingTo} / {total}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      disabled={current <= 1}
-                      onClick={() => setCurrent((prev) => Math.max(1, prev - 1))}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="px-2 text-sm text-slate-600">
-                      {current} / {totalPages}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      disabled={current >= totalPages}
-                      onClick={() => setCurrent((prev) => Math.min(totalPages, prev + 1))}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <DataTable<Office>
+              data={listData}
+              columns={columns}
+              onRowClick={(r) => show('offices', r.id)}
+              emptyMessage={t('common.noData')}
+              pagination={{ current, total, pageSize: 15, onPageChange: setCurrent }}
+            />
           )}
         </CardContent>
       </Card>

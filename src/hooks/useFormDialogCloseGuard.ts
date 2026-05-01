@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import type { FormInstance } from 'antd';
 
 import { useTranslation } from '@/hooks/useTranslation';
@@ -17,18 +17,17 @@ export const useFormDialogCloseGuard = ({
   onClose,
 }: UseFormDialogCloseGuardOptions) => {
   const { t } = useTranslation();
-  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
 
   const requestClose = useCallback(() => {
     if (isSubmitting) return;
 
     if (!isViewMode && form.isFieldsTouched(true)) {
-      setUnsavedDialogOpen(true);
-      return;
+      const confirmed = window.confirm(t('common.unsavedChangesConfirm'));
+      if (!confirmed) return;
     }
 
     onClose();
-  }, [form, isSubmitting, isViewMode, onClose]);
+  }, [form, isSubmitting, isViewMode, onClose, t]);
 
   const handleDialogOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
@@ -36,20 +35,8 @@ export const useFormDialogCloseGuard = ({
     }
   }, [requestClose]);
 
-  const unsavedChangesWarningProps = {
-    open: unsavedDialogOpen,
-    onOpenChange: setUnsavedDialogOpen,
-    onConfirmDiscard: () => {
-      setUnsavedDialogOpen(false);
-      onClose();
-    },
-    title: t('unsavedChanges.title'),
-    description: t('unsavedChanges.description'),
-  };
-
   return {
     requestClose,
     handleDialogOpenChange,
-    unsavedChangesWarningProps,
   };
 };

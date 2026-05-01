@@ -18,7 +18,6 @@ import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { VehicleExpenseFormDialog } from './VehicleExpenseFormDialog';
-import type { MouseEvent } from 'react';
 import { formatCurrencyVND } from '@/utils/format';
 
 export function VehicleExpensesList() {
@@ -88,13 +87,13 @@ export function VehicleExpensesList() {
       header: t('common.actions'),
       render: (record) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); show('vehicle_expenses', record.id); }}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); show('vehicle_expenses', record.id); }}>
             <EyeIcon className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); handleEdit(record.id); }}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleEdit(record.id); }}>
             <PencilIcon className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
             <Trash2Icon className="h-4 w-4" />
           </Button>
         </div>

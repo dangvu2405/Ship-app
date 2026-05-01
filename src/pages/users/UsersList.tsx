@@ -3,14 +3,21 @@ import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchField } from '@/components/common/SearchField';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
+import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import type { User } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
@@ -101,6 +108,57 @@ export function UsersList() {
     );
   };
 
+  const columns: DataTableColumn<User>[] = [
+    { key: 'username', header: t('users.username'), dataIndex: 'username' },
+    { key: 'email', header: t('users.email'), dataIndex: 'email' },
+    { key: 'employee', header: t('users.employee'), dataIndex: ['employee', 'name'] },
+    {
+      key: 'status',
+      header: t('common.status'),
+      dataIndex: 'status',
+      render: (item) => (
+        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
+          {item.status === 'active' ? t('common.active') : t('common.inactive')}
+        </Badge>
+      ),
+    },
+    {
+      key: 'roles',
+      header: t('users.roles'),
+      dataIndex: 'roles',
+      render: (item) => item.roles?.map((r: { name: string }) => r.name).join(', ') || '-',
+    },
+    {
+      key: 'actions',
+      header: t('common.actions'),
+      render: (record) => (
+        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => show('users', record.id)}>
+                <Eye className="h-4 w-4 mr-2" />
+                {t('common.view')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(record.id)}>
+                <Edit className="h-4 w-4 mr-2" />
+                {t('common.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t('common.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ];
+
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
     { label: t('users.title') },
@@ -109,9 +167,6 @@ export function UsersList() {
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
   const pageSize = 15;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const showingFrom = total === 0 ? 0 : (current - 1) * pageSize + 1;
-  const showingTo = Math.min(current * pageSize, total);
 
   return (
     <>
@@ -128,45 +183,36 @@ export function UsersList() {
       />
 
       <Card className="rounded-xl shadow-sm border">
-        <CardContent className="space-y-4 p-6">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">{t('users.title')}</h2>
-            <p className="text-sm text-slate-500">
-              {total} {t('common.records')}
-            </p>
-          </div>
+        <CardContent className="p-6">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <SearchField
+            placeholder={t('common.search')}
+            value={searchKeyword}
+            onChange={setSearchKeyword}
+          />
 
-          <div className="rounded-xl border bg-white p-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-              <SearchField
-                placeholder={t('common.search')}
-                value={searchKeyword}
-                onChange={setSearchKeyword}
-              />
+          <Select
+            allowClear
+            placeholder={t('common.status')}
+            value={selectedStatus}
+            onChange={setSelectedStatus}
+            options={[
+              { label: t('common.active'), value: 'active' },
+              { label: t('common.inactive'), value: 'inactive' },
+            ]}
+          />
 
-              <Select
-                allowClear
-                placeholder={t('common.status')}
-                value={selectedStatus}
-                onChange={setSelectedStatus}
-                options={[
-                  { label: t('common.active'), value: 'active' },
-                  { label: t('common.inactive'), value: 'inactive' },
-                ]}
-              />
+          <Button type="button" onClick={handleSearchFilters}>
+            {t('common.search')}
+          </Button>
 
-              <Button type="button" onClick={handleSearchFilters}>
-                {t('common.search')}
-              </Button>
-
-              <Button type="button" variant="outline" onClick={handleClearFilters}>
-                {t('common.reset')}
-              </Button>
-            </div>
-          </div>
+          <Button type="button" variant="outline" onClick={handleClearFilters}>
+            {t('common.reset')}
+          </Button>
+        </div>
 
         {isLoading ? (
-          <TableSkeleton rows={6} columns={6} />
+          <TableSkeleton rows={5} columns={columns.length} />
         ) : isError ? (
           <ErrorState
             title={t('common.loadError')}
@@ -174,123 +220,20 @@ export function UsersList() {
             onRetry={() => refetch()}
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px] text-sm">
-                <thead className="border-b bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('users.username')}</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('users.email')}</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('users.employee')}</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('common.status')}</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-500">{t('users.roles')}</th>
-                    <th className="px-4 py-3 text-right font-medium text-slate-500">{t('common.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {listData.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
-                        {t('common.noData')}
-                      </td>
-                    </tr>
-                  ) : (
-                    listData.map((record) => (
-                      <tr
-                        key={record.id}
-                        className="cursor-pointer transition-colors hover:bg-slate-50/70"
-                        onClick={() => show('users', record.id)}
-                      >
-                        <td className="px-4 py-3 font-medium text-slate-800">{record.username}</td>
-                        <td className="px-4 py-3 text-slate-600">{record.email ?? '—'}</td>
-                        <td className="px-4 py-3 text-slate-600">{record.employee?.name ?? '—'}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant={record.status === 'active' ? 'default' : 'secondary'}>
-                            {record.status === 'active' ? t('common.active') : t('common.inactive')}
-                          </Badge>
-                        </td>
-                        <td className="max-w-[300px] truncate px-4 py-3 text-slate-600">
-                          {record.roles?.map((role: { name: string }) => role.name).join(', ') || '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700"
-                              aria-label={t('common.view')}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                show('users', record.id);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-slate-500 hover:text-amber-600"
-                              aria-label={t('common.edit')}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleEdit(record.id);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-slate-500 hover:text-red-600"
-                              aria-label={t('common.delete')}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDelete(record);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {total > 0 && (
-              <div className="flex items-center justify-between border-t px-4 py-3">
-                <p className="text-sm text-slate-500">
-                  {showingFrom}-{showingTo} / {total}
-                </p>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    disabled={current <= 1}
-                    onClick={() => setCurrent((prev) => Math.max(1, prev - 1))}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="px-2 text-sm text-slate-600">
-                    {current} / {totalPages}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    disabled={current >= totalPages}
-                    onClick={() => setCurrent((prev) => Math.min(totalPages, prev + 1))}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          <DataTable<User>
+            data={listData}
+            columns={columns}
+            onRowClick={(record) => show('users', record.id)}
+            emptyMessage={t('common.noData')}
+            pagination={{
+              current,
+              total,
+              pageSize,
+              onPageChange: setCurrent,
+            }}
+          />
         )}
-      </CardContent>
+        </CardContent>
       </Card>
 
       <DeleteConfirmDialog
