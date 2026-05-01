@@ -1,0 +1,1091 @@
+# Ship ERP — Cursor Rules (Senior Grade)
+# React 18 · Refine v4 · Ant Design v5 · TailwindCSS · TypeScript strict · Zustand · TanStack Query v5 · Axios
+
+---
+
+## IMPORTS
+Always `@/` alias — never relative paths going up more than one level.
+```ts
+import { useAuthStore } from '@/stores/auth.store'    // ✅
+import { useAuthStore } from '../../stores/auth.store' // ❌
+```
+Import order (enforced by eslint-plugin-import):
+1. React
+2. Third-party libraries
+3. `@/` aliases — services, stores, hooks, components, utils, types
+4. Relative same-folder imports (`./ only`)
+
+---
+
+## TYPESCRIPT STRICT
+
+### Never use `any` — ever
+```ts
+// ❌
+function handle(data: any) {}
+
+// ✅ unknown + type guard
+function handle(data: unknown) {
+  if (isApiError(data)) { ... }
+}
+```
+
+### Prefer discriminated unions over boolean flags
+```ts
+// ❌
+interface State { isLoading: boolean; isError: boolean; data?: User }
+
+// ✅
+type State =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: User }
+  | { status: 'error'; error: string }
+```
+
+### Type utilities — use before writing new types
+```ts
+// Extract, Pick, Omit, Partial, Required, Readonly, ReturnType, Parameters
+type CreateUserDto = Omit<User, 'id' | 'createdAt' | 'updatedAt'>
+type UpdateUserDto = Partial<CreateUserDto>
+type UserRow = Pick<User, 'id' | 'name' | 'email' | 'status'>
+```
+
+### Function signatures — always explicit return type on public functions
+```ts
+// ❌ — inferred return type on exported functions
+export function getFullName(user: User) {
+  return `${user.firstName} ${user.lastName}`
+}
+
+// ✅
+export function getFullName(user: User): string {
+  return `${user.firstName} ${user.lastName}`
+}
+```
+
+### Const assertions for static data
+```ts
+const STATUS_OPTIONS = ['active', 'inactive', 'suspended'] as const
+type UserStatus = typeof STATUS_OPTIONS[number]  // 'active' | 'inactive' | 'suspended'
+```
+
+---
+
+## COMPONENTS
+
+### Structure — one component per file, filename = component name
+```
+UserTable.tsx        → export function UserTable
+useUserTable.ts      → export function useUserTable (logic extracted)
+UserTable.types.ts   → types local to this component (if large)
+```
+
+### Named exports only
+```ts
+export function UserCard() {}        // ✅
+export const UserCard = () => {}     // ✅ (if hooks need forwardRef)
+export default function UserCard() {} // ❌
+```
+
+### Extract logic to custom hooks when component > ~100 lines
+```ts
+// ❌ — logic buried in JSX
+function PayrollPage() {
+  const [page, setPage] = useState(1)
+  const [filters, setFilters] = useState({})
+  const { data, isLoading } = useQuery(...)
+  // 80 more lines
+}
+
+// ✅ — component is just JSX
+function PayrollPage() {
+  const { tableProps, filterProps, handleExport } = usePayrollPage()
+  return <PayrollTable {...tableProps} />
+}
+```
+
+### Props — destructure at signature, never inside body
+```ts
+// ✅
+export function UserBadge({ name, status, size = 'md' }: UserBadgeProps) {}
+
+// ❌
+export function UserBadge(props: UserBadgeProps) {
+  const { name, status } = props
+}
+```
+
+### Colors and spacing — always theme tokens
+```ts
+const { token } = theme.useToken()
+// token.colorPrimary, token.colorBgContainer, token.borderRadius, token.paddingMD
+// ❌ Never: style={{ color: '#1677ff' }}
+```
+
+### Memoization — only when measurably needed
+```ts
+// ✅ — use React.memo for expensive list items receiving stable props
+export const OrderRow = React.memo(function OrderRow({ order }: OrderRowProps) {})
+
+// ✅ — useMemo for expensive derivations (not for simple transforms)
+const sortedRows = useMemo(() => rows.slice().sort(compareFn), [rows, compareFn])
+
+// ❌ — premature: simple string concat doesn't need useMemo
+const fullName = useMemo(() => `${first} ${last}`, [first, last])
+```
+
+### useCallback — only for stable references passed to memoized children
+```ts
+// ✅
+const handleDelete = useCallback((id: number) => {
+  deleteMutation.mutate(id)
+}, [deleteMutation])
+
+// ❌ — no memoized child consuming it, pointless
+const getLabel = useCallback(() => t('common.save'), [t])
+```
+
+---
+
+## ANT DESIGN v5
+
+### Layout
+```tsx
+<Flex gap={token.padding} align="center">  // ✅
+<Space size={[8, 16]}>                      // ✅
+<div style={{ display: 'flex' }}>           // ❌
+```
+
+### Forms
+```tsx
+// ✅ — antd controlled by Form, not useState
+<Form form={form} onFinish={handleSubmit}>
+  <Form.Item name="email" rules={[{ required: true, type: 'email' }]}>
+    <Input />
+  </Form.Item>
+</Form>
+
+// ❌
+const [email, setEmail] = useState('')
+<Input value={email} onChange={e => setEmail(e.target.value)} />
+```
+
+### Modals with forms — always destroyOnClose + reset on close
+```tsx
+<Modal
+  open={open}
+  destroyOnClose
+  afterClose={() => form.resetFields()}
+>
+```
+
+### Table — use column `key` equal to `dataIndex`, type via generic
+```tsx
+const columns: TableColumnsType<User> = [
+  { key: 'name', dataIndex: 'name', title: t('user.name') },
+]
+```
+
+### Feedback — Notification for async results, Message for instant feedback
+```ts
+// Long ops (API calls) → notification
+notification.success({ message: t('payroll.exportSuccess') })
+
+// Instant (copy, toggle) → message
+message.success(t('common.copied'))
+```
+
+### Never
+- `bordered={false}` → use `variant="borderless"`
+- `from 'antd/lib/'` or `from 'antd/es/'` → always `from 'antd'`
+- Hardcode `style={{ color: '#...' }}` inside antd components
+
+---
+
+## API SERVICE PATTERN
+
+```ts
+// src/services/<domain>.service.ts
+import api from './api'
+import type { ApiResponse, PaginatedResponse } from '@/types'
+import { ENDPOINTS } from './endpoints'
+
+class ShipService {
+  async getList(params?: Record<string, unknown>): Promise<PaginatedResponse<Ship>> {
+    const res = await api.get(ENDPOINTS.ships.base, { params })
+    return res.data
+  }
+
+  async getById(id: number): Promise<ApiResponse<Ship>> {
+    const res = await api.get(ENDPOINTS.ships.byId(id))
+    return res.data
+  }
+
+  async create(dto: CreateShipDto): Promise<ApiResponse<Ship>> {
+    const res = await api.post(ENDPOINTS.ships.base, dto)
+    return res.data
+  }
+
+  async update(id: number, dto: UpdateShipDto): Promise<ApiResponse<Ship>> {
+    const res = await api.patch(ENDPOINTS.ships.byId(id), dto)
+    return res.data
+  }
+
+  async remove(id: number): Promise<void> {
+    await api.delete(ENDPOINTS.ships.byId(id))
+  }
+}
+
+export default new ShipService()
+```
+
+### Rules
+- Return `ApiResponse<T>` or `PaginatedResponse<T>` — never raw Axios response.
+- Every path via `ENDPOINTS.*` — never inline `'/api/ships'`.
+- Use the shared `api` instance — never `axios.create()` inside a service.
+- PATCH for partial update, PUT only if API requires full replacement.
+- Add new endpoints to `src/services/endpoints.ts` first, before writing service method.
+
+---
+
+## REACT QUERY HOOKS
+
+```ts
+// src/hooks/<domain>/use<Domain>List.ts
+import { useQuery } from '@tanstack/react-query'
+import shipService from '@/services/ship.service'
+import { createResourceQueryKeys } from '@/shared/query'
+import { getErrorMessage } from '@/utils/errorHandler'
+
+const keys = createResourceQueryKeys('ships')
+
+export function useShipList(params: ShipListParams) {
+  const query = useQuery({
+    queryKey: keys.list(params),
+    queryFn: () => shipService.getList(params),
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,   // smooth pagination
+  })
+
+  return {
+    data: query.data?.data ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,        // expose for table loading overlay
+    error: query.error ? getErrorMessage(query.error) : null,
+    refetch: query.refetch,
+  }
+}
+```
+
+### Mutation pattern — full lifecycle
+```ts
+// src/hooks/<domain>/use<Domain>Mutations.ts
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { notification } from 'antd'
+
+export function useCreateShip() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: (dto: CreateShipDto) => shipService.create(dto),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.lists() })
+      notification.success({ message: t('ships.createSuccess') })
+    },
+
+    onError: (error) => {
+      // Global interceptor already shows toast — only add here if errorMode:'local'
+      console.error('[useCreateShip]', getErrorMessage(error))
+    },
+  })
+}
+```
+
+### Optimistic update — only for toggle/status changes on list
+```ts
+onMutate: async ({ id, status }) => {
+  await queryClient.cancelQueries({ queryKey: keys.list(currentParams) })
+  const previous = queryClient.getQueryData(keys.list(currentParams))
+  queryClient.setQueryData(keys.list(currentParams), (old: ShipList) => ({
+    ...old,
+    data: old.data.map(s => s.id === id ? { ...s, status } : s),
+  }))
+  return { previous }
+},
+onError: (_err, _vars, ctx) => {
+  queryClient.setQueryData(keys.list(currentParams), ctx?.previous)
+},
+```
+
+### Rules
+- `createResourceQueryKeys(resource)` — never inline `['ships', 'list']`.
+- Return `{ data, isLoading, isFetching, error, refetch }` — never the raw query object.
+- `staleTime` minimum `60_000` for list queries — prevents waterfall refetch on tab focus.
+- `keepPreviousData` on paginated lists — removes flash between pages.
+- Never `new QueryClient()` — import singleton from `@/lib/query-client`.
+- Mutations always invalidate via `keys.lists()` — never `queryClient.invalidateQueries()` with raw string.
+
+---
+
+## ZUSTAND STORES
+
+```ts
+// src/stores/example.store.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { createSafeStorage } from '@/lib/safe-storage'
+
+interface ExampleState {
+  value: string
+  // Actions grouped separately from state
+  actions: {
+    setValue: (v: string) => void
+    reset: () => void
+  }
+}
+
+const INITIAL: Omit<ExampleState, 'actions'> = { value: '' }
+
+export const useExampleStore = create<ExampleState>()(
+  persist(
+    (set) => ({
+      ...INITIAL,
+      actions: {
+        setValue: (v) => set({ value: v }),
+        reset: () => set(INITIAL),
+      },
+    }),
+    { name: 'example-storage:v1', storage: createSafeStorage() },
+  ),
+)
+
+// Selector hooks — export separately for clean usage
+export const useExampleValue = () => useExampleStore((s) => s.value)
+export const useExampleActions = () => useExampleStore((s) => s.actions)
+```
+
+### State boundary — which tool for which data
+| Data type | Tool |
+|---|---|
+| Server data (lists, detail) | TanStack Query |
+| UI state (modal open, active tab) | `useState` local |
+| Cross-page UI state (sidebar collapsed) | Zustand (no persist) |
+| Auth / user session | Zustand + persist |
+| Form state | antd `Form` |
+| URL-driven filters | `useSearchParams` (Refine) |
+
+### Rules
+- Persist key format `<name>-storage:v<N>` — bump N on breaking shape change.
+- Actions in nested `actions` object — separates state shape from mutators.
+- Never subscribe to whole store: `useExampleStore()` — always use selector.
+- Non-persisted stores: omit `persist` wrapper entirely.
+
+---
+
+## REFINE v4
+
+### Data hooks — use Refine hooks, not raw TanStack Query, for CRUD
+```ts
+// ✅ — Refine handles resource + dataProvider routing automatically
+const { data, isLoading } = useList<Ship>({
+  resource: 'ships',
+  pagination: { current: page, pageSize },
+  filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+  sorters: [{ field: 'createdAt', order: 'desc' }],
+})
+
+const { mutate: createShip } = useCreate<Ship>()
+const { mutate: updateShip } = useUpdate<Ship>()
+const { mutate: deleteShip } = useDelete<Ship>()
+```
+
+### Access control
+```ts
+// ✅ — use useCan for permission-gated UI
+const { data: canExport } = useCan({ resource: 'payrolls', action: 'export' })
+<Button disabled={!canExport?.can}>Export</Button>
+
+// ❌ — never check roles directly in component
+if (user.role === 'admin') ...
+```
+
+### Navigation — always useNavigation or useGo, never raw router push
+```ts
+const { show, edit, list } = useNavigation()
+show('ships', record.id)   // navigates to /ships/show/:id
+edit('ships', record.id)   // navigates to /ships/edit/:id
+```
+
+### useResource — get current resource context inside resource pages
+```ts
+const { resource, id, action } = useResource()
+```
+
+### Rules
+- `resource` names must match `dataProvider` route keys exactly.
+- Custom pages outside Refine resources: use raw TanStack Query hooks.
+- `useInvalidate` instead of `queryClient.invalidateQueries` inside Refine resources.
+
+---
+
+## ERROR HANDLING
+
+### Hierarchy
+```
+Axios interceptor (global)
+  └─ 4xx / 5xx → notification.error (default)
+       └─ errorMode: 'local'  → component shows inline error
+       └─ errorMode: 'silent' → background/polling, no toast
+```
+
+### In components
+```tsx
+const { error, isLoading } = useShipList(params)
+
+if (error) return <Alert type="error" message={error} />  // errorMode: 'local'
+```
+
+### Utility
+```ts
+import { getErrorMessage } from '@/utils/errorHandler'
+// Safely unwraps AxiosError | Error | unknown → string
+```
+
+### Never
+- `catch (e: any)` — use `catch (e: unknown)` + `getErrorMessage`
+- Duplicate toast in component when global interceptor already handles it
+- Silent failures — at minimum `console.error` with context tag `[hookName]`
+
+---
+
+## i18n
+
+### Hook usage
+```tsx
+const { t } = useTranslation()
+
+<Button>{t('common.save')}</Button>
+<Text>{t('validation.minLength', { min: 5 })}</Text>
+```
+
+### Adding keys — always both files at once
+```ts
+// src/locales/en.ts  ← source of truth (drives TranslationKeys type)
+ships: {
+  createSuccess: 'Ship created successfully',
+  deleteConfirm: 'Delete {name}?',
+}
+
+// src/locales/vi.ts  ← add immediately after
+ships: {
+  createSuccess: 'Tạo tàu thành công',
+  deleteConfirm: 'Xoá {name}?',
+}
+```
+
+### Rules
+- Every user-facing string through `t()` — no hardcoded Vietnamese or English in JSX.
+- Keys: dot-notation grouped by domain `'ships.createSuccess'`, `'common.save'`.
+- Interpolation: `{name}` syntax, params typed as `Record<string, string | number>`.
+- Never `useTranslation()` outside React component or hook.
+- Delete confirm dialogs use `t('domain.deleteConfirm', { name: record.name })`.
+
+---
+
+## ROUTING
+
+```ts
+// ✅
+navigate(ROUTES.payrolls.detail(id))
+
+// ❌
+navigate('/payrolls/123')
+```
+
+- All paths via `ROUTES.*` enum from `src/routes/index.ts`.
+- New pages: register in `src/routes/appRouteConfig.tsx` with `suspensePage()`.
+- Dynamic params: typed via `useParams<{ id: string }>()` — validate/parse before use.
+- Breadcrumbs: defined in route config, not in page components.
+
+---
+
+## PERFORMANCE
+
+### Code splitting — every route is lazy
+```ts
+// src/routes/appRouteConfig.tsx
+suspensePage(() => import('@/pages/Payrolls/PayrollListPage'))
+```
+
+### Heavy third-party — dynamic import at usage site
+```ts
+const { exportToExcel } = await import('@/utils/excel')
+```
+
+### List rendering — `rowKey` must be stable unique id, never index
+```tsx
+<Table rowKey="id" />           // ✅
+<Table rowKey={(r) => r.uuid} /> // ✅
+<Table rowKey={(_, i) => i} />   // ❌ causes remount on sort/filter
+```
+
+### Avoid re-render traps
+```ts
+// ❌ — new object reference every render breaks React.memo
+<Table onChange={{ page: 1 }} />
+
+// ✅ — stable reference
+const defaultPagination = useMemo(() => ({ page: 1 }), [])
+```
+
+---
+
+## SECURITY
+
+### Never put secrets in frontend code
+```ts
+// ❌
+const API_KEY = 'sk-prod-...'
+
+// ✅ — env var, validated at build time
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+```
+
+### Sanitize before dangerouslySetInnerHTML — never skip
+```ts
+import DOMPurify from 'dompurify'
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
+```
+
+### Auth token — never localStorage directly
+```ts
+// ❌
+localStorage.setItem('token', token)
+
+// ✅ — use createSafeStorage() which handles SSR + encryption wrapper
+```
+
+---
+
+## ACCESSIBILITY
+
+- Interactive elements: `<Button>` or `<a>` — never `<div onClick>`.
+- Images: always `alt` prop — empty string `alt=""` for decorative.
+- Form fields: always linked `<label>` or `Form.Item label` prop.
+- Loading states: `aria-busy="true"` or antd `Spin` with `tip`.
+- Modals: antd `<Modal>` handles focus trap automatically — don't override.
+- Color alone never conveys meaning — pair with icon or text.
+
+---
+
+## FILE & FOLDER STRUCTURE
+
+```
+src/
+├── components/          # Shared UI components (no business logic)
+│   └── DataTable/
+│       ├── DataTable.tsx
+│       └── DataTable.types.ts
+├── hooks/               # Custom hooks grouped by domain
+│   └── ships/
+│       ├── useShipList.ts
+│       └── useShipMutations.ts
+├── pages/               # Route-level pages (thin — delegate to hooks)
+│   └── Ships/
+│       ├── ShipListPage.tsx
+│       ├── ShipDetailPage.tsx
+│       └── components/  # Page-local components
+├── services/            # API service classes + endpoints
+│   ├── api.ts           # Axios instance + interceptors
+│   ├── endpoints.ts     # All endpoint paths
+│   └── ship.service.ts
+├── stores/              # Zustand stores
+├── types/               # Global TypeScript types
+├── utils/               # Pure functions, no side effects
+├── locales/             # i18n en.ts + vi.ts
+├── routes/              # Route config + ROUTES enum
+└── lib/                 # Singleton instances (query-client, safe-storage)
+```
+
+### Naming conventions
+| Artifact | Convention | Example |
+|---|---|---|
+| Component file | PascalCase | `UserCard.tsx` |
+| Hook file | camelCase | `useUserList.ts` |
+| Service file | camelCase + `.service` | `user.service.ts` |
+| Store file | camelCase + `.store` | `auth.store.ts` |
+| Util file | camelCase | `formatDate.ts` |
+| Type file | camelCase + `.types` | `user.types.ts` |
+| Constant file | camelCase + `.constants` | `table.constants.ts` |
+
+---
+
+## CODE QUALITY
+
+### Comments — only WHY, never WHAT
+```ts
+// ❌ — explains what
+// Loop through users and filter active ones
+const active = users.filter(u => u.status === 'active')
+
+// ✅ — explains why (non-obvious business rule)
+// Backend returns soft-deleted records; exclude until permanent delete is shipped
+const active = users.filter(u => u.status !== 'deleted')
+```
+
+### Magic numbers → named constants
+```ts
+// ❌
+if (retries > 3) throw new Error()
+
+// ✅
+const MAX_RETRIES = 3
+if (retries > MAX_RETRIES) throw new Error()
+```
+
+### Early return over nested if
+```ts
+// ❌
+function process(user: User | null) {
+  if (user) {
+    if (user.active) {
+      doWork(user)
+    }
+  }
+}
+
+// ✅
+function process(user: User | null): void {
+  if (!user) return
+  if (!user.active) return
+  doWork(user)
+}
+```
+
+---
+
+## NEVER DO (absolute rules)
+- `any` → use `unknown` + type guards
+- Hardcode colors → `token.colorXxx` from `theme.useToken()`
+- Hardcode route strings → `ROUTES.*`
+- Hardcode API path strings → `ENDPOINTS.*`
+- `new QueryClient()` → import singleton from `@/lib/query-client`
+- `axios.create()` in service → use shared `api` instance
+- Inline route strings in `navigate()` calls
+- `useEffect` for data fetching → use TanStack Query / Refine hooks
+- `useState` to control antd Form fields
+- Subscribe to whole Zustand store without selector
+- `localStorage` directly for auth tokens
+- `dangerouslySetInnerHTML` without `DOMPurify.sanitize()`
+- `<div onClick>` for interactive elements
+- `rowKey` as array index in Table
+- Comments that explain WHAT the code does
+
+
+## TYPES
+
+---
+
+### Naming conventions
+| Artifact | Convention | Example |
+|---|---|---|
+| Interface (object shape) | PascalCase, no `I` prefix | `User`, `ShipDetail` |
+| Type alias | PascalCase | `UserStatus`, `ApiResponse<T>` |
+| Generic parameter | Single uppercase or descriptive | `T`, `TData`, `TError` |
+| Enum | PascalCase, values SCREAMING_SNAKE | `UserRole.SUPER_ADMIN` |
+| Type guard function | `isXxx` | `isApiError`, `isShip` |
+| DTO (request body) | `CreateXxxDto`, `UpdateXxxDto` | `CreateShipDto` |
+| Response wrapper | `XxxResponse`, `XxxPayload` | `ApiResponse<T>` |
+
+---
+
+### API response types — use the shared wrappers, never inline
+```ts
+// src/types/api.types.ts  — single source of truth
+export interface ApiResponse<T> {
+  data: T
+  message: string
+  success: boolean
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+// ✅ — service returns typed wrapper
+async getList(params: ShipListParams): Promise<PaginatedResponse<Ship>> {}
+
+// ❌ — never return raw Axios or unwrapped unknown
+async getList(): Promise<any> {}
+async getList(): Promise<AxiosResponse> {}
+```
+
+---
+
+### Entity types — define once in `src/types/<domain>.types.ts`
+```ts
+// src/types/ship.types.ts
+
+// Base entity — what the API returns
+export interface Ship {
+  id: number
+  name: string
+  imoNumber: string
+  status: ShipStatus
+  ownerId: number
+  createdAt: string   // ISO string from API
+  updatedAt: string
+}
+
+// DTOs — derived from entity, never duplicated manually
+export type CreateShipDto = Omit<Ship, 'id' | 'createdAt' | 'updatedAt'>
+export type UpdateShipDto = Partial<CreateShipDto>
+
+// Row type for Table — only columns needed
+export type ShipRow = Pick<Ship, 'id' | 'name' | 'imoNumber' | 'status'>
+
+// Form values — may differ from DTO (e.g. dates as Dayjs, not string)
+export interface ShipFormValues extends Omit<CreateShipDto, 'ownerId'> {
+  ownerIdField: number   // antd Select returns number, rename if needed
+}
+
+// Params for list query
+export interface ShipListParams {
+  page: number
+  pageSize?: number
+  status?: ShipStatus
+  search?: string
+}
+```
+
+---
+
+### Enums — `const` object over TypeScript `enum`
+```ts
+// ❌ TypeScript enum — compiles to IIFE, harder to iterate, no tree-shaking
+enum ShipStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
+// ✅ const object — plain JS, tree-shakeable, iterable
+export const ShipStatus = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive',
+  DECOMMISSIONED: 'decommissioned',
+} as const
+
+export type ShipStatus = typeof ShipStatus[keyof typeof ShipStatus]
+// 'active' | 'inactive' | 'decommissioned'
+
+// Iterate for Select options — no duplication
+export const SHIP_STATUS_OPTIONS = Object.entries(ShipStatus).map(
+  ([label, value]) => ({ label, value })
+)
+```
+
+---
+
+### Branded types — for IDs that must not be interchangeable
+```ts
+// Prevents passing shipId where crewId is expected
+declare const __brand: unique symbol
+type Brand<T, B> = T & { [__brand]: B }
+
+export type ShipId   = Brand<number, 'ShipId'>
+export type CrewId   = Brand<number, 'CrewId'>
+export type VoyageId = Brand<number, 'VoyageId'>
+
+// Cast at boundary (service layer only)
+const id = res.data.id as ShipId
+
+// Usage — compiler catches wrong ID type
+function getCrewByShip(shipId: ShipId): Promise<Crew[]> {}
+getCrewByShip(crewId)  // ❌ type error — caught at compile time
+```
+
+---
+
+### Type guards — `isXxx` functions, return type predicate
+```ts
+// ✅ — type predicate narrows type in if-block
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    'code' in error
+  )
+}
+
+export function isShip(value: unknown): value is Ship {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'imoNumber' in value
+  )
+}
+
+// Usage
+catch (e: unknown) {
+  if (isApiError(e)) {
+    notification.error({ message: e.message })  // e is ApiError here
+  }
+}
+```
+
+---
+
+### Discriminated unions — for multi-state shapes
+```ts
+// ✅ — exhaustive, each branch has its own data shape
+export type RequestState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: string }
+
+// Exhaustive switch — compiler warns if a case is unhandled
+function render(state: RequestState<Ship>) {
+  switch (state.status) {
+    case 'idle':    return null
+    case 'loading': return <Spin />
+    case 'success': return <ShipCard ship={state.data} />
+    case 'error':   return <Alert message={state.error} />
+  }
+}
+
+// ✅ — modal action variants
+export type ModalMode =
+  | { type: 'create' }
+  | { type: 'edit'; id: number }
+  | { type: 'view'; id: number; readOnly: true }
+```
+
+---
+
+### Component prop types — always explicit, extend HTML when wrapping
+```ts
+// Basic — always `interface` over `type` for props (merges better with extends)
+export interface UserCardProps {
+  user: User
+  onEdit?: (id: number) => void
+  onDelete?: (id: number) => void
+  className?: string
+}
+
+// ✅ — extend HTML element when wrapping native element
+export interface AppInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string
+  error?: string
+  hint?: string
+}
+
+// ✅ — extend antd props when wrapping antd component
+import type { ButtonProps } from 'antd'
+export interface ConfirmButtonProps extends ButtonProps {
+  confirmMessage: string
+  onConfirm: () => void
+}
+
+// ✅ — children typed explicitly
+export interface SectionProps {
+  title: string
+  children: React.ReactNode       // any valid JSX
+  action?: React.ReactElement     // single React element (e.g. a Button)
+}
+
+// ✅ — forwardRef with correct generics
+export const AppInput = React.forwardRef<HTMLInputElement, AppInputProps>(
+  ({ label, error, ...rest }, ref) => (
+    <label>
+      {label}
+      <input ref={ref} {...rest} />
+      {error && <span>{error}</span>}
+    </label>
+  )
+)
+```
+
+---
+
+### Event handler types — use React's built-in event types
+```ts
+// ✅
+const handleChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {}
+const handleClick:  React.MouseEventHandler<HTMLButtonElement>  = (e) => {}
+const handleSubmit: React.FormEventHandler<HTMLFormElement>     = (e) => {}
+
+// antd-specific
+const handleSelectChange = (value: string, option: DefaultOptionType) => {}
+const handleTableChange: TableProps<Ship>['onChange'] = (pagination, filters, sorter) => {}
+
+// ❌ — never use `any` for event
+const handleChange = (e: any) => {}
+```
+
+---
+
+### Utility types — pick the right tool
+```ts
+// Partial<T>      — all optional       → UpdateDto, initial form state
+// Required<T>     — all required       → after validation
+// Readonly<T>     — immutable          → config objects, initial state const
+// Pick<T, K>      — subset of keys     → DTO, table row, summary card
+// Omit<T, K>      — exclude keys       → CreateDto (exclude id/timestamps)
+// Record<K, V>    — key-value map      → lookup tables, translation maps
+// NonNullable<T>  — remove null/undef  → after null check
+// ReturnType<F>   — infer return type  → infer hook return shape
+// Parameters<F>   — infer params       → higher-order function wrappers
+// Extract<T, U>   — narrow union       → filter specific variant
+// Exclude<T, U>   — remove from union  → remove 'loading' from state
+
+// ✅ — infer hook return type to avoid duplicating the interface
+type UseShipListReturn = ReturnType<typeof useShipList>
+
+// ✅ — Record for lookup, not index signature
+const statusLabel: Record<ShipStatus, string> = {
+  active: 'Active',
+  inactive: 'Inactive',
+  decommissioned: 'Decommissioned',
+}
+
+// ❌ — index signature is less safe
+const statusLabel: { [key: string]: string } = {}
+```
+
+---
+
+### `satisfies` operator — validate shape without widening type
+```ts
+// ✅ — satisfies checks the shape but preserves literal types
+const ROUTE_MAP = {
+  ships:    '/ships',
+  crew:     '/crew',
+  payrolls: '/payrolls',
+} satisfies Record<string, string>
+
+// Type of ROUTE_MAP.ships is '/ships' (literal) not string
+// Without satisfies it would be widened to string
+
+// ✅ — validate config objects at compile time
+const queryConfig = {
+  staleTime: 60_000,
+  retry: 2,
+} satisfies QueryOptions
+```
+
+---
+
+### Type assertion `as` — only at system boundaries
+```ts
+// ✅ — at API boundary (service layer), after validation
+const ship = res.data as Ship
+
+// ✅ — DOM ref initial value
+const ref = useRef<HTMLDivElement>(null)
+
+// ❌ — asserting to silence a type error inside business logic
+const id = someValue as number      // fix the type, don't assert it away
+const data = result as unknown as Ship  // double cast = red flag always
+```
+
+---
+
+### `unknown` over `any` — with exhaustive narrowing
+```ts
+// ✅
+function parseConfig(raw: unknown): AppConfig {
+  if (!isAppConfig(raw)) throw new Error('Invalid config shape')
+  return raw   // narrowed to AppConfig
+}
+
+// ✅ — catch blocks always unknown in strict mode
+catch (e: unknown) {
+  const message = getErrorMessage(e)   // utility handles narrowing
+}
+```
+
+---
+
+### Template literal types — for typed string patterns
+```ts
+// ✅ — route parameter pattern
+type RouteParam = `${string}/:${string}`
+
+// ✅ — typed event names
+type DomainEvent = `${'ship' | 'crew' | 'voyage'}:${'created' | 'updated' | 'deleted'}`
+// 'ship:created' | 'ship:updated' | ... | 'voyage:deleted'
+
+// ✅ — CSS variable keys
+type CSSVar = `--${string}`
+```
+
+---
+
+### Null handling — explicit, no implicit undefined returns
+```ts
+// ✅ — explicit null in return type
+function findShip(id: number): Ship | null {
+  return ships.find(s => s.id === id) ?? null
+}
+
+// ✅ — nullish coalescing for defaults
+const label = ship.name ?? t('common.unnamed')
+const page  = params.page ?? 1
+
+// ✅ — optional chaining stops at first null/undefined
+const ownerName = ship?.owner?.profile?.displayName
+
+// ❌ — non-null assertion without guarantee
+const el = document.getElementById('root')!  // crashes if absent
+```
+
+---
+
+### Generic constraints — describe the minimum required shape
+```ts
+// ✅ — T must have id to be used as table rowKey
+function buildTableConfig<T extends { id: number }>(
+  data: T[],
+  columns: TableColumnsType<T>
+): TableProps<T> {
+  return { dataSource: data, rowKey: 'id', columns }
+}
+
+// ✅ — key must exist on T
+function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {
+  return items.map(item => item[key])
+}
+```
+
+---
+
+### Avoid — anti-patterns that undermine strict typing
+```ts
+// ❌ object  — use the actual shape
+const config: object = { retry: 3 }
+
+// ❌ Function — use the actual signature
+const handler: Function = (e) => {}
+
+// ❌ {} as type — almost as permissive as any
+const data: {} = res.data
+
+// ❌ type assertion to silence errors
+const n = value as number   // fix the source type, not the callsite
+
+// ❌ optional everything — be explicit about what is truly optional
+interface Props { user?: User; id?: number; config?: Config }  // are all 3 really optional?
+
+// ❌ mixing null and undefined for the same field
+interface User { nickname: string | null | undefined }   // pick one
+// ✅ convention: null = "explicitly empty", undefined = "not set / absent"
+```
