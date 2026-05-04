@@ -27,7 +27,6 @@ export function ResourceFormModal({
       onCancel={() => onOpenChange(false)}
       width={width}
       footer={footer}
-      destroyOnClose
       maskClosable={false}
       styles={{
         body: { maxHeight: 'min(70vh, 720px)', overflowY: 'auto', paddingTop: 8 },
