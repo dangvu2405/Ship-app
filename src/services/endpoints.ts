@@ -44,7 +44,13 @@ export const ENDPOINTS = {
   vehicles: crud('/vehicles'),
   vehicleAssignments: crud('/vehicle_assignments'),
   vehicleExpenses: crud('/vehicle_expenses'),
-  customers: crud('/customers'),
+  customers: {
+    ...crud('/customers'),
+    trips: (id: Id) => `/customers/${id}/trips`,
+    debt: (id: Id) => `/customers/${id}/debt`,
+    payments: (id: Id) => `/customers/${id}/payments`,
+  },
+  payments: crud('/payments'),
   trips: {
     ...crud('/trips'),
     assign:    (id: Id) => `/trips/${id}/assign`,

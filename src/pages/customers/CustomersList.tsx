@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useList, useDelete, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select } from 'antd';
@@ -19,11 +19,11 @@ import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { CustomerFormDialog } from './CustomerFormDialog';
+import { useCustomerList, useDeleteCustomer } from '@/hooks/useCustomers';
 
 export function CustomersList() {
   const { t } = useTranslation();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useDelete();
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -35,14 +35,13 @@ export function CustomersList() {
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [appliedType, setAppliedType] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<Customer>({
-    resource: 'customers',
-    pagination: { current, pageSize: 15 },
-    filters: [
-      ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
-      ...(appliedType ? [{ field: 'type', operator: 'eq' as const, value: appliedType }] : []),
-    ],
+  const { data, total, loading, error, refetch } = useCustomerList({
+    current,
+    pageSize: 15,
+    search: appliedKeyword,
+    type: appliedType as 'company' | 'individual' | undefined,
   });
+  const { mutateAsync: deleteCustomer } = useDeleteCustomer();
 
   const handleSearchFilters = () => {
     setAppliedKeyword(searchKeyword.trim());
@@ -72,21 +71,17 @@ export function CustomersList() {
 
   const confirmDelete = () => {
     if (!selected) return;
-    deleteItem(
-      { resource: 'customers', id: selected.id },
-      {
-        onSuccess: () => {
-          toast.success(t('notifications.deleteSuccess', { item: t('customers.title') }));
-          setDeleteDialogOpen(false);
-          setSelected(null);
-          refetch();
-        },
-        onError: (error) => {
-          if (!shouldShowLocalErrorToast(error)) return;
-          toast.error(t('notifications.deleteError', { item: t('customers.title') }));
-        },
-      }
-    );
+    void deleteCustomer(selected.id)
+      .then(() => {
+        toast.success(t('notifications.deleteSuccess', { item: t('customers.title') }));
+        setDeleteDialogOpen(false);
+        setSelected(null);
+        refetch();
+      })
+      .catch((error) => {
+        if (!shouldShowLocalErrorToast(error)) return;
+        toast.error(t('notifications.deleteError', { item: t('customers.title') }));
+      });
   };
 
   const columns: DataTableColumn<Customer>[] = [
@@ -118,8 +113,7 @@ export function CustomersList() {
     },
   ];
 
-  const listData = data?.data ?? [];
-  const total = data?.total ?? 0;
+  const listData = data ?? [];
   const pageSize = 15;
 
   return (
@@ -159,9 +153,9 @@ export function CustomersList() {
           <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
         </div>
 
-        {isLoading ? (
+        {loading ? (
           <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
+        ) : error ? (
           <ErrorState
             title={t('common.loadError')}
             description={t('common.tryAgainDescription')}

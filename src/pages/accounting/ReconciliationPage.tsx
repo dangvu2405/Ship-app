@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Button, Card, Col, DatePicker, Empty, InputNumber, Row, Select, Space, Statistic, Table, Tag, theme, Typography } from 'antd';
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { useList } from '@refinedev/core';
 import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Customer, Trip } from '@/types';
+import type { Trip } from '@/types';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
+import { useCustomerList } from '@/hooks/useCustomers';
+import { useTripReportList } from '@/hooks/useAccounting';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -23,25 +24,17 @@ export function ReconciliationPage() {
   const [adjustments, setAdjustments] = useState<Record<number, number>>({});
   const [sessionCreated, setSessionCreated] = useState(false);
 
-  const { data: customersData } = useList<Customer>({
-    resource: 'customers',
-    pagination: { pageSize: 100 },
-  });
-
-  const { data: tripsData, isLoading: tripsLoading } = useList<Trip>({
-    resource: 'trips',
+  const { data: customers } = useCustomerList({ current: 1, pageSize: 100 });
+  const { trips, loading: tripsLoading } = useTripReportList({
+    pageSize: 100,
+    enabled: !!selectedCustomerId,
     filters: [
       { field: 'customer_id', operator: 'eq', value: selectedCustomerId! },
       { field: 'status', operator: 'eq', value: 'completed' },
       { field: 'scheduled_date', operator: 'gte', value: dateRange[0].format('YYYY-MM-DD') },
       { field: 'scheduled_date', operator: 'lte', value: dateRange[1].format('YYYY-MM-DD') },
     ],
-    queryOptions: { enabled: !!selectedCustomerId },
-    pagination: { pageSize: 100 },
   });
-
-  const customers = customersData?.data ?? [];
-  const trips = tripsData?.data ?? [];
 
   const handleCreateSession = (): void => {
     setSessionTrips(trips);
@@ -65,14 +58,14 @@ export function ReconciliationPage() {
 
       <Card size="small" style={{ marginBottom: token.marginMD }}>
         <Space wrap>
-          <Select
+            <Select
             placeholder={t('accountingPages.selectCustomer')}
             style={{ width: 280 }}
             showSearch
             optionFilterProp="label"
-            value={selectedCustomerId}
+              value={selectedCustomerId}
             onChange={setSelectedCustomerId}
-            options={customers.map((c) => ({ value: c.id, label: c.name }))}
+              options={customers.map((c) => ({ value: c.id, label: c.name }))}
           />
           <RangePicker
             value={dateRange}

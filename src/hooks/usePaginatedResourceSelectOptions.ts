@@ -4,7 +4,7 @@ import type { BaseRecord, CrudFilter, CrudSort } from '@refinedev/core';
 
 import type { SelectOption } from '@/components/form';
 import { dataProvider } from '@/providers/dataProvider';
-import { createResourceQueryKeys } from '@/shared/query';
+import { createResourceQueryKeys } from '../shared/query/createResourceQueryKeys'
 
 const PAGE_SIZE = 10;
 

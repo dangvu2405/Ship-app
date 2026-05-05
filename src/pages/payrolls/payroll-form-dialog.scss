@@ -1,6 +1,15 @@
 .payroll-form-dialog {
+  .payroll-summary,
+  .payroll-actions,
+  .payroll-totals {
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(248, 250, 252, 0.95);
+  }
+
   .payroll-summary {
     margin-bottom: 12px;
+    padding: 12px 14px;
   }
 
   .payroll-period {
@@ -9,18 +18,23 @@
 
   .payroll-actions {
     padding: 8px 0;
+    margin-bottom: 12px;
+    padding: 10px 14px;
   }
 
   .payroll-lines-table-wrap {
-    border: 1px solid;
+    margin-bottom: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 16px;
     overflow: hidden;
+    background: #fff;
   }
 
   .payroll-lines-table {
     .ant-table-thead > tr > th {
       font-weight: 600;
       white-space: nowrap;
-      background: #fafafa;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
     }
 
     .ant-table-tbody > tr > td {
@@ -31,9 +45,8 @@
 
   .payroll-totals {
     margin-top: 12px;
-    padding: 8px 10px;
-    border: 1px dashed #d9d9d9;
-    border-radius: 8px;
-    background: #fcfcfc;
+    padding: 12px 14px;
+    border-style: dashed;
+    gap: 10px 14px;
   }
 }

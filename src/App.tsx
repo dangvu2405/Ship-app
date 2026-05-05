@@ -1,4 +1,6 @@
 import { Refine, Authenticated } from '@refinedev/core';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/query-client';
 import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
@@ -61,7 +63,7 @@ function AppContent() {
                 </Authenticated>
               }
             >
-              <Route index element={<Navigate to={ROUTES.dashboard} replace />} />
+              <Route path={ROUTES.root} element={<Navigate to={ROUTES.dashboard} replace />} />
               <Route path={ROUTES.dashboard} element={<AppPages.Dashboard />} />
 
               {crudRoutes.map((config) => (
@@ -76,8 +78,9 @@ function AppContent() {
               {singleRoutes.map((config) => (
                 <Route key={config.key} path={config.path} element={renderSingleElement(config)} />
               ))}
+
+              <Route path="*" element={<AppPages.NotFound />} />
             </Route>
-            <Route path={ROUTES.notFound} element={<AppPages.NotFound />} />
           </Routes>
         </Suspense>
         <UnsavedChangesNotifier />
@@ -102,7 +105,9 @@ function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
         <AntdApp>
-          <AppContent />
+          <QueryClientProvider client={queryClient}>
+            <AppContent />
+          </QueryClientProvider>
         </AntdApp>
       </ConfigProvider>
     </BrowserRouter>

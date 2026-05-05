@@ -30,6 +30,33 @@ const showDedupedErrorToast = (key: string, message: string) => {
   if (shouldShowToast(key)) toast.error(message);
 };
 
+export function extractFilenameFromContentDisposition(contentDisposition?: string): string | null {
+  if (!contentDisposition) return null;
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const asciiMatch = contentDisposition.match(/filename=([^;]+)/i);
+  if (asciiMatch?.[1]) {
+    return asciiMatch[1].replace(/["']/g, '').trim();
+  }
+
+  return null;
+}
+
+export function downloadBlobFile(blob: Blob, filename: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 // ── 409 Conflict type → user-facing messages (bilingual EN/VI) ───────────────
 const CONFLICT_MESSAGES: Record<string, { en: string; vi: string }> = {
   already_approved:     { en: 'Already approved by someone else. Please refresh the page.', vi: 'Đã được duyệt bởi người khác. Vui lòng làm mới trang.' },

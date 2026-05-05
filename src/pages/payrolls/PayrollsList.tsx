@@ -300,7 +300,7 @@ export function PayrollsList() {
         }
       />
 
-      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24 } }}>
+      <Card className="payroll-page-card" styles={{ body: { padding: 24 } }}>
         <div className="payroll-figma-layout">
           <Alert
             showIcon
@@ -378,7 +378,7 @@ export function PayrollsList() {
           </Flex>
         </div>
 
-        <Flex wrap="wrap" gap={12} style={{ marginBottom: 16, border: '1px solid #e2e8f0', borderRadius: 12, padding: 14, background: '#fff' }}>
+        <Flex wrap="wrap" gap={12} className="payroll-filters-panel">
           <Input
             size="large"
             style={{ minWidth: 220 }}
@@ -445,7 +445,7 @@ export function PayrollsList() {
             onRetry={() => void safeRefetch(true)}
           />
         ) : (
-          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
+          <PageLoadingOverlay loading={isLoading} className="payroll-table-shell">
             <DataTable<Payroll>
               data={filteredListData}
               columns={columns}

@@ -29,6 +29,15 @@ export const ROUTES = {
     vehicles: createCrudRoutes('vehicles'),
     trips: createCrudRoutes('trips'),
     trip_bonus_rules: createCrudRoutes('trip_bonus_rules'),
+    dispatch: {
+      board: `${ADMIN_PREFIX}/dispatch`,
+      today: `${ADMIN_PREFIX}/dispatch/today`,
+    },
+    orders: {
+      list: createCrudRoutes('trips').list,
+      create: createCrudRoutes('trips').create,
+      pool: `${ADMIN_PREFIX}/orders/pool`,
+    },
     customers: createCrudRoutes('customers'),
     drivers: createCrudRoutes('drivers'),
     /** Lịch làm việc tài xế (matrix tuần) — không thuộc CRUD drivers. */
@@ -43,6 +52,12 @@ export const ROUTES = {
     vehicle_expenses: createCrudRoutes('vehicle_expenses'),
     payrolls: createCrudRoutes('payrolls'),
     payroll_adjustments: createCrudRoutes('payroll_adjustments'),
+    accounting: {
+      revenue: `${ADMIN_PREFIX}/accounting/revenue`,
+      costs: `${ADMIN_PREFIX}/accounting/costs`,
+      reconciliation: `${ADMIN_PREFIX}/accounting/reconciliation`,
+      debt: `${ADMIN_PREFIX}/accounting/debt`,
+    },
     reports: {
       list: `${ADMIN_PREFIX}/reports`,
     },
@@ -51,7 +66,12 @@ export const ROUTES = {
     deductions: createCrudRoutes('deductions'),
     roles: createCrudRoutes('roles'),
     profile: `${ADMIN_PREFIX}/profile`,
-    settings: `${ADMIN_PREFIX}/settings`,
+    settings: {
+      root: `${ADMIN_PREFIX}/settings`,
+      categories: `${ADMIN_PREFIX}/settings/categories`,
+      users: createCrudRoutes('users').list,
+      company: createCrudRoutes('companies').list,
+    },
     billing: `${ADMIN_PREFIX}/billing`,
     notifications: `${ADMIN_PREFIX}/notifications`,
     /** Trang tổng quan / hub người dùng (system/Users.tsx), khác CRUD `/admin/users`. */

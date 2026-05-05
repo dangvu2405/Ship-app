@@ -16,6 +16,9 @@ export type FormSectionTitleKey =
   | "single"
   | "relations"
   | "status"
+  | "cargo"
+  | "route"
+  | "revenue"
 
 export interface FormAccordionSectionSpec {
   /** Giá trị panel (unique). */

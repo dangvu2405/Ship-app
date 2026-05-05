@@ -1,6 +1,7 @@
 import api from './api';
 import { ApiResponse, MySalaryPayload, Payroll, PaginatedResponse } from '@/types';
 import { ENDPOINTS } from './endpoints';
+import { downloadBlobFile, extractFilenameFromContentDisposition } from './api';
 
 class PayrollService {
   async getAll(params?: {
@@ -44,14 +45,8 @@ class PayrollService {
     const response = await api.get(url, { responseType: 'blob' });
     const blob = response.data as Blob;
     const contentDisposition = response.headers['content-disposition'] as string | undefined;
-    const matched = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];
-    const fileName = matched ? decodeURIComponent(matched.replace(/"/g, '')) : fallbackName;
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(objectUrl);
+    const fileName = extractFilenameFromContentDisposition(contentDisposition) ?? fallbackName;
+    downloadBlobFile(blob, fileName);
   }
 
   /** Xuất bảng lương tổng hợp (CSV/xlsx). */

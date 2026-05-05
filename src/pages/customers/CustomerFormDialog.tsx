@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Alert, Button, Form, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useLocation, useParams } from 'react-router-dom';
-import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { CustomerForm } from './CustomerForm';
@@ -12,6 +12,7 @@ import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesW
 import toast from 'react-hot-toast';
 import type { Customer } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { useCreateCustomer, useCustomerDetail, useUpdateCustomer } from '@/hooks/useCustomers';
 
 interface CustomerFormDialogProps {
   open?: boolean;
@@ -34,14 +35,9 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
   const isEdit = hasRecordId && !isViewMode;
   const dialogOpen = isControlled ? open : true;
 
-  const { data, isLoading: isLoadingData } = useOne<Customer>({
-    resource: 'customers',
-    id: resolvedId || '',
-    queryOptions: { enabled: hasRecordId },
-  });
-
-  const { mutate: createItem, isLoading: isCreating } = useCreate<Customer>();
-  const { mutate: updateItem, isLoading: isUpdating } = useUpdate<Customer>();
+  const { customer, loading: isLoadingData } = useCustomerDetail(resolvedId, hasRecordId);
+  const { mutate: createCustomer, isPending: isCreating } = useCreateCustomer();
+  const { mutate: updateCustomer, isPending: isUpdating } = useUpdateCustomer();
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
 
   const handleClose = () => {
@@ -60,8 +56,8 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
 
   const handleSubmit = (values: Partial<Customer>) => {
     if (isEdit && resolvedId) {
-      updateItem(
-        { resource: 'customers', id: resolvedId, values },
+      updateCustomer(
+        { id: resolvedId, values },
         {
           onSuccess: () => {
             toast.success(t('notifications.updateSuccess', { item: t('customers.title') }));
@@ -75,8 +71,8 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
         }
       );
     } else {
-      createItem(
-        { resource: 'customers', values },
+      createCustomer(
+        values as Parameters<typeof createCustomer>[0],
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('customers.title') }));
@@ -93,10 +89,10 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
   };
 
   useEffect(() => {
-    if (hasRecordId && data?.data) {
-      form.setFieldsValue(data.data);
+    if (hasRecordId && customer) {
+      form.setFieldsValue(customer);
     }
-  }, [hasRecordId, data?.data, form]);
+  }, [hasRecordId, customer, form]);
 
   const title = isViewMode ? t('common.view') : isEdit ? t('customers.editCustomer') : t('customers.createCustomer');
   const description = isViewMode
@@ -139,7 +135,7 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
           validateTrigger={['onBlur', 'onSubmit']}
           disabled={isViewMode}
         >
-          <CustomerForm form={form} initialValues={data?.data} />
+          <CustomerForm form={form} initialValues={customer ?? undefined} />
         </Form>
       </>
     );

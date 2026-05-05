@@ -2,17 +2,20 @@ import {
   ArrowLeftOutlined,
   DollarOutlined,
   EditOutlined,
+  PlusOutlined,
   HistoryOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Descriptions, Empty, Space, Spin, Statistic, Table, Tag, Tabs, Typography } from 'antd';
-import { useNavigation, useOne, useList } from '@refinedev/core';
+import { Button, Card, Descriptions, Empty, Form, Input, InputNumber, Modal, Select, Space, Spin, Statistic, Table, Tag, Tabs, Typography } from 'antd';
+import { useNavigation } from '@refinedev/core';
 import { useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Customer, Trip } from '@/types';
+import type { Trip } from '@/types';
 import { ROUTES } from '@/routes';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
+import { useBoolean } from '@/hooks/useBoolean';
+import { useCreateCustomerPayment, useCustomerDebt, useCustomerDetail, useCustomerPayments, useCustomerTrips } from '@/hooks/useCustomers';
 
 const { Text } = Typography;
 
@@ -33,28 +36,22 @@ export function CustomerDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const { list, edit } = useNavigation();
+  const [paymentForm] = Form.useForm();
+  const paymentModal = useBoolean(false);
   const resolvedId = id ? Number(id) : undefined;
 
-  const { data, isLoading } = useOne<Customer>({
-    resource: 'customers',
-    id: resolvedId ?? '',
-    queryOptions: { enabled: !!resolvedId },
-  });
-
-  const { data: tripsData, isLoading: tripsLoading } = useList<Trip>({
-    resource: 'trips',
-    filters: [{ field: 'customer_id', operator: 'eq', value: resolvedId }],
-    queryOptions: { enabled: !!resolvedId },
-    pagination: { pageSize: 50 },
-    sorters: [{ field: 'created_at', order: 'desc' }],
-  });
-
-  const customer = data?.data;
-  const trips = tripsData?.data ?? [];
+  const { customer, loading: isLoading } = useCustomerDetail(resolvedId, !!resolvedId);
+  const { trips, loading: tripsLoading } = useCustomerTrips(resolvedId, { enabled: !!resolvedId });
+  const { payments, loading: paymentsLoading, refetch: refetchPayments } = useCustomerPayments(resolvedId, { enabled: !!resolvedId });
+  const { debt } = useCustomerDebt(resolvedId, !!resolvedId);
+  const { mutate: createPayment, isPending: isCreatingPayment } = useCreateCustomerPayment(resolvedId);
 
   const totalRevenue = trips
     .filter((t) => t.status === 'completed')
     .reduce((sum, t) => sum + (t.price ?? 0), 0);
+  const totalDebt = debt?.total_debt ?? totalRevenue;
+  const totalPaid = debt?.paid_amount ?? payments.reduce((sum, payment) => sum + (payment.amount ?? 0), 0);
+  const remainingDebt = debt?.remaining_debt ?? Math.max(totalDebt - totalPaid, 0);
 
   if (isLoading) {
     return (
@@ -67,6 +64,25 @@ export function CustomerDetailPage() {
   if (!customer) {
     return <Empty description="Không tìm thấy khách hàng" />;
   }
+
+  const handleCreatePayment = (values: { amount: number; payment_method?: string; payment_date?: string; note?: string }) => {
+    if (!resolvedId) return;
+    createPayment(
+      {
+        amount: values.amount,
+        payment_method: values.payment_method as 'cash' | 'bank_transfer' | 'credit' | undefined,
+        payment_date: values.payment_date,
+        note: values.note,
+      },
+      {
+        onSuccess: () => {
+          paymentModal.setFalse();
+          paymentForm.resetFields();
+          void refetchPayments();
+        },
+      }
+    );
+  };
 
   const tabItems = [
     {
@@ -171,32 +187,52 @@ export function CustomerDetailPage() {
           <Card>
             <Space size="large">
               <Statistic
-                title="Tổng doanh thu (đã hoàn thành)"
-                value={totalRevenue}
+                title="Tổng công nợ"
+                value={totalDebt}
                 formatter={(v) => formatMoney(Number(v))}
                 valueStyle={{ color: '#3f8600' }}
               />
               <Statistic
-                title="Tổng số chuyến"
-                value={trips.length}
-                suffix="chuyến"
-              />
-              <Statistic
-                title="Chuyến hoàn thành"
-                value={trips.filter((t) => t.status === 'completed').length}
-                suffix="chuyến"
-                valueStyle={{ color: '#3f8600' }}
-              />
-              <Statistic
-                title="Chuyến đang chạy"
-                value={trips.filter((t) => t.status === 'in_progress').length}
-                suffix="chuyến"
+                title="Đã thu"
+                value={totalPaid}
+                formatter={(v) => formatMoney(Number(v))}
                 valueStyle={{ color: '#1677ff' }}
               />
+              <Statistic
+                title="Còn phải thu"
+                value={remainingDebt}
+                formatter={(v) => formatMoney(Number(v))}
+                valueStyle={{ color: '#cf1322' }}
+              />
+              <Statistic title="Tổng số chuyến" value={trips.length} suffix="chuyến" />
             </Space>
           </Card>
-          <Card title="Chi tiết công nợ">
-            <Empty description="Chức năng đối soát và thanh toán sẽ được bổ sung" />
+          <Card
+            title="Phiếu thanh toán"
+            extra={
+              <Button type="primary" icon={<PlusOutlined />} onClick={paymentModal.setTrue}>
+                Ghi nhận thanh toán
+              </Button>
+            }
+          >
+            {paymentsLoading ? (
+              <Spin />
+            ) : payments.length === 0 ? (
+              <Empty description="Chưa có phiếu thanh toán" />
+            ) : (
+              <Table
+                rowKey="id"
+                size="small"
+                pagination={{ pageSize: 10, size: 'small' }}
+                dataSource={payments}
+                columns={[
+                  { title: 'Ngày', dataIndex: 'payment_date', key: 'payment_date', render: (value) => formatDate(value) },
+                  { title: 'Số tiền', dataIndex: 'amount', key: 'amount', render: (value) => formatMoney(Number(value)), align: 'right' },
+                  { title: 'Hình thức', dataIndex: 'payment_method', key: 'payment_method', render: (value) => value ?? '—' },
+                  { title: 'Ghi chú', dataIndex: 'note', key: 'note', ellipsis: true },
+                ]}
+              />
+            )}
           </Card>
         </Space>
       ),
@@ -227,6 +263,38 @@ export function CustomerDetailPage() {
         }
       />
       <Tabs items={tabItems} defaultActiveKey="info" />
+      <Modal
+        title="Ghi nhận thanh toán"
+        open={paymentModal.value}
+        onCancel={paymentModal.setFalse}
+        onOk={() => paymentForm.submit()}
+        confirmLoading={isCreatingPayment}
+        okText="Lưu"
+        cancelText="Hủy"
+        destroyOnClose
+      >
+        <Form form={paymentForm} layout="vertical" onFinish={handleCreatePayment}>
+          <Form.Item name="amount" label="Số tiền" rules={[{ required: true, message: 'Nhập số tiền' }]}>
+            <InputNumber style={{ width: '100%' }} min={0} step={1000} />
+          </Form.Item>
+          <Form.Item name="payment_method" label="Hình thức thanh toán">
+            <Select
+              allowClear
+              options={[
+                { label: 'Tiền mặt', value: 'cash' },
+                { label: 'Chuyển khoản', value: 'bank_transfer' },
+                { label: 'Công nợ', value: 'credit' },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="payment_date" label="Ngày thanh toán">
+            <Input placeholder="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="note" label="Ghi chú">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

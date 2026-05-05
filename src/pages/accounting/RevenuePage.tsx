@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { App, Button, Card, Col, DatePicker, Row, Select, Space, Statistic, Table, Tag, theme } from 'antd';
 import { ArrowUpOutlined, DollarOutlined, ExportOutlined } from '@ant-design/icons';
-import { useList } from '@refinedev/core';
 import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Trip } from '@/types';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
 import { getTripStatusLabel, getTripStatusTagColor } from '@/utils/tripStatus';
+import { useTripReportList } from '@/hooks/useAccounting';
 
 const { RangePicker } = DatePicker;
 
@@ -27,14 +27,11 @@ export function RevenuePage() {
     ...(statusFilter ? [{ field: 'status', operator: 'eq' as const, value: statusFilter }] : []),
   ];
 
-  const { data, isLoading } = useList<Trip>({
-    resource: 'trips',
+  const { trips, loading: isLoading } = useTripReportList({
     filters,
-    pagination: { pageSize: 50 },
+    pageSize: 50,
     sorters: [{ field: 'created_at', order: 'desc' }],
   });
-
-  const trips = data?.data ?? [];
   const totalRevenue = trips.reduce((sum, trip) => sum + (trip.price ?? 0), 0);
   const completedRevenue = trips
     .filter((trip) => trip.status === 'completed')

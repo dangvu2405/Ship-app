@@ -63,6 +63,7 @@ const TripDetailPage = lazyWithMinDelay(() => import('@/pages/trips/TripDetailPa
 const TripBonusRulesList = lazyWithMinDelay(() => import('@/pages/trip_bonus_rules/TripBonusRulesList').then((m) => ({ default: m.TripBonusRulesList })));
 const TripBonusRuleFormDialog = lazyWithMinDelay(() => import('@/pages/trip_bonus_rules/TripBonusRuleFormDialog').then((m) => ({ default: m.TripBonusRuleFormDialog })));
 const CustomersList = lazyWithMinDelay(() => import('@/pages/customers/CustomersList').then((m) => ({ default: m.CustomersList })));
+const CustomerDetailPage = lazyWithMinDelay(() => import('@/pages/customers/CustomerDetailPage').then((m) => ({ default: m.CustomerDetailPage })));
 const CustomerFormDialog = lazyWithMinDelay(() => import('@/pages/customers/CustomerFormDialog').then((m) => ({ default: m.CustomerFormDialog })));
 const DriversList = lazyWithMinDelay(() => import('@/pages/drivers/DriversList').then((m) => ({ default: m.DriversList })));
 const DriverFormDialog = lazyWithMinDelay(() => import('@/pages/drivers/DriverFormDialog').then((m) => ({ default: m.DriverFormDialog })));
@@ -96,6 +97,12 @@ const ViolationsList = lazyWithMinDelay(() => import('@/pages/violations/Violati
 const OvertimeList = lazyWithMinDelay(() => import('@/pages/overtime/OvertimeList').then((m) => ({ default: m.OvertimeList })));
 const LeaveList = lazyWithMinDelay(() => import('@/pages/leave/LeaveList').then((m) => ({ default: m.LeaveList })));
 const DriverScheduleBulkPage = lazyWithMinDelay(() => import('@/pages/drivers/DriverScheduleBulkPage').then((m) => ({ default: m.DriverScheduleBulkPage })));
+const RevenuePage = lazyWithMinDelay(() => import('@/pages/accounting/RevenuePage').then((m) => ({ default: m.RevenuePage })));
+const CostsPage = lazyWithMinDelay(() => import('@/pages/accounting/CostsPage').then((m) => ({ default: m.CostsPage })));
+const ReconciliationPage = lazyWithMinDelay(() => import('@/pages/accounting/ReconciliationPage').then((m) => ({ default: m.ReconciliationPage })));
+const DebtPage = lazyWithMinDelay(() => import('@/pages/accounting/DebtPage').then((m) => ({ default: m.DebtPage })));
+const DispatchBoardPage = lazyWithMinDelay(() => import('@/pages/dispatch/DispatchBoardPage').then((m) => ({ default: m.DispatchBoardPage })));
+
 
 export const crudRoutes: CrudRouteConfig[] = [
   { key: 'companies', routes: ROUTES.admin.companies, List: CompaniesList, Form: CompanyFormDialog },
@@ -111,7 +118,7 @@ export const crudRoutes: CrudRouteConfig[] = [
     Form: TripBonusRuleFormDialog,
     requiredRole: 'admin',
   },
-  { key: 'customers', routes: ROUTES.admin.customers, List: CustomersList, Form: CustomerFormDialog },
+  { key: 'customers', routes: ROUTES.admin.customers, List: CustomersList, Form: CustomerFormDialog, Show: CustomerDetailPage },
   { key: 'drivers', routes: ROUTES.admin.drivers, List: DriversList, Form: DriverFormDialog, requiredRole: 'admin' },
   { key: 'invoices', routes: ROUTES.admin.invoices, List: InvoicesList, Form: InvoiceFormDialog, Show: InvoiceDetailPage },
   { key: 'vehicle_assignments', routes: ROUTES.admin.vehicle_assignments, List: VehicleAssignmentsList, Form: VehicleAssignmentFormDialog },
@@ -128,7 +135,7 @@ export const singleRoutes: SingleRouteConfig[] = [
   { key: 'reports', path: ROUTES.admin.reports.list, Component: Reports },
   { key: 'notifications', path: ROUTES.admin.notifications, Component: Notifications },
   { key: 'profile', path: ROUTES.admin.profile, Component: Profile },
-  { key: 'settings', path: ROUTES.admin.settings, Component: Settings },
+  { key: 'settings', path: ROUTES.admin.settings.root, Component: Settings },
   { key: 'billing', path: ROUTES.admin.billing, Component: Billing },
   {
     key: 'system_users_hub',
@@ -166,21 +173,70 @@ export const singleRoutes: SingleRouteConfig[] = [
     Component: LeaveList,
     requiredRole: 'admin',
   },
+  {
+    key: 'accounting_revenue',
+    path: ROUTES.admin.accounting.revenue,
+    Component: RevenuePage,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'accounting_costs',
+    path: ROUTES.admin.accounting.costs,
+    Component: CostsPage,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'accounting_reconciliation',
+    path: ROUTES.admin.accounting.reconciliation,
+    Component: ReconciliationPage,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'accounting_debt',
+    path: ROUTES.admin.accounting.debt,
+    Component: DebtPage,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'dispatch_board',
+    path: ROUTES.admin.dispatch.board,
+    Component: DispatchBoardPage,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'settings_categories',
+    path: ROUTES.admin.settings.categories,
+    Component: Settings, // Placeholder
+    requiredRole: 'admin',
+  },
+  {
+    key: 'orders_pool',
+    path: ROUTES.admin.orders.pool,
+    Component: DispatchBoardPage,
+    requiredRole: 'admin',
+  },
+  {
+    key: 'dispatch_today',
+    path: ROUTES.admin.dispatch.today,
+    Component: DispatchBoardPage,
+    requiredRole: 'admin',
+  },
 ];
 
 export const renderCrudElement = (config: CrudRouteConfig, type: 'list' | 'create' | 'show' | 'edit') => {
+  const { List, Form, Show, requiredRole } = config;
   const element = type === 'list'
-    ? <config.List />
-    : type === 'show' && config.Show
-      ? <config.Show />
+    ? <List />
+    : type === 'show' && Show
+      ? <Show />
       : (
         <>
-          <config.List />
-          <config.Form />
+          <List />
+          <Form />
         </>
       );
 
-  return withRoleGuard(element, config.requiredRole);
+  return withRoleGuard(element, requiredRole);
 };
 
 export const renderSingleElement = (config: SingleRouteConfig) => {

@@ -19,6 +19,10 @@ import type {
   VehicleAssignment,
   VehicleExpense,
   Vehicle,
+  CargoType,
+  RouteTemplate,
+  Location,
+  VehicleTypeCatalog,
 } from './entities';
 
 export interface ApiResourceResponseByName {
@@ -42,6 +46,10 @@ export interface ApiResourceResponseByName {
   vehicle_assignments: VehicleAssignment;
   vehicle_expenses: VehicleExpense;
   vehicles: Vehicle;
+  cargo_types: CargoType;
+  route_templates: RouteTemplate;
+  locations: Location;
+  vehicle_types: VehicleTypeCatalog;
 }
 
 export type ApiCrudResourceName = keyof ApiResourceResponseByName;

@@ -25,7 +25,9 @@ export const useAuth = () => {
 
   const hasRole = (role: string): boolean => {
     const targetRole = normalizeRole(role);
-    return user?.roles?.some((r) => normalizeRole(r.name) === targetRole) ?? false;
+    const inRolesArray = user?.roles?.some((r) => normalizeRole(r.name) === targetRole) ?? false;
+    const inRoleField = user?.role ? normalizeRole(user.role) === targetRole : false;
+    return inRolesArray || inRoleField;
   };
 
   const hasPermission = (permission: string): boolean => {

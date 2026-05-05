@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { BaseRecord, CrudFilter, CrudSort, GetListParams } from '@refinedev/core'
 import { dataProvider } from '@/providers/dataProvider'
-import { createResourceQueryKeys } from '@/shared/query'
+import { createResourceQueryKeys } from '../shared/query/createResourceQueryKeys'
 
 interface UseResourceListQueryParams {
   resource: string
@@ -9,6 +9,7 @@ interface UseResourceListQueryParams {
   pageSize?: number
   filters?: CrudFilter[]
   sorters?: CrudSort[]
+  enabled?: boolean
 }
 
 export function useResourceListQuery<TData extends BaseRecord = BaseRecord>({
@@ -17,6 +18,7 @@ export function useResourceListQuery<TData extends BaseRecord = BaseRecord>({
   pageSize = 15,
   filters = [],
   sorters = [],
+  enabled = true,
 }: UseResourceListQueryParams) {
   const keys = createResourceQueryKeys(resource)
   const listParams: GetListParams = {
@@ -34,5 +36,6 @@ export function useResourceListQuery<TData extends BaseRecord = BaseRecord>({
       sorters,
     }),
     queryFn: () => dataProvider.getList<TData>(listParams),
+    enabled,
   })
 }

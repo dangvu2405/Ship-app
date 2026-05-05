@@ -23,13 +23,15 @@ import {
   ToolOutlined,
   CalendarOutlined,
 } from '@ant-design/icons';
-import { useList, useNavigation } from '@refinedev/core';
+import { useNavigation } from '@refinedev/core';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/en';
 import 'dayjs/locale/vi';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Vehicle, Trip } from '@/types';
+import { useDispatchBoard } from '@/hooks/useDispatchBoard';
+import type { Trip } from '@/types';
+import type { DispatchTrip } from '@/types/api/dispatch';
 import { getTripStatusConfig, getTripStatusLabel } from '@/utils/tripStatus';
 
 const { Text } = Typography;
@@ -55,7 +57,7 @@ function tripBarBackground(status: string, token: GlobalToken): string {
 }
 
 interface TripBarProps {
-  trip: Trip;
+  trip: Trip | DispatchTrip;
   token: GlobalToken;
   statusLabel: string;
   onClick: () => void;
@@ -68,7 +70,10 @@ function TripBar({ trip, token, statusLabel, onClick }: TripBarProps) {
       title={
         <div>
           <div>
-            <strong>{trip.code}</strong>
+            <strong>
+              {trip.code}
+              {trip.customer ? ` · ${trip.customer.code ? `${trip.customer.code} — ` : ''}${trip.customer.name}` : ''}
+            </strong>
           </div>
           <div>
             {trip.start_point} → {trip.end_point}
@@ -96,7 +101,8 @@ function TripBar({ trip, token, statusLabel, onClick }: TripBarProps) {
           lineHeight: 1.35,
         }}
       >
-        {trip.code} · {trip.start_point}
+        {trip.code}
+        {trip.customer ? ` · ${trip.customer.code ? `${trip.customer.code} — ` : ''}${trip.customer.name}` : ` · ${trip.start_point}`}
       </Button>
     </Tooltip>
   );
@@ -114,51 +120,29 @@ export function DispatchBoardPage() {
 
   const dateStr = selectedDate.format('YYYY-MM-DD');
 
-  const { data: vehiclesData, isLoading: vehiclesLoading } = useList<Vehicle>({
-    resource: 'vehicles',
-    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
-    pagination: { pageSize: 50 },
-  });
-
-  const { data: tripsDataRaw, isLoading: tripsLoading } = useList<Trip>({
-    resource: 'trips',
-    filters: [
-      { field: 'scheduled_date', operator: 'gte', value: dateStr },
-      { field: 'scheduled_date', operator: 'lte', value: dateStr },
-    ],
-    pagination: { pageSize: 100 },
-  });
-
-  const { data: unassignedTripsData } = useList<Trip>({
-    resource: 'trips',
-    filters: [{ field: 'status', operator: 'eq', value: 'pending' }],
-    pagination: { pageSize: 50 },
-    sorters: [{ field: 'scheduled_date', order: 'asc' }],
-  });
-
-  const vehicles = vehiclesData?.data ?? [];
+  const { vehicles, trips, unassigned, loading: boardLoading } = useDispatchBoard(dateStr);
 
   const dayTrips = useMemo(() => {
-    const rows = tripsDataRaw?.data ?? [];
+    const rows = trips ?? [];
     return rows.filter((trip) => trip.status !== 'cancelled');
-  }, [tripsDataRaw?.data]);
+  }, [trips]);
 
-  const unassigned = useMemo(() => {
-    const rows = unassignedTripsData?.data ?? [];
+  const unassignedList = useMemo(() => {
+    const rows = unassigned ?? [];
     return rows.filter((trip) => !trip.vehicle_id);
-  }, [unassignedTripsData?.data]);
+  }, [unassigned]);
 
   const tripsByVehicle = useMemo(() => {
-    const map = new Map<number, Trip[]>();
+    const map = new Map<number, DispatchTrip[]>();
     for (const trip of dayTrips) {
       if (!trip.vehicle_id) continue;
       if (!map.has(trip.vehicle_id)) map.set(trip.vehicle_id, []);
-      map.get(trip.vehicle_id)!.push(trip);
+      map.get(trip.vehicle_id)!.push(trip as DispatchTrip);
     }
     return map;
   }, [dayTrips]);
 
-  const isLoading = vehiclesLoading || tripsLoading;
+  const isLoading = boardLoading;
 
   const goDay = (delta: number): void => {
     setSelectedDate((d) => d.add(delta, 'day'));
@@ -322,16 +306,16 @@ export function DispatchBoardPage() {
           <Card
             title={
               <Space>
-                <Text strong>{t('dispatchBoard.poolTitle', { count: unassigned.length })}</Text>
+                <Text strong>{t('dispatchBoard.poolTitle', { count: unassignedList.length })}</Text>
               </Space>
             }
             size="small"
           >
-            {unassigned.length === 0 ? (
+            {unassignedList.length === 0 ? (
               <Empty description={t('dispatchBoard.poolEmpty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
             ) : (
               <Space direction="vertical" style={{ width: '100%' }} size={4}>
-                {unassigned.map((trip) => (
+                {unassignedList.map((trip) => (
                   <Card
                     key={trip.id}
                     size="small"
@@ -339,7 +323,7 @@ export function DispatchBoardPage() {
                     onClick={() => show('trips', trip.id)}
                     styles={{ body: { cursor: 'pointer' } }}
                   >
-                    <div style={{ fontWeight: 600, fontSize: 12 }}>{trip.code}</div>
+                    <div style={{ fontWeight: 600, fontSize: 12 }}>{trip.customer ? `${trip.customer.code ? `${trip.customer.code} — ` : ''}${trip.customer.name}` : trip.code}</div>
                     <div style={{ fontSize: 11, color: token.colorTextSecondary, marginTop: 2 }}>
                       {trip.start_point} → {trip.end_point}
                     </div>

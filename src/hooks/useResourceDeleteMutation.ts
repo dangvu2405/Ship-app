@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { dataProvider } from '@/providers/dataProvider'
-import { createResourceQueryKeys } from '@/shared/query'
+import { createResourceQueryKeys } from '../shared/query/createResourceQueryKeys'
 
 interface DeleteParams {
   resource: string

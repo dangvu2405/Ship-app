@@ -13,6 +13,16 @@ import {
   RocketOutlined,
   SafetyCertificateOutlined,
   TeamOutlined,
+  SettingOutlined,
+  CompassOutlined,
+  CarryOutOutlined,
+  AppstoreOutlined,
+  BarChartOutlined,
+  SafetyOutlined,
+  ClockCircleOutlined,
+  CalendarOutlined,
+  UserOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 import { NavUser } from '@/layouts/NavUser';
 import { useAuthStore } from '@/stores/auth.store';
@@ -38,92 +48,126 @@ export function AppSidebarContent({ collapsed }: { collapsed: boolean }) {
   const { token } = theme.useToken();
   const location = useLocation();
   const pathname = location.pathname;
-  const isAdmin = user?.roles?.some((role) => role.name === 'admin') ?? false;
+  const isAdmin = user?.role === 'admin' || (user?.roles?.some((r) => r.name === 'admin')) || false;
 
-  const adminMenu: NavEntry[] = useMemo(
+  const menuStructure: NavEntry[] = useMemo(
     () => [
-      { title: t('dashboard.title'), url: ROUTES.dashboard, icon: <DashboardOutlined /> },
-      { title: t('trips.title'), url: ROUTES.admin.trips.list, icon: <RocketOutlined /> },
+      // 1. Dashboard
       {
-        title: t('tripBonusRules.title'),
-        url: ROUTES.admin.trip_bonus_rules.list,
-        icon: <PercentageOutlined />,
-        adminOnly: true,
+        title: t('sidebar.dashboard'),
+        url: ROUTES.dashboard,
+        icon: <DashboardOutlined />
       },
-      { title: t('payrolls.title'), url: ROUTES.admin.payrolls.list, icon: <DollarOutlined /> },
-      { title: t('reports.title'), url: ROUTES.admin.reports.list, icon: <FileTextOutlined /> },
+
+      // 2. Orders
       {
-        title: t('companies.title'),
-        icon: <ApartmentOutlined />,
+        title: t('sidebar.orders'),
+        icon: <AppstoreOutlined />,
         items: [
-          { title: t('companies.title'), url: ROUTES.admin.companies.list },
-          { title: t('offices.title'), url: ROUTES.admin.offices.list },
-          { title: t('departments.title'), url: ROUTES.admin.departments.list },
-          { title: t('positions.title'), url: ROUTES.admin.positions.list },
+          { title: t('sidebar.orderList'), url: ROUTES.admin.orders.list },
+          { title: t('sidebar.createOrder'), url: ROUTES.admin.orders.create },
+          { title: t('sidebar.orderPool'), url: ROUTES.admin.orders.pool },
         ],
       },
+
+      // 3. Dispatch
       {
-        title: t('dashboard.fleetStaffNavGroup'),
+        title: t('sidebar.dispatch'),
+        icon: <CompassOutlined />,
+        items: [
+          { title: t('sidebar.dispatchBoard'), url: ROUTES.admin.dispatch.board },
+          { title: t('sidebar.todayAssignment'), url: ROUTES.admin.dispatch.today },
+        ],
+      },
+
+      // 4. Vehicles
+      {
+        title: t('sidebar.vehicles'),
+        icon: <CarOutlined />,
+        items: [
+          { title: t('sidebar.vehicleList'), url: ROUTES.admin.vehicles.list },
+          { title: t('sidebar.maintenance'), url: ROUTES.admin.vehicle_expenses.list },
+        ],
+      },
+
+      // 5. Drivers
+      {
+        title: t('sidebar.drivers'),
         icon: <TeamOutlined />,
         items: [
-          { title: t('drivers.title'), url: ROUTES.admin.drivers.list },
-          { title: t('drivers.scheduleTitle'), url: ROUTES.admin.driversSchedule },
-          { title: t('customers.title'), url: ROUTES.admin.customers.list },
-          { title: t('allowances.title'), url: ROUTES.admin.allowances.list },
-          { title: t('deductions.title'), url: ROUTES.admin.deductions.list },
+          { title: t('sidebar.driverList'), url: ROUTES.admin.drivers.list },
+          { title: t('sidebar.workSchedule'), url: ROUTES.admin.driversSchedule },
         ],
       },
+
+      // 6. HR
       {
-        title: t('vehicles.title'),
-        icon: <CarOutlined />,
+        title: t('sidebar.hr'),
+        icon: <SolutionOutlined />,
         items: [
-          { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
-          { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
-          { title: t('vehicleAssignments.title'), url: ROUTES.admin.vehicle_assignments.list },
-          { title: t('vehicleExpenses.title'), url: ROUTES.admin.vehicle_expenses.list },
+          { title: t('sidebar.leave'), url: ROUTES.admin.leave },
+          { title: t('sidebar.overtime'), url: ROUTES.admin.overtime },
+          { title: t('sidebar.violations'), url: ROUTES.admin.violations },
         ],
       },
+
+      // 7. Customers
       {
-        title: t('users.title'),
-        icon: <SafetyCertificateOutlined />,
+        title: t('sidebar.customers'),
+        icon: <ApartmentOutlined />,
+        items: [
+          { title: t('sidebar.customerList'), url: ROUTES.admin.customers.list },
+          { title: t('sidebar.priceList'), url: ROUTES.admin.trip_bonus_rules.list },
+        ],
+      },
+
+      // 8. Accounting
+      {
+        title: t('sidebar.accounting'),
+        icon: <DollarOutlined />,
         adminOnly: true,
         items: [
-          { title: t('users.title'), url: ROUTES.admin.users.list },
-          { title: t('roles.title'), url: ROUTES.admin.roles.list },
+          { title: t('sidebar.revenue'), url: ROUTES.admin.accounting.revenue },
+          { title: t('sidebar.costs'), url: ROUTES.admin.accounting.costs },
+          { title: t('sidebar.reconciliation'), url: ROUTES.admin.accounting.reconciliation },
+          { title: t('sidebar.debt'), url: ROUTES.admin.accounting.debt },
+          { title: t('sidebar.invoices'), url: ROUTES.admin.invoices.list },
+          { title: t('sidebar.payrolls'), url: ROUTES.admin.payrolls.list },
         ],
       },
-    ],
-    [t],
-  );
 
-  const operatorMenu: NavEntry[] = useMemo(
-    () => [
-      { title: t('dashboard.title'), url: ROUTES.dashboard, icon: <DashboardOutlined /> },
-      { title: t('trips.title'), url: ROUTES.admin.trips.list, icon: <RocketOutlined /> },
-      { title: t('payrolls.title'), url: ROUTES.admin.payrolls.list, icon: <DollarOutlined /> },
+      // 9. Reports
+      { 
+        title: t('sidebar.reports'), 
+        url: ROUTES.admin.reports.list, 
+        icon: <BarChartOutlined /> 
+      },
+
+      // 10. Settings
       {
-        title: t('vehicles.title'),
-        icon: <CarOutlined />,
+        title: t('sidebar.settings'),
+        icon: <SettingOutlined />,
+        adminOnly: true,
         items: [
-          { title: t('vehicles.title'), url: ROUTES.admin.vehicles.list },
-          { title: t('invoices.title'), url: ROUTES.admin.invoices.list },
+          { title: t('sidebar.categories'), url: ROUTES.admin.settings.categories },
+          { title: t('sidebar.users'), url: ROUTES.admin.settings.users },
+          { title: t('sidebar.companyConfig'), url: ROUTES.admin.settings.company },
         ],
       },
     ],
-    [t],
+    [t]
   );
 
-  const filteredNav = useMemo(() => {
-    const list = isAdmin ? adminMenu : operatorMenu;
-    return list.filter((item) => {
-      if (!('adminOnly' in item) || !item.adminOnly) return true;
-      return isAdmin;
+  const filteredMenu = useMemo(() => {
+    return menuStructure.filter((item) => {
+      if (item.adminOnly && !isAdmin) return false;
+      return true;
     });
-  }, [adminMenu, operatorMenu, isAdmin]);
+  }, [menuStructure, isAdmin]);
 
   const menuItems: MenuProps['items'] = useMemo(() => {
-    return filteredNav.map((item, index) => {
-      const groupKey = `group-${index}`;
+    return filteredMenu.map((item, index) => {
+      const groupKey = isNavGroup(item) ? `group-${index}` : item.url;
       if (isNavGroup(item)) {
         return {
           key: groupKey,
@@ -141,11 +185,11 @@ export function AppSidebarContent({ collapsed }: { collapsed: boolean }) {
         label: <Link to={item.url}>{item.title}</Link>,
       };
     });
-  }, [filteredNav]);
+  }, [filteredMenu]);
 
   const selectedKeys = useMemo(() => {
     const keys: string[] = [];
-    for (const item of filteredNav) {
+    for (const item of filteredMenu) {
       if (isNavGroup(item)) {
         for (const child of item.items) {
           if (isRouteActive(pathname, child.url)) {
@@ -158,18 +202,18 @@ export function AppSidebarContent({ collapsed }: { collapsed: boolean }) {
       }
     }
     return keys;
-  }, [filteredNav, pathname]);
+  }, [filteredMenu, pathname]);
 
   const defaultOpenKeys = useMemo(() => {
     const open: string[] = [];
-    filteredNav.forEach((item, index) => {
+    filteredMenu.forEach((item, index) => {
       if (!isNavGroup(item)) return;
       if (item.items.some((child) => isRouteActive(pathname, child.url))) {
         open.push(`group-${index}`);
       }
     });
     return open;
-  }, [filteredNav, pathname]);
+  }, [filteredMenu, pathname]);
 
   const [openKeys, setOpenKeys] = useState<string[]>(defaultOpenKeys);
 
@@ -211,7 +255,7 @@ export function AppSidebarContent({ collapsed }: { collapsed: boolean }) {
           style={{ borderInlineEnd: 0 }}
         />
       </div>
-      <div style={{ padding: collapsed ? 8 : 12, borderTop: `1px solid ${token.colorSplit}` }}>
+      <div style={{ padding: collapsed ? '8px' : '16px', borderTop: `1px solid ${token.colorBorderSecondary}` }}>
         <NavUser user={userData} collapsed={collapsed} />
       </div>
     </Flex>

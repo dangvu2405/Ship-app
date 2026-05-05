@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { App, Button, Card, Col, DatePicker, Row, Select, Space, Statistic, Table, Tag, theme } from 'antd';
 import { ExportOutlined, WalletOutlined } from '@ant-design/icons';
-import { useList } from '@refinedev/core';
 import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation, type Translate } from '@/hooks/useTranslation';
 import type { VehicleExpense } from '@/types';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
+import { useVehicleExpenseReportList } from '@/hooks/useAccounting';
 
 const { RangePicker } = DatePicker;
 
@@ -40,18 +40,15 @@ export function CostsPage() {
   ]);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
 
-  const { data, isLoading } = useList<VehicleExpense>({
-    resource: 'vehicle_expenses',
+  const { expenses, loading: isLoading } = useVehicleExpenseReportList({
+    pageSize: 100,
     filters: [
       { field: 'expense_date', operator: 'gte', value: dateRange[0].format('YYYY-MM-DD') },
       { field: 'expense_date', operator: 'lte', value: dateRange[1].format('YYYY-MM-DD') },
       ...(typeFilter ? [{ field: 'type', operator: 'eq' as const, value: typeFilter }] : []),
     ],
-    pagination: { pageSize: 100 },
     sorters: [{ field: 'expense_date', order: 'desc' }],
   });
-
-  const expenses = data?.data ?? [];
   const totalCost = expenses.reduce((sum, e) => sum + (e.amount ?? 0), 0);
 
   const costByType = expenses.reduce<Record<string, number>>((acc, e) => {

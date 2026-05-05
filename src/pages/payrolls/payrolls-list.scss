@@ -1,65 +1,147 @@
+.payroll-page-card {
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.94) 100%);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
 .payroll-figma-layout {
+  display: grid;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
 .payroll-alert-banner {
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.95), rgba(255, 247, 237, 0.92));
 }
 
 .payroll-stats-grid {
-  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 0;
 }
 
 .payroll-stat-card {
   min-width: 220px;
   flex: 1;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+
+  .ant-card-body {
+    padding: 18px;
+  }
 }
 
 .payroll-overview-grid {
-  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.75fr);
+  gap: 12px;
+  margin-bottom: 0;
 }
 
 .payroll-overview-card {
-  flex: 1;
   min-width: 320px;
+  flex: 1;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
 .payroll-loans-card {
   max-width: 340px;
+
+  .ant-card-body {
+    display: grid;
+    gap: 16px;
+    place-items: center;
+  }
 }
 
 .payroll-overview-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  min-height: 170px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+  min-height: 190px;
 }
 
 .payroll-overview-bar-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .payroll-overview-bars {
   display: flex;
   align-items: flex-end;
-  gap: 3px;
+  gap: 4px;
+  min-height: 120px;
+}
+
+.bar-net,
+.bar-deduction {
+  width: 12px;
+  border-radius: 999px 999px 4px 4px;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .bar-net {
-  width: 12px;
-  background: #4ea8de;
-  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #2563eb 0%, #60a5fa 100%);
 }
 
 .bar-deduction {
-  width: 12px;
-  background: #f4c7ab;
-  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #f97316 0%, #fdba74 100%);
 }
 
 .bar-month-label {
   font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.payroll-filters-panel {
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.payroll-table-shell {
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+@media (max-width: 992px) {
+  .payroll-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payroll-loans-card {
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .payroll-page-card {
+    border-radius: 16px;
+  }
+
+  .payroll-filters-panel {
+    padding: 12px;
+  }
+
+  .payroll-stats-grid,
+  .payroll-overview-grid {
+    grid-template-columns: 1fr;
+  }
 }

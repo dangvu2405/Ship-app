@@ -182,6 +182,11 @@ This is a **modern React application** with the following characteristics:
 - **Lazy loading** for images and components
 - **Preloading** critical resources
 - **Loading priorities** (above-fold first)
-
+## appply hook cho tất cả các màn 
+drivers            useBoolean.ts                    useDashboardTripRevenue.ts  useExport.ts                useImage.ts                           usePermission.ts              useSelection.ts
+index.ts           useCreate.ts                     useDateTime.ts              useFormDialogCloseGuard.ts  use-mobile.tsx                        use-request.ts                useTable.ts
+_shared.ts         useDashboardRevenueByOffice.ts   useDebounce.ts              useFormModal.ts             useNotifications.ts                   useResourceDeleteMutation.ts  useText.ts
+use-api-health.ts  useDashboardRevenueChartData.ts  useDelete.ts                useGetDetail.ts             useNumber.ts                          useResourceListQuery.ts       useTranslation.ts
+useAuth.ts         useDashboardStats.ts             use-driver-day-map.ts       useGuardedAsync.ts          usePaginatedResourceSelectOptions.ts  useSafeRefetch.ts             useUpdate.ts
 **Reference**
 Refer to React official documentation and modern React patterns for best practices.
