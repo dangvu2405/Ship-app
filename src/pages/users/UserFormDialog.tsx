@@ -1,16 +1,17 @@
 import { useEffect } from 'react';
-import { Alert, Button, Form, Space } from 'antd';
+import { Alert, App, Button, Form, Space, Tabs } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { useLocation, useParams } from 'react-router-dom';
-import { useCreate, useUpdate, useOne, useNavigation } from '@refinedev/core';
+import { useCreate, useUpdate, useOne } from '@refinedev/core';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { UserForm } from './UserForm';
+import { UserPermissionsTab } from './UserPermissionsTab';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogBase } from '@/hooks/useFormDialogBase';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
-import toast from 'react-hot-toast';
+
 import type { User } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
@@ -98,16 +99,10 @@ interface UserFormDialogProps {
 
 export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: UserFormDialogProps = {}) {
   const { t } = useTranslation();
-  const { id } = useParams<{ id?: string }>();
-  const location = useLocation();
-  const { list } = useNavigation();
-  const [form] = Form.useForm();
-  const isControlled = typeof open === 'boolean';
-  const resolvedId = recordId ?? (id ? Number(id) : undefined);
-  const hasRecordId = !!resolvedId;
-  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
-  const isEdit = hasRecordId && !isViewMode;
-  const dialogOpen = isControlled ? open : true;
+  const { message } = App.useApp();
+  const { form, resolvedId, hasRecordId, isViewMode, isEdit, dialogOpen, handleClose } = useFormDialogBase({
+    open, mode, recordId, resource: 'users', onClose,
+  });
 
   const { data, isLoading: isLoadingData } = useOne<User>({
     resource: 'users',
@@ -119,13 +114,6 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<User>();
 
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
-
-  const handleClose = () => {
-    onClose?.();
-    if (!isControlled) {
-      list('users');
-    }
-  };
 
   const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
     form,
@@ -146,7 +134,7 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
         },
         {
           onSuccess: () => {
-            toast.success(t('notifications.updateSuccess', { item: t('users.title') }));
+            message.success(t('notifications.updateSuccess', { item: t('users.title') }));
             onSuccess?.();
             handleClose();
           },
@@ -155,7 +143,7 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
               return;
             }
 
-            toast.error(
+            message.error(
               getErrorMessage(error) || t('notifications.updateError', { item: t('users.title') })
             );
           },
@@ -169,7 +157,7 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
         },
         {
           onSuccess: () => {
-            toast.success(t('notifications.createSuccess', { item: t('users.title') }));
+            message.success(t('notifications.createSuccess', { item: t('users.title') }));
             onSuccess?.();
             handleClose();
           },
@@ -178,7 +166,7 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
               return;
             }
 
-            toast.error(
+            message.error(
               getErrorMessage(error) || t('notifications.createError', { item: t('users.title') })
             );
           },
@@ -229,28 +217,58 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
     </Space>
   );
 
+  const isAdminUser = (data?.data?.roles ?? []).some((role) => {
+    const code = (role as { code?: string }).code ?? role.name?.toLowerCase();
+    return code === 'admin' || code === 'super_admin' || code === 'admin_company';
+  });
+
+  const formContent = (
+    <>
+      <Alert
+        type="info"
+        message={t('formGuides.title')}
+        description={t('formGuides.user')}
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+      <Form
+        form={form}
+        name="user-form"
+        onFinish={handleSubmit}
+        layout="vertical"
+        validateTrigger={['onBlur', 'onSubmit']}
+        disabled={isViewMode}
+      >
+        <UserForm form={form} initialValues={data?.data} isEdit={isEdit} />
+      </Form>
+    </>
+  );
+
   const body =
     hasRecordId && isLoadingData ? (
       <TableSkeleton rows={8} columns={1} />
     ) : (
-      <>
-        <Alert
-          type="info"
-          message={t('formGuides.title')}
-          description={t('formGuides.user')}
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-        <Form
-          form={form}
-          onFinish={handleSubmit}
-          layout="vertical"
-          validateTrigger={['onBlur', 'onSubmit']}
-          disabled={isViewMode}
-        >
-          <UserForm form={form} initialValues={data?.data} isEdit={isEdit} />
-        </Form>
-      </>
+      <Tabs
+        defaultActiveKey="info"
+        items={[
+          { key: 'info', label: 'Thông tin', children: formContent },
+          {
+            key: 'permissions',
+            label: 'Phân quyền',
+            children:
+              isEdit && resolvedId ? (
+                <UserPermissionsTab userId={Number(resolvedId)} isAdmin={isAdminUser} />
+              ) : (
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Lưu người dùng trước"
+                  description="Bạn có thể quản lý quyền sau khi tạo người dùng và lưu lại."
+                />
+              ),
+          },
+        ]}
+      />
     );
 
   return (

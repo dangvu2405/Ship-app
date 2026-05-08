@@ -6,6 +6,18 @@ export interface DispatchVehicle {
   type?: string;
   status?: string;
   office_id?: number;
+  brand?: string | null;
+  model?: string | null;
+}
+
+export interface DispatchBoardDriver {
+  id: number;
+  code?: string;
+  name?: string;
+  license_no?: string;
+  expired_date?: string | null;
+  available_status?: 'available' | 'busy' | 'offline' | string;
+  status?: string;
 }
 
 export interface DispatchTrip {
@@ -13,6 +25,7 @@ export interface DispatchTrip {
   code: string;
   start_point?: string;
   end_point?: string;
+  scheduled_date?: string | null;
   scheduled_time_from?: string | null;
   scheduled_time_to?: string | null;
   status?: string;
@@ -21,27 +34,49 @@ export interface DispatchTrip {
   customer?: { id: number; code?: string; name?: string } | null;
 }
 
+export interface DispatchBoardPayload {
+  vehicles?: DispatchVehicle[];
+  trips?: DispatchTrip[];
+  drivers?: DispatchBoardDriver[];
+  meta?: { date?: string };
+}
+
 export interface DispatchBoardResponse {
   success?: boolean;
-  data?: {
-    vehicles?: DispatchVehicle[];
-    trips?: DispatchTrip[]; // flat list; UI may group by vehicle
-    meta?: { date?: string };
-  };
+  data?: DispatchBoardPayload;
   message?: string;
 }
 
 export interface UnassignedTripsResponse {
   success?: boolean;
-  data?: { data?: Trip[] };
+  data?: { data?: Trip[] } | Trip[];
   message?: string;
 }
+
 export interface DispatchBoard {
   date: string;
   total_trips: number;
   completed_trips: number;
   pending_trips: number;
   assigned_trips: number;
+}
+
+export interface DispatchDailySummaryTrips {
+  created?: number;
+  new?: number;
+  pending?: number;
+  in_progress?: number;
+  running?: number;
+  completed?: number;
+  cancelled?: number;
+}
+
+export interface DispatchDailySummaryPayload {
+  date?: string;
+  trips?: DispatchDailySummaryTrips;
+  new_trips?: number;
+  in_progress_trips?: number;
+  completed_trips?: number;
 }
 
 export interface DispatchDailySummary {

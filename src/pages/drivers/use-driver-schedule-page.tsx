@@ -5,7 +5,7 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import type { CalendarProps } from 'antd';
 import type { CellRenderInfo } from 'rc-picker/lib/interface';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type {
   AbsenceRecord,
   Company,
@@ -32,6 +32,7 @@ import {
 
 export function useDriverSchedulePage() {
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
   const { hasRole, user } = useAuth();
   const currentTenantId = useAuthStore((s) => s.currentTenantId);
   const canManage = hasRole('admin') || hasRole('manager') || hasRole('dispatcher');
@@ -230,6 +231,25 @@ export function useDriverSchedulePage() {
     [schedules, t],
   );
 
+  const scheduleVehicleConflictDates = useMemo(() => {
+    const byDay = new Map<string, number[]>();
+    for (const s of schedules) {
+      const vid = s.vehicle_id;
+      if (vid == null) continue;
+      const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(s.work_date ?? '').trim());
+      const key = m ? m[1] : '';
+      if (!key) continue;
+      const arr = byDay.get(key) ?? [];
+      arr.push(vid);
+      byDay.set(key, arr);
+    }
+    const dates: string[] = [];
+    for (const [key, ids] of byDay) {
+      if (new Set(ids).size >= 2) dates.push(key);
+    }
+    return dates.sort();
+  }, [schedules]);
+
   const scheduleStatus = useMemo(() => {
     if (!schedules.length) return { color: 'default' as const, label: t('common.noData') };
     const statuses = schedules.map((s) => s.status ?? 'draft');
@@ -264,11 +284,11 @@ export function useDriverSchedulePage() {
       });
       setSchedules(result.data);
     } catch {
-      toast.error(t('common.loadError'));
+      feedback.error(t('common.loadError'));
     } finally {
       setScheduleLoading(false);
     }
-  }, [selectedOfficeId, selectedDriverId, currentMonth, selectedShift, t]);
+  }, [selectedOfficeId, selectedDriverId, currentMonth, selectedShift, t, feedback]);
 
   useEffect(() => {
     void loadSchedules();
@@ -309,15 +329,15 @@ export function useDriverSchedulePage() {
               : driverScheduleService.lock(id),
           ),
         );
-        toast.success(action === 'approve' ? t('drivers.scheduleBulkApproveSuccess') : t('drivers.scheduleBulkLockSuccess'));
+        feedback.success(action === 'approve' ? t('drivers.scheduleBulkApproveSuccess') : t('drivers.scheduleBulkLockSuccess'));
         await loadSchedules();
       } catch {
-        toast.error(action === 'approve' ? t('drivers.scheduleBulkApproveError') : t('drivers.scheduleBulkLockError'));
+        feedback.error(action === 'approve' ? t('drivers.scheduleBulkApproveError') : t('drivers.scheduleBulkLockError'));
       } finally {
         setBulkActionLoading(false);
       }
     },
-    [loadSchedules, t],
+    [loadSchedules, t, feedback],
   );
 
   const runScheduleAction = useCallback(
@@ -325,17 +345,17 @@ export function useDriverSchedulePage() {
       setActionLoading(key);
       try {
         await action();
-        toast.success(successMsg);
+        feedback.success(successMsg);
         setDetailSchedule(null);
         setHosWarning(null);
         await loadSchedules();
       } catch (err) {
-        toast.error(getErrorMessage(err) ?? 'Thao tác thất bại');
+        feedback.error(getErrorMessage(err) ?? 'Thao tác thất bại');
       } finally {
         setActionLoading(null);
       }
     },
-    [loadSchedules],
+    [loadSchedules, feedback],
   );
 
   const handleApprove = useCallback(async () => {
@@ -391,17 +411,17 @@ export function useDriverSchedulePage() {
         vehicle_id: values.vehicle_id,
         notes: values.notes,
       });
-      toast.success('Đã tạo lịch công tác');
+      feedback.success('Đã tạo lịch công tác');
       setCreateOpen(false);
       createForm.resetFields();
       await loadSchedules();
     } catch (err) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
-      toast.error(getErrorMessage(err) ?? 'Tạo lịch thất bại');
+      feedback.error(getErrorMessage(err) ?? 'Tạo lịch thất bại');
     } finally {
       setCreateLoading(false);
     }
-  }, [createForm, drivers, selectedOfficeId, loadSchedules]);
+  }, [createForm, drivers, selectedOfficeId, loadSchedules, feedback]);
 
   const onPanelChange = useCallback((value: Dayjs, mode: CalendarProps<Dayjs>['mode']) => {
     if (mode === 'month') setCurrentMonth(value);
@@ -491,6 +511,7 @@ export function useDriverSchedulePage() {
     shiftOptions,
     workStatusOptions,
     statCards,
+    scheduleVehicleConflictDates,
     scheduleStatus,
     submittedIds,
     approvedIds,

@@ -3,6 +3,7 @@ export * from './domain/enums';
 export * from './domain/pagination';
 export * from './domain/response';
 export * from './domain/user';
+export * from './domain/cost';
 export * from './domain/employee';
 export * from './domain/chat';
 export * from './domain/catalog';

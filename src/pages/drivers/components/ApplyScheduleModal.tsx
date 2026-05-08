@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, DatePicker, Form, Input, Modal, Select, Space, Switch } from 'antd';
 import type { Dayjs } from 'dayjs';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type { Office, WorkScheduleTemplate } from '@/types';
 import workScheduleService from '@/services/work-schedule.service';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -27,6 +27,7 @@ type FormValues = {
 
 export function ApplyScheduleModal({ open, onClose, offices, companyIdForTemplates, onSuccess }: ApplyScheduleModalProps) {
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
   const [form] = Form.useForm<FormValues>();
   const [loading, setLoading] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -42,12 +43,12 @@ export function ApplyScheduleModal({ open, onClose, offices, companyIdForTemplat
       const rows = await workScheduleService.listTemplates(companyIdForTemplates);
       setTemplates(rows);
     } catch {
-      toast.error(t('drivers.applyScheduleLoadTemplatesError'));
+      feedback.error(t('drivers.applyScheduleLoadTemplatesError'));
       setTemplates([]);
     } finally {
       setLoadingTemplates(false);
     }
-  }, [companyIdForTemplates, t]);
+  }, [companyIdForTemplates, t, feedback]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,14 +71,14 @@ export function ApplyScheduleModal({ open, onClose, offices, companyIdForTemplat
       const data = await workScheduleService.applyToOffice(values.office_id, payload);
       if (data?.success) {
         if (data.data?.queued) {
-          toast.success(
-            t('drivers.applyScheduleQueued', {
+          feedback.success({
+            message: t('drivers.applyScheduleQueued', {
               rows: String(data.data.estimated_rows ?? ''),
             }),
-            { duration: 8000 },
-          );
+            duration: 8,
+          });
         } else {
-          toast.success(
+          feedback.success(
             t('drivers.applyScheduleSuccess', {
               rows: String(data.data?.rows_created ?? 0),
               drivers: String(data.data?.drivers_count ?? 0),
@@ -87,10 +88,10 @@ export function ApplyScheduleModal({ open, onClose, offices, companyIdForTemplat
         onSuccess?.();
         onClose();
       } else {
-        toast.error(data?.message ?? t('drivers.applyScheduleFailed'));
+        feedback.error(data?.message ?? t('drivers.applyScheduleFailed'));
       }
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) || t('drivers.applyScheduleFailed'));
+      feedback.error(getErrorMessage(e) || t('drivers.applyScheduleFailed'));
     } finally {
       setLoading(false);
     }
@@ -112,7 +113,7 @@ export function ApplyScheduleModal({ open, onClose, offices, companyIdForTemplat
       destroyOnHidden
       width={560}
     >
-      <Form form={form} layout="vertical" initialValues={{ replace_drafts: true }}>
+      <Form name="apply-schedule-form" form={form} layout="vertical" initialValues={{ replace_drafts: true }}>
         <Form.Item
           name="office_id"
           label={t('offices.title')}

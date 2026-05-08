@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -8,6 +9,7 @@ import {
   Input,
   Modal,
   Space,
+  Steps,
   Tag,
   Timeline,
   Typography,
@@ -19,6 +21,7 @@ import {
   CloseOutlined,
   DownloadOutlined,
   MailOutlined,
+  PrinterOutlined,
   SendOutlined,
 } from '@ant-design/icons';
 import { useNavigation, useOne, useInvalidate } from '@refinedev/core';
@@ -26,7 +29,7 @@ import { useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Invoice, EInvoiceStatus } from '@/types';
+import type { Invoice, EInvoiceStatus, InvoiceStatusHistory } from '@/types';
 import { ROUTES } from '@/routes';
 import { formatDateTime, formatMoney } from '@/utils/displayFormat';
 import { InvoiceFormDialog } from './InvoiceFormDialog';
@@ -54,6 +57,7 @@ export function InvoiceDetailPage() {
   const { id } = useParams<{ id?: string }>();
   const { list } = useNavigation();
   const invalidate = useInvalidate();
+  const queryClient = useQueryClient();
   const [reverse, setReverse] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -86,6 +90,9 @@ export function InvoiceDetailPage() {
 
   const refresh = () => {
     void invalidate({ resource: 'invoices', id: resolvedId, invalidates: ['detail'] });
+    if (resolvedId != null) {
+      void queryClient.invalidateQueries({ queryKey: ['invoices', resolvedId, 'status-histories'] });
+    }
   };
 
   const handleAction = async (key: string, action: () => Promise<unknown>) => {
@@ -146,15 +153,42 @@ export function InvoiceDetailPage() {
     void handleAction('download_pdf', () => invoiceService.downloadPdf(resolvedId, invoice.code));
   };
 
-  const timelineItems = useMemo(
-    () => [
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const { data: statusHistoryRows = [] } = useQuery({
+    queryKey: ['invoices', resolvedId, 'status-histories'],
+    queryFn: async () => {
+      const { data } = await invoiceService.getStatusHistories(resolvedId!, { per_page: 100 });
+      return data;
+    },
+    enabled: !!resolvedId,
+  });
+
+  const timelineItems = useMemo(() => {
+    const fromApi = [...(statusHistoryRows as InvoiceStatusHistory[])].sort(
+      (a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime(),
+    );
+    if (fromApi.length > 0) {
+      return fromApi.map((h) => ({
+        color: 'blue' as const,
+        children: (
+          <div>
+            <Typography.Text strong>{h.to_status}</Typography.Text>
+            <div className="text-sm text-slate-600">
+              {formatDateTime(h.changed_at)}
+              {h.from_status != null && h.from_status !== '' ? ` · ${h.from_status} → ${h.to_status}` : ''}
+            </div>
+            {h.note ? <Typography.Text type="secondary">{h.note}</Typography.Text> : null}
+          </div>
+        ),
+      }));
+    }
+    return [
       {
         color: 'blue' as const,
         children: `${t('common.create')}: ${formatDateTime(invoice?.created_at)}`,
-      },
-      {
-        color: invoice?.signed_at ? ('green' as const) : ('gray' as const),
-        children: `${t('invoices.signedAt')}: ${formatDateTime(invoice?.signed_at)}`,
       },
       {
         color: invoice?.issued_at ? ('green' as const) : ('gray' as const),
@@ -165,23 +199,34 @@ export function InvoiceDetailPage() {
         children: `${t('invoices.cqtSentAt')}: ${formatDateTime(invoice?.cqt_sent_at)}`,
       },
       {
-        color: invoice?.cqt_response_at ? ('green' as const) : ('gray' as const),
-        children: `${t('invoices.cqtResponseAt')}: ${formatDateTime(invoice?.cqt_response_at)}`,
-      },
-      {
         color: invoice?.paid_at ? ('green' as const) : ('gray' as const),
         children: `${t('common.status')}: ${statusLabel || '-'}`,
       },
-      {
-        color: invoice?.due_date ? ('orange' as const) : ('gray' as const),
-        children: `${t('invoices.dueDate')}: ${formatDateTime(invoice?.due_date)}`,
-      },
+    ];
+  }, [statusHistoryRows, invoice, statusLabel, t]);
+
+  const stepsCurrent = useMemo(() => {
+    if (einvoiceStatus === 'cancelled') return 0;
+    if (einvoiceStatus === 'paid') return 3;
+    if (einvoiceStatus === 'sent_cqt' || einvoiceStatus === 'accepted') return 2;
+    if (einvoiceStatus === 'issued') return 1;
+    return 0;
+  }, [einvoiceStatus]);
+
+  const stepItems = useMemo(
+    () => [
+      { title: t('invoices.stepDraft') },
+      { title: t('invoices.stepIssued') },
+      { title: t('invoices.stepSentCqt') },
+      { title: t('invoices.stepPaid') },
     ],
-    [invoice, statusLabel, t],
+    [t],
   );
 
-  const isEditable = !invoice?.einvoice_status || invoice.einvoice_status === 'draft';
-  const isDeletable = isEditable;
+  const isDraftLifecycle =
+    status === 'draft' && (invoice?.einvoice_status ?? 'draft') === 'draft';
+  const amountsLockedR07 = invoice?.reconciliation_session?.status === 'locked';
+  const isEditable = isDraftLifecycle && !amountsLockedR07;
 
   return (
     <>
@@ -252,6 +297,9 @@ export function InvoiceDetailPage() {
                 >
                   {t('invoices.actionDownloadPdf')}
                 </Button>
+                <Button icon={<PrinterOutlined />} onClick={handlePrint}>
+                  {t('invoices.actionPrint')}
+                </Button>
                 <Button
                   icon={<MailOutlined />}
                   loading={busy === 'send_email'}
@@ -268,7 +316,7 @@ export function InvoiceDetailPage() {
       {isLoading || !invoice ? (
         <TableSkeleton rows={8} columns={1} />
       ) : (
-        <Flex vertical gap={12}>
+        <Flex vertical gap={12} className="invoice-print-root">
           {invoice.cqt_result === 'rejected' && (
             <Alert
               type="error"
@@ -285,13 +333,36 @@ export function InvoiceDetailPage() {
               description={invoice.cancel_reason}
             />
           )}
+          {amountsLockedR07 && (
+            <Alert type="warning" showIcon message={t('invoices.r07LockedAmounts')} />
+          )}
+
+          <Card size="small">
+            <Steps
+              current={stepsCurrent}
+              status={einvoiceStatus === 'cancelled' ? 'error' : undefined}
+              items={stepItems}
+            />
+          </Card>
 
           {/* Basic info */}
           <Card>
             <Descriptions column={2} bordered size="small" title={null}>
               <Descriptions.Item label={t('invoices.code')}>{invoice.code}</Descriptions.Item>
               <Descriptions.Item label={t('common.status')}>
-                <Tag color={status === 'paid' ? 'success' : status === 'issued' ? 'processing' : status === 'cancelled' ? 'error' : undefined}>
+                <Tag
+                  color={
+                    status === 'draft'
+                      ? 'default'
+                      : status === 'issued'
+                        ? 'blue'
+                        : status === 'paid'
+                          ? 'success'
+                          : status === 'cancelled'
+                            ? 'error'
+                            : 'default'
+                  }
+                >
                   {statusLabel || '-'}
                 </Tag>
               </Descriptions.Item>
@@ -345,7 +416,7 @@ export function InvoiceDetailPage() {
                   </Typography.Link>
                 </Descriptions.Item>
               )}
-              {!isDeletable && invoice.cancel_reason && (
+              {invoice.cancel_reason && (
                 <Descriptions.Item label={t('invoices.cancelReason')} span={2}>
                   {invoice.cancel_reason}
                 </Descriptions.Item>

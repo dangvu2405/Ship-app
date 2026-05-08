@@ -79,6 +79,15 @@ export interface PayrollAdjustment {
   payroll?: Payroll;
 }
 
+/** Gán doanh thu/thưởng theo từng chuyến trong kỳ (hiển thị Drawer đối soát). */
+export interface PayrollTripAttribution {
+  trip_id: number;
+  code?: string;
+  trip_date?: string;
+  amount?: number;
+  distance_km?: number;
+}
+
 export interface PayrollDetail {
   id: number;
   payroll_id: number;
@@ -123,6 +132,7 @@ export interface PayrollDetail {
   assessable_income?: number;
   pit?: number;
   meta_json?: Record<string, unknown>;
+  payroll_trips?: PayrollTripAttribution[];
   created_by?: number;
   updated_by?: number;
   deleted_by?: number;
@@ -136,6 +146,30 @@ export interface PayrollDetail {
 export interface MySalaryPayload {
   payroll: Payroll;
   line: PayrollDetail;
+}
+
+export type SalaryAdjustmentType = 'bonus' | 'fine' | 'deduction';
+
+export interface SalaryAdjustment {
+  id: number;
+  company_id?: number;
+  payroll_id?: number | null;
+  driver_id?: number | null;
+  employee_id?: number | null;
+  type: SalaryAdjustmentType | string;
+  amount: number;
+  reason?: string | null;
+  applied_date?: string;
+  status?: string;
+  cancelled_at?: string | null;
+  driver?: { id: number; name?: string; code?: string };
+  employee?: Employee;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PayrollDriverLine extends PayrollDetail {
+  payroll?: Payroll;
 }
 
 export interface TripBonusRule {

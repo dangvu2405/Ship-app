@@ -31,17 +31,17 @@ class LeaveService {
   }
 
   async approve(id: number): Promise<ApiResponse<LeaveRequest>> {
-    const res = await api.post(ENDPOINTS.leaveOps.approve(id));
+    const res = await api.patch(ENDPOINTS.leaveOps.approve(id));
     return res.data;
   }
 
   async reject(id: number, rejection_reason: string): Promise<ApiResponse<LeaveRequest>> {
-    const res = await api.post(ENDPOINTS.leaveOps.reject(id), { rejection_reason });
+    const res = await api.patch(ENDPOINTS.leaveOps.reject(id), { rejection_reason });
     return res.data;
   }
 
   async cancel(id: number): Promise<ApiResponse<LeaveRequest>> {
-    const res = await api.post(ENDPOINTS.leaveOps.cancel(id));
+    const res = await api.patch(ENDPOINTS.leaveOps.cancel(id));
     return res.data;
   }
 }

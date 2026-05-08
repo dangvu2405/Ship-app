@@ -1,8 +1,8 @@
 import {
   ArrowLeftOutlined,
+  CalendarOutlined,
   CarOutlined,
   EditOutlined,
-  FileTextOutlined,
   HistoryOutlined,
   IdcardOutlined,
   UserOutlined,
@@ -10,11 +10,20 @@ import {
 import { Button, Card, Descriptions, Empty, Space, Spin, Table, Tag, Tabs, Typography } from 'antd';
 import { useNavigation, useOne, useList } from '@refinedev/core';
 import { useParams } from 'react-router-dom';
+
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Driver, VehicleAssignment, Trip } from '@/types';
 import { ROUTES } from '@/routes';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
+
+interface WorkScheduleRow {
+  id?: number;
+  date?: string;
+  shift_type?: string;
+  status?: string;
+  notes?: string;
+}
 
 const { Text } = Typography;
 
@@ -66,6 +75,15 @@ export function DriverDetailPage() {
     queryOptions: { enabled: !!resolvedId },
     pagination: { pageSize: 20 },
     sorters: [{ field: 'created_at', order: 'desc' }],
+  });
+
+  const { data: schedulesData, isLoading: schedulesLoading } = useList<WorkScheduleRow>({
+    resource: 'driver-work-schedules',
+    filters: [
+      { field: 'driver_id', operator: 'eq', value: resolvedId },
+    ],
+    queryOptions: { enabled: !!resolvedId, retry: false },
+    pagination: { pageSize: 100 },
   });
 
   const driver = data?.data;
@@ -177,6 +195,10 @@ export function DriverDetailPage() {
                 <Text>{driver.health_certificate_no} — HH: {formatDate(driver.health_certificate_expired_date)}</Text>
               ) : '—'}
             </Descriptions.Item>
+            <Descriptions.Item label="Ngân hàng">{(driver as unknown as Record<string, string>)['bank_name'] ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Số tài khoản">{(driver as unknown as Record<string, string>)['bank_account_no'] ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Chủ tài khoản">{(driver as unknown as Record<string, string>)['bank_account_name'] ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Ghi chú">{driver.profile_notes ?? '—'}</Descriptions.Item>
           </Descriptions>
         </Card>
       ),
@@ -215,6 +237,7 @@ export function DriverDetailPage() {
               rowKey="id"
               size="small"
               pagination={false}
+              scroll={{ x: 'max-content' }}
               locale={{ emptyText: 'Chưa có lịch sử' }}
               columns={[
                 {
@@ -232,20 +255,36 @@ export function DriverDetailPage() {
       ),
     },
     {
-      key: 'documents_ext',
+      key: 'schedule',
       label: (
         <span>
-          <FileTextOutlined /> Hồ sơ bổ sung
+          <CalendarOutlined /> Lịch làm việc tháng
         </span>
       ),
       children: (
         <Card>
-          <Descriptions bordered column={1} size="middle" title="Thông tin nghề nghiệp">
-            <Descriptions.Item label="Ngân hàng">{(driver as unknown as Record<string, string>)['bank_name'] ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="Số tài khoản">{(driver as unknown as Record<string, string>)['bank_account_no'] ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="Chủ tài khoản">{(driver as unknown as Record<string, string>)['bank_account_name'] ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ghi chú">{driver.profile_notes ?? '—'}</Descriptions.Item>
-          </Descriptions>
+          <Table<WorkScheduleRow>
+            dataSource={schedulesData?.data ?? []}
+            loading={schedulesLoading}
+            rowKey={(r) => `${r.id ?? r.date}`}
+            size="small"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            locale={{ emptyText: 'Chưa có lịch làm việc tháng này' }}
+            columns={[
+              { title: 'Ngày', dataIndex: 'date', key: 'date', render: (v) => formatDate(v) },
+              { title: 'Ca', dataIndex: 'shift_type', key: 'shift_type', render: (v) => v ?? '—' },
+              {
+                title: 'Trạng thái',
+                dataIndex: 'status',
+                key: 'status',
+                render: (v: string) => (
+                  <Tag color={v === 'approved' ? 'green' : v === 'submitted' ? 'blue' : 'default'}>{v ?? 'draft'}</Tag>
+                ),
+              },
+              { title: 'Ghi chú', dataIndex: 'notes', key: 'notes', render: (v) => v ?? '—' },
+            ]}
+          />
         </Card>
       ),
     },
@@ -264,6 +303,7 @@ export function DriverDetailPage() {
             rowKey="id"
             size="small"
             pagination={{ pageSize: 10, size: 'small' }}
+            scroll={{ x: 'max-content' }}
             locale={{ emptyText: 'Chưa có chuyến nào' }}
             columns={[
               { title: 'Mã đơn', dataIndex: 'code', key: 'code' },
@@ -271,10 +311,10 @@ export function DriverDetailPage() {
               { title: 'Điểm giao', dataIndex: 'end_point', key: 'end_point', ellipsis: true },
               {
                 title: 'Doanh thu',
-                dataIndex: 'price',
-                key: 'price',
+                dataIndex: 'total_revenue',
+                key: 'total_revenue',
                 render: (v: number) => formatMoney(v),
-                align: 'right',
+                align: 'right' as const,
               },
               {
                 title: 'Trạng thái',

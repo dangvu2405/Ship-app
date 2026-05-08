@@ -4,11 +4,9 @@ import type {
   Company,
   Customer,
   Deduction,
-  Department,
   Driver,
   Employee,
   Invoice,
-  Office,
   Payroll,
   PayrollAdjustment,
   Position,
@@ -31,11 +29,9 @@ export interface ApiResourceResponseByName {
   companies: Company;
   customers: Customer;
   deductions: Deduction;
-  departments: Department;
   drivers: Driver;
   employees: Employee;
   invoices: Invoice;
-  offices: Office;
   payrolls: Payroll;
   payroll_adjustments: PayrollAdjustment;
   positions: Position;

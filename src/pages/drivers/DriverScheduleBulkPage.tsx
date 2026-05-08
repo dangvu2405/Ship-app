@@ -22,8 +22,9 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Driver, Office } from '@/types';
 import workforceOpsService from '@/services/workforce-ops.service';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import { ROUTES } from '@/routes';
+import { ErrorState } from '@/components/common/ErrorState';
 
 const { RangePicker } = DatePicker;
 
@@ -88,13 +89,14 @@ function computeDates(from: Dayjs, to: Dayjs, selectedDays: number[]): string[] 
 
 export function DriverScheduleBulkPage() {
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
 
   // ── Remote data ──
-  const { data: officesData } = useList<Office>({
+  const { data: officesData, isLoading: officesLoading, isError: officesError, refetch: refetchOffices } = useList<Office>({
     resource: 'offices',
     pagination: { current: 1, pageSize: 200 },
   });
-  const { data: driversData } = useList<Driver>({
+  const { data: driversData, isLoading: driversLoading, isError: driversError, refetch: refetchDrivers } = useList<Driver>({
     resource: 'drivers',
     pagination: { current: 1, pageSize: 500 },
   });
@@ -192,7 +194,7 @@ export function DriverScheduleBulkPage() {
   // ── Submit ──
   const handleSubmit = useCallback(async () => {
     if (!dateRange || !dates.length || !selectedDriverCount) {
-      toast.error('Vui lòng chọn chi nhánh, khoảng thời gian và ít nhất một tài xế');
+      feedback.error('Vui lòng chọn chi nhánh, khoảng thời gian và ít nhất một tài xế');
       return;
     }
 
@@ -243,9 +245,9 @@ export function DriverScheduleBulkPage() {
     setSubmitting(false);
     setResultSummary({ success, failed });
 
-    if (failed === 0) toast.success(`Tạo thành công ${success} lịch công tác`);
-    else toast.error(`${success} thành công · ${failed} thất bại`);
-  }, [dateRange, dates, groups, selectedDriverCount]);
+    if (failed === 0) feedback.success(`Tạo thành công ${success} lịch công tác`);
+    else feedback.error(`${success} thành công · ${failed} thất bại`);
+  }, [dateRange, dates, groups, selectedDriverCount, feedback]);
 
   // ── Options ──
   const officeOptions = useMemo(
@@ -267,6 +269,19 @@ export function DriverScheduleBulkPage() {
       />
 
       <Flex vertical gap={16}>
+        {officesError || driversError ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => {
+              void refetchOffices();
+              void refetchDrivers();
+            }}
+          />
+        ) : null}
+        {(officesLoading || driversLoading) ? (
+          <Card><Typography.Text type="secondary">{t('common.loading')}</Typography.Text></Card>
+        ) : null}
 
         {/* ── Step 1: Time config ──────────────────────────────────── */}
         <Card title="Bước 1 — Cấu hình thời gian & chi nhánh">

@@ -14,9 +14,11 @@ interface PageHeaderProps {
   description?: ReactNode;
   breadcrumb?: BreadcrumbItem[];
   actions?: ReactNode;
+  /** Optional inline tags / status badges next to the title (Tag, Badge, etc). */
+  tags?: ReactNode;
 }
 
-export const PageHeader = ({ title, description, breadcrumb, actions }: PageHeaderProps) => {
+export const PageHeader = ({ title, description, breadcrumb, actions, tags }: PageHeaderProps) => {
   const { token } = theme.useToken();
 
   const breadcrumbItems = breadcrumb
@@ -25,7 +27,7 @@ export const PageHeader = ({ title, description, breadcrumb, actions }: PageHead
           key: 'crumb__home',
           title: (
             <Link to={ROUTES.dashboard}>
-              <HomeOutlined /> Home
+              <HomeOutlined />
             </Link>
           ),
         },
@@ -37,47 +39,44 @@ export const PageHeader = ({ title, description, breadcrumb, actions }: PageHead
     : undefined;
 
   return (
-    <div style={{ marginBottom: token.marginLG }}>
+    <div style={{ marginBottom: 20 }}>
+      {/* Breadcrumb strip */}
       {breadcrumbItems && (
-        <div
-          style={{
-            marginBottom: 10,
-            padding: '8px 12px',
-            borderRadius: token.borderRadiusLG,
-            border: `1px solid ${token.colorBorder}`,
-            background: token.colorBgContainer,
-          }}
-        >
+        <div style={{ marginBottom: 12 }}>
           <Breadcrumb items={breadcrumbItems} />
         </div>
       )}
-      <div
+
+      {/* Title row */}
+      <Flex
+        justify="space-between"
+        align="flex-start"
+        gap={16}
+        wrap="wrap"
         style={{
-          borderRadius: token.borderRadiusLG,
-          border: `1px solid ${token.colorBorder}`,
-          padding: 18,
-          background: token.colorBgContainer,
-          boxShadow: token.boxShadowSecondary,
+          paddingBottom: 16,
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
         }}
       >
-        <Flex justify="space-between" align="flex-start" gap={16} wrap="wrap">
-          <div>
-            <Typography.Title level={3} style={{ margin: 0 }}>
+        <div>
+          <Flex align="center" gap={8} wrap="wrap">
+            <Typography.Title level={4} style={{ margin: 0, lineHeight: 1.3 }}>
               {title}
             </Typography.Title>
-            {description && (
-              <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-                {description}
-              </Typography.Paragraph>
-            )}
-          </div>
-          {actions && (
-            <Flex gap={12} wrap="wrap" style={{ marginLeft: 'auto' }}>
-              {actions}
-            </Flex>
+            {tags}
+          </Flex>
+          {description && (
+            <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block', fontSize: 13 }}>
+              {description}
+            </Typography.Text>
           )}
-        </Flex>
-      </div>
+        </div>
+        {actions && (
+          <Flex gap={8} wrap="wrap" align="center" style={{ flexShrink: 0 }}>
+            {actions}
+          </Flex>
+        )}
+      </Flex>
     </div>
   );
 };

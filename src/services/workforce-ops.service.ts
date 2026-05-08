@@ -223,17 +223,17 @@ class WorkforceOpsService {
   }
 
   async approveLeave(id: number): Promise<ApiResponse<LeaveRequest>> {
-    const response = await api.post(ENDPOINTS.leaveOps.approve(id));
+    const response = await api.patch(ENDPOINTS.leaveOps.approve(id));
     return response.data;
   }
 
   async rejectLeave(id: number, rejection_reason: string): Promise<ApiResponse<LeaveRequest>> {
-    const response = await api.post(ENDPOINTS.leaveOps.reject(id), { rejection_reason });
+    const response = await api.patch(ENDPOINTS.leaveOps.reject(id), { rejection_reason });
     return response.data;
   }
 
   async cancelLeave(id: number): Promise<ApiResponse<LeaveRequest>> {
-    const response = await api.post(ENDPOINTS.leaveOps.cancel(id));
+    const response = await api.patch(ENDPOINTS.leaveOps.cancel(id));
     return response.data;
   }
 

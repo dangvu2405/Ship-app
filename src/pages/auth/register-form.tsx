@@ -1,14 +1,16 @@
 import { useState, type ComponentProps } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Button, Card, Divider, Flex, Input, Typography, theme } from 'antd';
+import { Button, Card, Divider, Flex, Form, Input, Typography, theme } from 'antd';
 import { cn } from '@/lib/utils';
 import authService from '@/services/auth.service';
 import { ROUTES } from '@/routes';
 import { notifyErrorOnce } from '@/utils/errorToast';
 import { useTranslation } from '@/hooks/useTranslation';
+import { strongPasswordSchema } from '@/schemas/password';
 
-const heroImage = 'https://www.figma.com/api/mcp/asset/4629245c-f613-41b7-a0ba-5f5a9aac02a8';
+const heroImage = 'login-hero.jpeg';
+const icon = 'icon.jpeg';
 
 const inputStyle: React.CSSProperties = {
   height: 48,
@@ -24,46 +26,35 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.3px',
 };
 
+type RegisterValues = {
+  username: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+};
+
 export function RegisterForm({ className, ...props }: ComponentProps<'div'>) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { token } = theme.useToken();
+  const [form] = Form.useForm<RegisterValues>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    username: '',
-    email: '',
-    password: '',
-    passwordConfirmation: '',
-  });
 
-  const updateField = (field: keyof typeof form, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onFinish = async (values: RegisterValues) => {
     if (isSubmitting) return;
-
-    if (form.password !== form.passwordConfirmation) {
-      toast.error(t('auth.registerPasswordMismatch'));
-      return;
-    }
-
     try {
       setIsSubmitting(true);
       const response = await authService.register({
-        username: form.username.trim(),
-        email: form.email.trim(),
-        password: form.password,
-        password_confirmation: form.passwordConfirmation,
+        username: values.username.trim(),
+        email: values.email.trim(),
+        password: values.password,
+        password_confirmation: values.password_confirmation,
       });
-
       if (response.success) {
         toast.success(t('auth.registerSuccess'));
         navigate(ROUTES.login);
         return;
       }
-
       toast.error(response.message || t('auth.registerFailed'));
     } catch (error) {
       notifyErrorOnce('auth-register', error, { fallbackMessage: t('auth.registerFailed') });
@@ -86,22 +77,26 @@ export function RegisterForm({ className, ...props }: ComponentProps<'div'>) {
       >
         <div className="auth-screen__layout">
           <div className="auth-screen__hero">
-            <img src={heroImage} alt="" className="auth-screen__hero-image" />
+            <img src={heroImage} alt={t('auth.heroImageAlt')} className="auth-screen__hero-image" />
           </div>
 
           <div className="auth-screen__panel">
             <div className="auth-screen__content">
-
               {/* Brand */}
               <div className="auth-screen__brand">
-                <div className="auth-screen__brand-mark" />
+                <img src={icon} className="auth-screen__brand-mark" alt="Ship ERP" />
                 <span className="auth-screen__brand-text">Ship ERP</span>
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSubmit}>
+              <Form<RegisterValues>
+                form={form}
+                layout="vertical"
+                requiredMark={false}
+                onFinish={onFinish}
+                style={{ marginBottom: 0 }}
+              >
                 <Flex vertical gap={24}>
-                  {/* Title */}
                   <Typography.Title
                     level={4}
                     style={{ margin: 0, fontSize: 20, fontWeight: 600, color: '#1a1a1a', lineHeight: '28px' }}
@@ -109,71 +104,95 @@ export function RegisterForm({ className, ...props }: ComponentProps<'div'>) {
                     {t('auth.registerTitle')}
                   </Typography.Title>
 
-                  {/* Fields */}
                   <Flex vertical gap={16}>
-                    <Flex vertical gap={8}>
-                      <span style={labelStyle}>{t('users.username')}</span>
+                    <Form.Item
+                      name="username"
+                      label={<span style={labelStyle}>{t('users.username')}</span>}
+                      rules={[
+                        { required: true, message: t('validation.required', { field: t('users.username') }) },
+                        { min: 2, message: t('validation.minLength', { min: 2 }) },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
                       <Input
                         id="username"
-                        name="username"
                         autoComplete="username"
                         size="large"
                         style={inputStyle}
                         placeholder={t('auth.registerUsernamePlaceholder')}
-                        value={form.username}
-                        onChange={(e) => updateField('username', e.target.value)}
-                        required
                       />
-                    </Flex>
+                    </Form.Item>
 
-                    <Flex vertical gap={8}>
-                      <span style={labelStyle}>{t('auth.email')}</span>
+                    <Form.Item
+                      name="email"
+                      label={<span style={labelStyle}>{t('auth.email')}</span>}
+                      rules={[
+                        { required: true, message: t('validation.required', { field: t('auth.email') }) },
+                        { type: 'email', message: t('validation.email') },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
                       <Input
                         id="email"
-                        name="email"
                         type="email"
                         autoComplete="email"
                         size="large"
                         style={inputStyle}
                         placeholder={t('auth.emailPlaceholder')}
-                        value={form.email}
-                        onChange={(e) => updateField('email', e.target.value)}
-                        required
                       />
-                    </Flex>
+                    </Form.Item>
 
-                    <Flex vertical gap={8}>
-                      <span style={labelStyle}>{t('auth.password')}</span>
+                    <Form.Item
+                      name="password"
+                      label={<span style={labelStyle}>{t('auth.password')}</span>}
+                      rules={[
+                        { required: true, message: t('validation.required', { field: t('auth.password') }) },
+                        {
+                          validator: async (_, value) => {
+                            if (!value) return;
+                            const result = strongPasswordSchema.safeParse(value);
+                            if (!result.success) throw new Error(result.error.issues[0].message);
+                          },
+                        },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
                       <Input.Password
                         id="password"
-                        name="new-password"
                         autoComplete="new-password"
                         size="large"
                         style={inputStyle}
                         placeholder={t('auth.registerPasswordPlaceholder')}
-                        value={form.password}
-                        onChange={(e) => updateField('password', e.target.value)}
-                        required
                       />
-                    </Flex>
+                    </Form.Item>
 
-                    <Flex vertical gap={8}>
-                      <span style={labelStyle}>{t('auth.confirmPassword')}</span>
+                    <Form.Item
+                      name="password_confirmation"
+                      label={<span style={labelStyle}>{t('auth.confirmPassword')}</span>}
+                      dependencies={['password']}
+                      rules={[
+                        { required: true, message: t('validation.required', { field: t('auth.confirmPassword') }) },
+                        {
+                          validator: async (_, value) => {
+                            if (!value) return;
+                            if (value !== form.getFieldValue('password')) {
+                              throw new Error(t('validation.passwordMismatch'));
+                            }
+                          },
+                        },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
                       <Input.Password
                         id="passwordConfirmation"
-                        name="password-confirmation"
                         autoComplete="new-password"
                         size="large"
                         style={inputStyle}
                         placeholder={t('auth.registerPasswordConfirmPlaceholder')}
-                        value={form.passwordConfirmation}
-                        onChange={(e) => updateField('passwordConfirmation', e.target.value)}
-                        required
                       />
-                    </Flex>
+                    </Form.Item>
                   </Flex>
 
-                  {/* Register button */}
                   <Button
                     type="primary"
                     htmlType="submit"
@@ -184,10 +203,8 @@ export function RegisterForm({ className, ...props }: ComponentProps<'div'>) {
                     {t('auth.register')}
                   </Button>
 
-                  {/* Divider */}
                   <Divider style={{ margin: 0, borderColor: '#e5e5e5' }} />
 
-                  {/* Switch to login */}
                   <div className="auth-screen__switch-auth">
                     {t('auth.alreadyHaveAccount')}{' '}
                     <Link to={ROUTES.login} className="auth-screen__link">
@@ -195,7 +212,7 @@ export function RegisterForm({ className, ...props }: ComponentProps<'div'>) {
                     </Link>
                   </div>
                 </Flex>
-              </form>
+              </Form>
             </div>
 
             <Flex justify="space-between" align="center" className="auth-screen__footer">

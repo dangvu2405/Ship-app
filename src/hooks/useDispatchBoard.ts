@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import dispatchService from '@/services/dispatch.service';
+import type { Trip } from '@/types';
 import type { DispatchTrip, DispatchVehicle } from '@/types/api/dispatch';
 import { getErrorMessage } from '@/utils/errorHandler';
 
 export function useDispatchBoard(date?: string) {
   const [vehicles, setVehicles] = useState<DispatchVehicle[]>([]);
   const [trips, setTrips] = useState<DispatchTrip[]>([]);
-  const [unassigned, setUnassigned] = useState<DispatchTrip[]>([]);
+  const [unassigned, setUnassigned] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +33,13 @@ export function useDispatchBoard(date?: string) {
   const fetchUnassigned = useCallback(async () => {
     try {
       const body = await dispatchService.getUnassigned(date);
-      setUnassigned(body?.data?.data ?? []);
+      const raw = body?.data;
+      const list: Trip[] = Array.isArray(raw)
+        ? raw
+        : raw && typeof raw === 'object' && 'data' in raw
+          ? ((raw as { data: Trip[] }).data ?? [])
+          : [];
+      setUnassigned(list);
     } catch (e) {
       setUnassigned([]);
     }

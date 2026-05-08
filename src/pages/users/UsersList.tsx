@@ -1,69 +1,76 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { App, Button, Card, Dropdown, Input, Result, Select, Space, Table, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Select } from 'antd';
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  KeyOutlined,
+  MoreOutlined,
+  PlusOutlined,
+  StopOutlined,
+  CheckCircleOutlined,
+} from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { ErrorState } from '@/components/common/ErrorState';
-import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
-import type { User } from '@/types';
-import toast from 'react-hot-toast';
+import { useListFilters } from '@/hooks/useListFilters';
+import { useAuth } from '@/hooks/useAuth';
+import type { Role, User } from '@/types';
+
 import { ROUTES } from '@/routes';
-import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { shouldShowLocalErrorToast, getErrorMessage } from '@/utils/errorHandler';
 import { UserFormDialog } from './UserFormDialog';
+import api from '@/services/api';
+import { ENDPOINTS } from '@/services/endpoints';
+
+const { Text } = Typography;
 
 export function UsersList() {
   const { t } = useTranslation();
+  const { hasRole } = useAuth();
+  const canCreateUser = hasRole('super_admin') || hasRole('admin_company');
   const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
+  const { message, modal } = App.useApp();
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [current, setCurrent] = useState(1);
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
-  const [appliedKeyword, setAppliedKeyword] = useState('');
-  const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<User>({
+  const { inputs: filterInputs, applied: filterApplied, setInput: setFilterInput, apply: applyFilters, clear: clearFilters } = useListFilters({
+    keyword: '',
+    status: undefined as string | undefined,
+    roleIds: [] as number[],
+  });
+
+  const { data: rolesData } = useList<Role>({
+    resource: 'roles',
+    pagination: { current: 1, pageSize: 100 },
+    sorters: [{ field: 'name', order: 'asc' }],
+  });
+  const roleOptions = useMemo(
+    () => (rolesData?.data ?? []).map((r) => ({ label: r.name, value: r.id })),
+    [rolesData?.data],
+  );
+
+  const { data, isLoading, isError, error: listError, refetch } = useList<User>({
     resource: 'users',
-    pagination: {
-      current,
-      pageSize: 15,
-    },
+    pagination: { current, pageSize: 15 },
     filters: [
-      ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
-      ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
+      ...(filterApplied.keyword.trim() ? [{ field: 'search', operator: 'contains' as const, value: filterApplied.keyword.trim() }] : []),
+      ...(filterApplied.status ? [{ field: 'status', operator: 'eq' as const, value: filterApplied.status }] : []),
+      ...(filterApplied.roleIds.length ? [{ field: 'role_ids', operator: 'in' as const, value: filterApplied.roleIds }] : []),
     ],
   });
 
-  const handleSearchFilters = () => {
-    setAppliedKeyword(searchKeyword.trim());
-    setAppliedStatus(selectedStatus);
-    setCurrent(1);
-  };
-
-  const handleClearFilters = () => {
-    setSearchKeyword('');
-    setSelectedStatus(undefined);
-    setAppliedKeyword('');
-    setAppliedStatus(undefined);
-    setCurrent(1);
-  };
+  const handleApplyFilters = () => { applyFilters(); setCurrent(1); };
+  const handleClearFilters = () => { clearFilters(); setCurrent(1); };
 
   const handleCreate = () => {
     setFormMode('create');
@@ -77,87 +84,148 @@ export function UsersList() {
     setFormOpen(true);
   };
 
-  const handleDelete = (user: User) => {
-    setSelectedUser(user);
-    setDeleteDialogOpen(true);
+  const handleToggleStatus = (user: User) => {
+    const nextStatus = user.status === 'active' ? 'inactive' : 'active';
+    modal.confirm({
+      title: nextStatus === 'inactive' ? 'Vô hiệu hóa người dùng?' : 'Kích hoạt người dùng?',
+      content: `${user.username} sẽ ${nextStatus === 'active' ? 'có thể' : 'không thể'} đăng nhập sau khi xác nhận.`,
+      okText: 'Xác nhận',
+      cancelText: 'Hủy',
+      okButtonProps: nextStatus === 'inactive' ? { danger: true } : undefined,
+      onOk: async () => {
+        try {
+          await api.patch(ENDPOINTS.users.status(user.id), { status: nextStatus });
+          message.success('Đã cập nhật trạng thái');
+          void refetch();
+        } catch (err) {
+          message.error(getErrorMessage(err) ?? 'Cập nhật trạng thái thất bại');
+        }
+      },
+    });
+  };
+
+  const handleResetPassword = (user: User) => {
+    modal.confirm({
+      title: 'Đặt lại mật khẩu?',
+      content: `Mật khẩu mới sẽ được gửi tới email của ${user.username}.`,
+      okText: 'Đặt lại',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await api.post(ENDPOINTS.users.resetPassword(user.id), {});
+          message.success('Đã gửi email đặt lại mật khẩu');
+        } catch (err) {
+          message.error(getErrorMessage(err) ?? 'Reset mật khẩu thất bại');
+        }
+      },
+    });
   };
 
   const confirmDelete = () => {
     if (!selectedUser) return;
-
     deleteItem(
-      {
-        resource: 'users',
-        id: selectedUser.id,
-      },
+      { resource: 'users', id: selectedUser.id },
       {
         onSuccess: () => {
-          toast.success(t('notifications.deleteSuccess', { item: t('users.title') }));
+          message.success(t('notifications.deleteSuccess', { item: t('users.title') }));
           setDeleteDialogOpen(false);
           setSelectedUser(null);
-          refetch();
+          void refetch();
         },
         onError: (error) => {
-          if (!shouldShowLocalErrorToast(error)) {
-            return;
-          }
-
-          toast.error(t('notifications.deleteError', { item: t('users.title') }));
+          if (!shouldShowLocalErrorToast(error)) return;
+          message.error(t('notifications.deleteError', { item: t('users.title') }));
         },
       }
     );
   };
 
-  const columns: DataTableColumn<User>[] = [
-    { key: 'username', header: t('users.username'), dataIndex: 'username' },
-    { key: 'email', header: t('users.email'), dataIndex: 'email' },
-    { key: 'employee', header: t('users.employee'), dataIndex: ['employee', 'name'] },
+  const columns = useMemo<ColumnsType<User>>(() => [
     {
-      key: 'status',
-      header: t('common.status'),
-      dataIndex: 'status',
-      render: (item) => (
-        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
-          {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </Badge>
+      title: t('users.username'),
+      dataIndex: 'username',
+      key: 'username',
+      render: (v: string, row) => (
+        <Button type="link" style={{ padding: 0 }} onClick={() => show('users', row.id)}>
+          {v}
+        </Button>
       ),
     },
+    { title: t('users.email'), dataIndex: 'email', key: 'email', ellipsis: true },
     {
+      title: t('users.employee'),
+      key: 'employee',
+      render: (_, row) => row.employee?.name ?? '—',
+    },
+    {
+      title: t('users.roles'),
       key: 'roles',
-      header: t('users.roles'),
-      dataIndex: 'roles',
-      render: (item) => item.roles?.map((r: { name: string }) => r.name).join(', ') || '-',
+      render: (_, row) =>
+        row.roles && row.roles.length > 0 ? (
+          <Space size={4} wrap>
+            {row.roles.map((r) => (
+              <Tag key={r.id} color="blue">
+                {r.name}
+              </Tag>
+            ))}
+          </Space>
+        ) : (
+          '—'
+        ),
     },
     {
-      key: 'actions',
-      header: t('common.actions'),
-      render: (record) => (
-        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => show('users', record.id)}>
-                <Eye className="h-4 w-4 mr-2" />
-                {t('common.view')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(record.id)}>
-                <Edit className="h-4 w-4 mr-2" />
-                {t('common.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                {t('common.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      title: t('common.status'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 110,
+      render: (s: string) => (
+        <Tag color={s === 'active' ? 'success' : 'default'}>
+          {s === 'active' ? t('common.active') : t('common.inactive')}
+        </Tag>
       ),
     },
-  ];
+    {
+      title: t('common.actions'),
+      key: 'actions',
+      fixed: 'right',
+      width: 160,
+      render: (_, row) => (
+        <Space size="small">
+          <Button type="text" size="small" icon={<EyeOutlined aria-hidden />} aria-label={t('common.view')} onClick={() => show('users', row.id)} />
+          <Button type="text" size="small" icon={<EditOutlined aria-hidden />} aria-label={t('common.edit')} onClick={() => handleEdit(row.id)} />
+          <Dropdown
+            trigger={['click']}
+            menu={{
+              items: [
+                {
+                  key: 'toggle',
+                  label: row.status === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt',
+                  icon: row.status === 'active' ? <StopOutlined /> : <CheckCircleOutlined />,
+                  onClick: () => handleToggleStatus(row),
+                },
+                {
+                  key: 'reset',
+                  label: 'Đặt lại mật khẩu',
+                  icon: <KeyOutlined />,
+                  onClick: () => handleResetPassword(row),
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'delete',
+                  label: t('common.delete'),
+                  icon: <DeleteOutlined />,
+                  danger: true,
+                  onClick: () => { setSelectedUser(row); setDeleteDialogOpen(true); },
+                },
+              ],
+            }}
+          >
+            <Button type="text" size="small" icon={<MoreOutlined />} />
+          </Dropdown>
+        </Space>
+      ),
+    },
+  ], [show, t, handleToggleStatus, handleResetPassword]);
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
@@ -166,74 +234,102 @@ export function UsersList() {
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
-  const pageSize = 15;
+
+  if (isError) {
+    const status = (listError as { statusCode?: number; status?: number })?.statusCode ?? (listError as { status?: number })?.status;
+    if (status === 403) {
+      return (
+        <>
+          <PageHeader title={t('users.title')} description={t('users.description')} breadcrumb={breadcrumb} />
+          <Result status="403" title="403" subTitle={t('common.forbidden')} />
+        </>
+      );
+    }
+    return (
+      <>
+        <PageHeader title={t('users.title')} description={t('users.description')} breadcrumb={breadcrumb} />
+        <ErrorState title={t('common.loadError')} description={t('common.tryAgainDescription')} onRetry={() => void refetch()} />
+      </>
+    );
+  }
 
   return (
-    <>
+    <div className="enterprise-page space-y-4">
       <PageHeader
         title={t('users.title')}
         description={t('users.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={handleCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            {t('users.createUser')}
-          </Button>
+          canCreateUser ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+              {t('users.createUser')}
+            </Button>
+          ) : undefined
         }
       />
 
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <SearchField
-            placeholder={t('common.search')}
-            value={searchKeyword}
-            onChange={setSearchKeyword}
-          />
+      <Card className="enterprise-section-card" styles={{ body: { padding: 16 } }}>
+        <div className="mb-4">
+          <h2 className="enterprise-title text-slate-900">{t('users.title')}</h2>
+          <Text type="secondary" className="enterprise-record-count">
+            {total} {t('common.records')}
+          </Text>
+        </div>
 
+        <ListPageFilters variant="grid-3" className="enterprise-filter-bar mb-4">
+          <Input
+            placeholder={t('common.search')}
+            value={filterInputs.keyword}
+            onChange={(e) => setFilterInput('keyword', e.target.value)}
+            allowClear
+            onPressEnter={handleApplyFilters}
+          />
           <Select
+            className="w-full"
+            mode="multiple"
+            allowClear
+            placeholder={t('users.roles')}
+            value={filterInputs.roleIds}
+            onChange={(v) => setFilterInput('roleIds', v as number[])}
+            options={roleOptions}
+            maxTagCount="responsive"
+          />
+          <Select
+            className="w-full"
             allowClear
             placeholder={t('common.status')}
-            value={selectedStatus}
-            onChange={setSelectedStatus}
+            value={filterInputs.status}
+            onChange={(v) => setFilterInput('status', v)}
             options={[
               { label: t('common.active'), value: 'active' },
               { label: t('common.inactive'), value: 'inactive' },
             ]}
           />
+          <div className="list-page-filters__btn-row col-span-full">
+            <ListPageFilters.Actions onSearch={handleApplyFilters} onReset={handleClearFilters} busy={isLoading} />
+          </div>
+        </ListPageFilters>
 
-          <Button type="button" onClick={handleSearchFilters}>
-            {t('common.search')}
-          </Button>
-
-          <Button type="button" variant="outline" onClick={handleClearFilters}>
-            {t('common.reset')}
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={columns.length} />
-        ) : isError ? (
-          <ErrorState
-            title={t('common.loadError')}
-            description={t('common.tryAgainDescription')}
-            onRetry={() => refetch()}
-          />
-        ) : (
-          <DataTable<User>
-            data={listData}
-            columns={columns}
-            onRowClick={(record) => show('users', record.id)}
-            emptyMessage={t('common.noData')}
-            pagination={{
-              current,
-              total,
-              pageSize,
-              onPageChange: setCurrent,
-            }}
-          />
-        )}
-        </CardContent>
+        <Table<User>
+          rowKey="id"
+          columns={columns}
+          dataSource={listData}
+          loading={isLoading}
+          scroll={{ x: 'max-content' }}
+          className="enterprise-table"
+          pagination={{
+            current,
+            total,
+            pageSize: 15,
+            showSizeChanger: false,
+            showTotal: (n) => `${n} ${t('common.records')}`,
+            onChange: (page) => setCurrent(page),
+          }}
+          onRow={(row) => ({
+            onClick: () => show('users', row.id),
+            style: { cursor: 'pointer' },
+          })}
+        />
       </Card>
 
       <DeleteConfirmDialog
@@ -248,15 +344,10 @@ export function UsersList() {
           open={formOpen}
           mode={formMode}
           recordId={editingId}
-          onClose={() => {
-            setFormOpen(false);
-            setEditingId(undefined);
-          }}
-          onSuccess={() => {
-            refetch();
-          }}
+          onClose={() => { setFormOpen(false); setEditingId(undefined); }}
+          onSuccess={() => void refetch()}
         />
       )}
-    </>
+    </div>
   );
 }

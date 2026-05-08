@@ -1,20 +1,30 @@
 import { Form } from 'antd';
+import type { FormInstance } from 'antd/es/form';
 import { useEffect } from 'react';
 import { useList } from '@refinedev/core';
 import { FormAccordionSections, FormItemNumber, FormItemSelect, FormItemText } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Customer, Invoice, Trip } from '@/types';
 
-interface InvoiceFormProps {
-  form: ReturnType<typeof Form.useForm>[0];
+export interface InvoiceFormProps {
+  form: FormInstance;
   initialValues?: Partial<Invoice>;
+  isCreate?: boolean;
+  isEdit?: boolean;
+  amountsLocked?: boolean;
+}
+
+function roundMoney(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 export function InvoiceForm(props: InvoiceFormProps) {
-  const { form } = props;
+  const { form, initialValues, isCreate, isEdit, amountsLocked } = props;
   const { t } = useTranslation();
   const selectedTripId = Form.useWatch('trip_id', form);
-  const vatAmount = Form.useWatch('vat_amount', form);
+  const vatRateWatch = Form.useWatch('vat_rate', form);
+  const manualSubtotal = Form.useWatch('subtotal', form);
+
   const { data: customersData, isLoading: loadingCustomers } = useList<Customer>({
     resource: 'customers',
     pagination: { current: 1, pageSize: 500 },
@@ -27,33 +37,62 @@ export function InvoiceForm(props: InvoiceFormProps) {
     sorters: [{ field: 'id', order: 'desc' }],
   });
 
-  const customerOptions = (customersData?.data ?? []).map((c) => ({ label: c.name, value: c.id }));
-  const tripOptions = (tripsData?.data ?? []).map((tr) => ({ label: `${tr.code} (${tr.start_point} → ${tr.end_point})`, value: tr.id }));
+  const customerOptions = (customersData?.data ?? []).map((c) => ({
+    label: c.name ?? c.code ?? `#${c.id}`,
+    value: c.id,
+  }));
+  const tripOptions = (tripsData?.data ?? []).map((tr) => ({
+    label: `${tr.code} (${tr.start_point} → ${tr.end_point})`,
+    value: tr.id,
+  }));
   const selectedTrip = (tripsData?.data ?? []).find((tr) => tr.id === selectedTripId);
-  const subtotal = selectedTrip ? Number(selectedTrip.price ?? 0) : undefined;
-  const expectedTotalAmount = typeof subtotal === 'number' ? subtotal + Number(vatAmount ?? 0) : undefined;
+  const subtotalFromTrip = selectedTrip ? Number(selectedTrip.price ?? 0) : null;
+  const subtotalEffective =
+    selectedTripId != null && selectedTripId !== undefined
+      ? subtotalFromTrip
+      : typeof manualSubtotal === 'number'
+        ? manualSubtotal
+        : null;
+
+  const vatRateNum = Number(vatRateWatch ?? initialValues?.vat_rate ?? 10);
+  const vatAmount =
+    subtotalEffective != null && !Number.isNaN(subtotalEffective)
+      ? roundMoney((subtotalEffective * (Number.isFinite(vatRateNum) ? vatRateNum : 0)) / 100)
+      : 0;
+  const totalAmount =
+    subtotalEffective != null && !Number.isNaN(subtotalEffective) ? roundMoney(subtotalEffective + vatAmount) : 0;
 
   useEffect(() => {
-    if (typeof subtotal !== 'number') {
+    if (amountsLocked) {
       return;
     }
-    form.setFieldValue('subtotal', subtotal);
-    form.setFieldValue('total_amount', subtotal + Number(form.getFieldValue('vat_amount') ?? 0));
-  }, [selectedTripId, form, subtotal]);
+    if (selectedTripId != null && selectedTripId !== undefined && typeof subtotalFromTrip === 'number') {
+      form.setFieldValue('subtotal', subtotalFromTrip);
+    }
+  }, [selectedTripId, subtotalFromTrip, form, amountsLocked]);
 
   useEffect(() => {
-    if (typeof subtotal !== 'number') {
+    if (amountsLocked) {
       return;
     }
-    form.setFieldValue('total_amount', subtotal + Number(vatAmount ?? 0));
-  }, [vatAmount, subtotal, form]);
+    if (selectedTrip?.customer_id != null) {
+      form.setFieldValue('customer_id', selectedTrip.customer_id);
+    }
+  }, [selectedTrip?.customer_id, form, amountsLocked]);
 
-  const statusOptions = [
-    { label: t('invoices.statusDraft'), value: 'draft' },
-    { label: t('invoices.statusIssued'), value: 'issued' },
-    { label: t('invoices.statusPaid'), value: 'paid' },
-    { label: t('invoices.statusCancelled'), value: 'cancelled' },
-  ];
+  useEffect(() => {
+    if (amountsLocked) {
+      return;
+    }
+    if (subtotalEffective == null || Number.isNaN(subtotalEffective)) {
+      return;
+    }
+    form.setFieldValue('vat_amount', vatAmount);
+    form.setFieldValue('total_amount', totalAmount);
+  }, [subtotalEffective, vatAmount, totalAmount, form, amountsLocked]);
+
+  const financialLocked = amountsLocked === true;
+  const statusOptions = [{ label: t('invoices.statusDraft'), value: 'draft' }];
 
   return (
     <FormAccordionSections
@@ -64,7 +103,15 @@ export function InvoiceForm(props: InvoiceFormProps) {
           titleKey: 'basic',
           children: (
             <>
-              <FormItemText name="code" label={t('invoices.code')} required rules={[{ required: true, message: t('validation.required', { field: t('invoices.code') }) }]} />
+              {!isCreate && (
+                <FormItemText
+                  name="code"
+                  label={t('invoices.code')}
+                  required
+                  disabled={Boolean(isEdit)}
+                  rules={[{ required: true, message: t('validation.required', { field: t('invoices.code') }) }]}
+                />
+              )}
               <FormItemSelect
                 name="customer_id"
                 label={t('invoices.customer')}
@@ -78,12 +125,11 @@ export function InvoiceForm(props: InvoiceFormProps) {
               <FormItemSelect
                 name="trip_id"
                 label={t('invoices.trip')}
-                required
                 options={tripOptions}
                 loading={loadingTrips}
                 showSearch
+                allowClear
                 selectProps={{ optionFilterProp: 'label' }}
-                rules={[{ required: true, message: t('validation.required', { field: t('invoices.trip') }) }]}
               />
             </>
           ),
@@ -98,36 +144,52 @@ export function InvoiceForm(props: InvoiceFormProps) {
                 label={t('invoices.subtotal')}
                 required
                 min={0}
-                disabled={true}
+                disabled={financialLocked || (selectedTripId != null && selectedTripId !== undefined)}
                 rules={[{ required: true, message: t('validation.required', { field: t('invoices.subtotal') }) }]}
+              />
+              <FormItemNumber
+                name="vat_rate"
+                label={t('invoices.vatRatePercent')}
+                min={0}
+                max={100}
+                disabled={financialLocked}
               />
               <FormItemNumber
                 name="vat_amount"
                 label={t('invoices.vatAmount')}
                 min={0}
+                disabled
                 rules={[{ type: 'number', min: 0, message: t('validation.min', { min: 0 }) }]}
               />
               <FormItemNumber
                 name="total_amount"
                 label={t('invoices.totalAmount')}
                 required
-                min={1}
-                disabled={true}
+                min={0}
+                disabled
                 rules={[
                   { required: true, message: t('validation.required', { field: t('invoices.totalAmount') }) },
-                  { type: 'number', min: 1, message: t('validation.min', { min: 1 }) },
-                  {
-                    validator: (_, value) => {
-                      if (typeof expectedTotalAmount !== 'number' || typeof value !== 'number' || value === expectedTotalAmount) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error(t('validation.invoiceTotalMustMatchTrip')));
-                    },
-                  },
+                  { type: 'number', min: 0, message: t('validation.min', { min: 0 }) },
                 ]}
               />
-              <FormItemText name="issued_at" label={t('invoices.issuedAt')} type="date" />
-              <FormItemText name="due_date" label={t('invoices.dueDate')} type="date" />
+              <FormItemText name="issued_at" label={t('invoices.issuedAt')} type="date" disabled={financialLocked} />
+              <FormItemText
+                name="due_date"
+                label={t('invoices.dueDate')}
+                type="date"
+                disabled={financialLocked}
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      const issuedAt = getFieldValue('issued_at') as string | undefined;
+                      if (!value || !issuedAt || String(value) >= String(issuedAt)) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t('validation.dueDateAfterIssuedAt')));
+                    },
+                  }),
+                ]}
+              />
             </>
           ),
         },

@@ -3,11 +3,12 @@ import { Form } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import type { UploadProps } from 'antd/es/upload';
 import { InboxOutlined } from '@ant-design/icons';
-import toast from 'react-hot-toast';
 import { useList } from '@refinedev/core';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import { FormAccordionSections, FormItemSelect, FormItemText, FormItemUploadDragger } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errorHandler';
+import { strongPasswordSchema } from '@/schemas/password';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 import type { Employee, Role, User } from '@/types';
 
@@ -22,6 +23,7 @@ interface UserFormProps {
 export function UserForm(props: UserFormProps) {
   const { isEdit = false } = props;
   const { t } = useTranslation();
+  const toast = useAppFeedback();
 
   const { data: employeesData, isLoading: employeesLoading } = useList<Employee>({
     resource: 'employees',
@@ -144,7 +146,13 @@ export function UserForm(props: UserFormProps) {
                 autoComplete="new-password"
                 rules={[
                   { required: true, message: t('validation.required', { field: t('users.password') }) },
-                  { min: passwordMin, message: t('validation.minLength', { min: passwordMin }) },
+                  () => ({
+                    validator(_: unknown, value: string) {
+                      const r = strongPasswordSchema.safeParse(value ?? '');
+                      if (r.success) return Promise.resolve();
+                      return Promise.reject(new Error(r.error.issues[0]?.message ?? t('validation.minLength', { min: passwordMin })));
+                    },
+                  }),
                 ]}
                 placeholder={t('users.passwordPlaceholder')}
               />

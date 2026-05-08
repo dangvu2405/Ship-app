@@ -1,18 +1,41 @@
 import { useEffect } from 'react';
-import { Alert, Button, Form, Space } from 'antd';
+import { Alert, App, Button, Form, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { useLocation, useParams } from 'react-router-dom';
-import { useNavigation } from '@refinedev/core';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { CustomerForm } from './CustomerForm';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogBase } from '@/hooks/useFormDialogBase';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
-import toast from 'react-hot-toast';
+
 import type { Customer } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { useCreateCustomer, useCustomerDetail, useUpdateCustomer } from '@/hooks/useCustomers';
+import { useCustomerGroups } from '@/hooks/useCustomers';
+import { z } from 'zod';
+
+const customerSchema = z
+  .object({
+    code: z.string().trim().optional(),
+    name: z.string().trim().min(1),
+    type: z.enum(['individual', 'company']),
+    tax_code: z.string().trim().optional(),
+    phone: z.string().trim().optional(),
+    email: z.string().trim().optional(),
+    address: z.string().trim().optional(),
+    contact_person: z.string().trim().optional(),
+    group_id: z.number().optional(),
+    credit_limit: z.number().optional(),
+    payment_terms_days: z.number().optional(),
+    is_active: z.union([z.number(), z.boolean()]).optional(),
+    notes: z.string().trim().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.type === 'company' && !value.tax_code) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Tax code is required for company', path: ['tax_code'] });
+    }
+  });
 
 interface CustomerFormDialogProps {
   open?: boolean;
@@ -24,28 +47,16 @@ interface CustomerFormDialogProps {
 
 export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }: CustomerFormDialogProps = {}) {
   const { t } = useTranslation();
-  const { id } = useParams<{ id?: string }>();
-  const location = useLocation();
-  const { list } = useNavigation();
-  const [form] = Form.useForm();
-  const isControlled = typeof open === 'boolean';
-  const resolvedId = recordId ?? (id ? Number(id) : undefined);
-  const hasRecordId = !!resolvedId;
-  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
-  const isEdit = hasRecordId && !isViewMode;
-  const dialogOpen = isControlled ? open : true;
+  const { message } = App.useApp();
+  const { form, resolvedId, hasRecordId, isViewMode, isEdit, dialogOpen, handleClose } = useFormDialogBase({
+    open, mode, recordId, resource: 'customers', onClose,
+  });
 
   const { customer, loading: isLoadingData } = useCustomerDetail(resolvedId, hasRecordId);
+  const { groups } = useCustomerGroups({ enabled: dialogOpen });
   const { mutate: createCustomer, isPending: isCreating } = useCreateCustomer();
   const { mutate: updateCustomer, isPending: isUpdating } = useUpdateCustomer();
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
-
-  const handleClose = () => {
-    onClose?.();
-    if (!isControlled) {
-      list('customers');
-    }
-  };
 
   const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
     form,
@@ -55,33 +66,43 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
   });
 
   const handleSubmit = (values: Partial<Customer>) => {
+    const parsed = customerSchema.safeParse(values);
+    if (!parsed.success) {
+      parsed.error.issues.forEach((issue) => {
+        const key = issue.path[0];
+        if (typeof key === 'string') {
+          form.setFields([{ name: key, errors: [issue.message] }]);
+        }
+      });
+      return;
+    }
     if (isEdit && resolvedId) {
       updateCustomer(
-        { id: resolvedId, values },
+        { id: resolvedId, values: parsed.data },
         {
           onSuccess: () => {
-            toast.success(t('notifications.updateSuccess', { item: t('customers.title') }));
+            message.success(t('notifications.updateSuccess', { item: t('customers.title') }));
             onSuccess?.();
             handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
-            toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('customers.title') }));
+            message.error(getErrorMessage(error) || t('notifications.updateError', { item: t('customers.title') }));
           },
         }
       );
     } else {
       createCustomer(
-        values as Parameters<typeof createCustomer>[0],
+        parsed.data as Parameters<typeof createCustomer>[0],
         {
           onSuccess: () => {
-            toast.success(t('notifications.createSuccess', { item: t('customers.title') }));
+            message.success(t('notifications.createSuccess', { item: t('customers.title') }));
             onSuccess?.();
             handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
-            toast.error(getErrorMessage(error) || t('notifications.createError', { item: t('customers.title') }));
+            message.error(getErrorMessage(error) || t('notifications.createError', { item: t('customers.title') }));
           },
         }
       );
@@ -130,12 +151,13 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
         />
         <Form
           form={form}
+          name="customer-form"
           onFinish={handleSubmit}
           layout="vertical"
           validateTrigger={['onBlur', 'onSubmit']}
           disabled={isViewMode}
         >
-          <CustomerForm form={form} initialValues={customer ?? undefined} />
+          <CustomerForm form={form} initialValues={customer ?? undefined} groups={groups} isEdit={isEdit} customerId={isEdit ? customer?.id : undefined} />
         </Form>
       </>
     );
@@ -148,7 +170,7 @@ export function CustomerFormDialog({ open, mode, recordId, onClose, onSuccess }:
         title={title}
         description={description}
         footer={footer}
-        width={896}
+        width="min(56rem, calc(100vw - 2rem))"
       >
         {body}
       </ResourceFormModal>

@@ -1,293 +1,699 @@
-import { Suspense, useMemo, useState } from "react"
-import { Alert, Button, Card, DatePicker, Flex, Select, Space, Typography } from "antd"
-import { useCustom, useList } from "@refinedev/core"
-import dayjs from "dayjs"
-import { useDashboardStats } from "@/hooks/useDashboardStats"
-import { useDashboardTripRevenue } from "@/hooks/useDashboardTripRevenue"
-import { DashboardRevenueByOffice } from "@/pages/dashboard/components/DashboardRevenueByOffice"
-import { DashboardChartSkeleton } from "@/pages/dashboard/components/DashboardChartSkeleton"
-import { useDashboardRevenueByOffice } from "@/hooks/useDashboardRevenueByOffice"
-import { lazyWithMinDelay } from "@/utils/lazyWithMinDelay"
-import type { PayrollSummaryData } from "@/services/reports.service"
-import { ENDPOINTS } from "@/services/endpoints"
-import { formatMoney } from "@/utils/displayFormat"
-import type { Company, Office } from "@/types"
-import { useTranslation } from "@/hooks/useTranslation"
-import { PageHeader } from "@/components/common/PageHeader"
-import { ROUTES } from "@/routes"
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  Avatar,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Empty,
+  Flex,
+  Progress,
+  Row,
+  Select,
+  Skeleton,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  theme,
+} from 'antd';
+import { useList } from '@refinedev/core';
+import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
+import type { ColumnsType } from 'antd/es/table';
+import {
+  AppstoreOutlined,
+  CarOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  DollarCircleOutlined,
+  FileTextOutlined,
+  ReloadOutlined,
+  RightOutlined,
+  TruckOutlined,
+} from '@ant-design/icons';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { useDashboardTodayKpis } from '@/hooks/useDashboardTodayKpis';
+import { useDispatchDailySummary } from '@/hooks/useDispatchDailySummary';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useTopDrivers } from '@/hooks/useTopDrivers';
+import { ExpirationAlerts } from '@/pages/dashboard/components/ExpirationAlerts';
+import { DashboardRevenueByOffice } from '@/pages/dashboard/components/DashboardRevenueByOffice';
+import { ChartAreaInteractive } from '@/pages/dashboard/components/ChartAreaInteractive';
+import { formatMoney } from '@/utils/displayFormat';
+import type { Company, Office, Trip, Vehicle } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
+import { ROUTES } from '@/routes';
+import { getTripConventionDisplay } from '@/utils/tripStatus';
+import { useAuthStore } from '@/stores/auth.store';
 
-const ChartAreaInteractive = lazyWithMinDelay(() =>
-  import("@/pages/dashboard/components/ChartAreaInteractive").then((m) => ({ default: m.ChartAreaInteractive })),
-)
+const { Text, Title } = Typography;
+
+// ─── KPI Card ────────────────────────────────────────────────────────────────
+
+interface KpiCardProps {
+  title: string;
+  value: number;
+  loading?: boolean;
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  formatter?: (v: number) => string;
+  description?: string;
+}
+
+function KpiCard({ title, value, loading, icon, iconBg, iconColor, formatter, description }: KpiCardProps) {
+  const { token } = theme.useToken();
+  return (
+    <Card
+      style={{
+        borderRadius: token.borderRadiusLG,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        height: '100%',
+      }}
+      styles={{ body: { padding: '20px 24px' } }}
+    >
+      <Flex align="flex-start" gap={16}>
+        <Avatar
+          size={52}
+          style={{ background: iconBg, color: iconColor, flexShrink: 0, borderRadius: token.borderRadiusLG }}
+          icon={icon}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
+            {title}
+          </Text>
+          {loading ? (
+            <Skeleton active title={{ width: 100, style: { margin: 0, height: 28 } }} paragraph={false} />
+          ) : (
+            <Title level={3} style={{ margin: 0, lineHeight: 1.15 }}>
+              {formatter ? formatter(value) : value.toLocaleString('vi-VN')}
+            </Title>
+          )}
+          {description && (
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              {description}
+            </Text>
+          )}
+        </div>
+      </Flex>
+    </Card>
+  );
+}
+
+// ─── Vehicle chip ─────────────────────────────────────────────────────────────
+
+function VehicleChip({ vehicle }: { vehicle: Vehicle }) {
+  const { token } = theme.useToken();
+  return (
+    <Flex
+      align="center"
+      gap={10}
+      style={{
+        padding: '8px 12px',
+        borderRadius: token.borderRadius,
+        background: token.colorFillAlter,
+        border: `1px solid ${token.colorBorderSecondary}`,
+      }}
+    >
+      <Avatar size={28} icon={<CarOutlined />} style={{ background: '#e6f4ff', color: '#1677ff', flexShrink: 0 }} />
+      <Text style={{ flex: 1, fontSize: 13 }}>{vehicle.plate_number}</Text>
+      <Tag color="success" style={{ margin: 0, fontSize: 11 }}>
+        Hoạt động
+      </Tag>
+    </Flex>
+  );
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { t } = useTranslation()
-  const [companyId, setCompanyId] = useState<number | undefined>(undefined)
-  const [officeId, setOfficeId] = useState<number | undefined>(undefined)
-  const [selectedDate, setSelectedDate] = useState(dayjs())
-  const [timeRange, setTimeRange] = useState<"7months" | "30d" | "7d">("7months")
-  const period = useMemo(() => {
-    return { month: selectedDate.month() + 1, year: selectedDate.year() }
-  }, [selectedDate])
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { token } = theme.useToken();
+  const { user } = useAuthStore();
+
+  const [companyId, setCompanyId] = useState<number | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+
+  const period = useMemo(
+    () => ({ month: selectedDate.month() + 1, year: selectedDate.year() }),
+    [selectedDate],
+  );
 
   const { data: companiesData } = useList<Company>({
-    resource: "companies",
+    resource: 'companies',
     pagination: { current: 1, pageSize: 100 },
-    filters: [{ field: "status", operator: "eq", value: "active" }],
-    sorters: [{ field: "name", order: "asc" }],
-  })
-  const companies = useMemo(() => companiesData?.data ?? [], [companiesData])
+    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+    sorters: [{ field: 'name', order: 'asc' }],
+  });
+  const companies = useMemo(() => companiesData?.data ?? [], [companiesData]);
+  const effectiveCompanyId = companyId ?? companies[0]?.id;
 
   const { data: officesData } = useList<Office>({
-    resource: "offices",
-    pagination: { current: 1, pageSize: 200 },
-    sorters: [{ field: "name", order: "asc" }],
-  })
-  const offices = officesData?.data ?? []
-  const effectiveCompanyId = companyId ?? companies[0]?.id
+    resource: 'offices',
+    pagination: { current: 1, pageSize: 100 },
+  });
+  const offices = useMemo(() => officesData?.data ?? [], [officesData]);
 
   const { stats, statsLoading, statsError, refetchStats } = useDashboardStats({
     enablePolling: true,
-    pollingInterval: 60000,
+    pollingInterval: 60_000,
     companyId: effectiveCompanyId,
-  })
-
-  const {
-    total: clientRevenueTotal,
-    tripCount: clientTripCount,
-    loading: revenueLoading,
-    refetch: refetchTripRevenue,
-  } = useDashboardTripRevenue({
+  });
+  const todayKpis = useDashboardTodayKpis(effectiveCompanyId);
+  const today = dayjs().format('YYYY-MM-DD');
+  const { data: dailySummary } = useDispatchDailySummary(today);
+  const { unreadCount } = useNotifications({ enablePolling: true, pollingInterval: 60_000, fetchList: false });
+  const { rows: topDrivers, loading: topDriversLoading } = useTopDrivers({
     companyId: effectiveCompanyId,
     month: period.month,
     year: period.year,
-  })
+    limit: 5,
+  });
 
-  const {
-    data: payrollSummaryResult,
-    isLoading: payrollSummaryLoading,
-    isError: payrollSummaryIsError,
-    error: payrollSummaryError,
-  } = useCustom<PayrollSummaryData>({
-    url: ENDPOINTS.reports.payrollSummary,
-    method: "get",
-    config: {
-      query: { company_id: effectiveCompanyId, month: period.month, year: period.year },
-    },
-    queryOptions: { enabled: effectiveCompanyId != null },
-  })
-  const payrollSummaryData = payrollSummaryResult?.data
+  const { data: recentTripsData, isLoading: recentTripsLoading } = useList<Trip>({
+    resource: 'trips',
+    pagination: { current: 1, pageSize: 8 },
+    sorters: [{ field: 'created_at', order: 'desc' }],
+    filters:
+      effectiveCompanyId != null
+        ? [{ field: 'company_id', operator: 'eq', value: effectiveCompanyId }]
+        : [],
+  });
 
-  /** Luôn dùng báo cáo theo tháng/năm đã chọn — stats API không gắn period nên không trộn với KPI chuyến hoàn thành. */
-  const revenueTotal = clientRevenueTotal
-  const revenueTripCount = clientTripCount
-  const { rows: officeRevenueRows, loading: rankingLoading } = useDashboardRevenueByOffice({
-    offices,
-    companyId: effectiveCompanyId,
-    officeId,
-    month: period.month,
-    year: period.year,
-  })
-  const topOfficeRows = useMemo(() => officeRevenueRows.slice(0, 6), [officeRevenueRows])
-  const maxRevenue = topOfficeRows[0]?.revenue ?? 1
+  const { data: activeVehiclesData, isLoading: activeVehiclesLoading } = useList<Vehicle>({
+    resource: 'vehicles',
+    pagination: { current: 1, pageSize: 6 },
+    sorters: [{ field: 'updated_at', order: 'desc' }],
+    filters: [
+      { field: 'status', operator: 'eq', value: 'active' },
+      ...(effectiveCompanyId != null
+        ? [{ field: 'company_id', operator: 'eq' as const, value: effectiveCompanyId }]
+        : []),
+    ],
+  });
 
-  const handleReset = () => {
-    setCompanyId(undefined)
-    setOfficeId(undefined)
-    setSelectedDate(dayjs())
-  }
+  const { data: unassignedTripsData } = useList<Trip>({
+    resource: 'trips',
+    pagination: { current: 1, pageSize: 1 },
+    filters: [
+      { field: 'status', operator: 'eq', value: 'pending' },
+      ...(effectiveCompanyId != null
+        ? [{ field: 'company_id', operator: 'eq' as const, value: effectiveCompanyId }]
+        : []),
+    ],
+  });
+
+  const unassignedCount = dailySummary?.unassigned ?? unassignedTripsData?.total ?? 0;
+  const activeVehicles = activeVehiclesData?.data ?? [];
+  const recentTrips = recentTripsData?.data ?? [];
+  const maxTopDriverRevenue = topDrivers.reduce((max, d) => Math.max(max, d.revenue), 0);
+  const sectionCardStyle = {
+    borderRadius: token.borderRadiusLG,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    height: '100%',
+  } as const;
+
+  const completionRate = useMemo(() => {
+    const total = stats?.trips?.total ?? 0;
+    const completed = stats?.trips?.completed ?? 0;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  }, [stats]);
+
+  const recentTripColumns = useMemo<ColumnsType<Trip>>(
+    () => [
+      {
+        title: t('trips.code'),
+        dataIndex: 'code',
+        key: 'code',
+        width: 120,
+        render: (v: string) => <Text strong style={{ fontSize: 13 }}>{v}</Text>,
+      },
+      {
+        title: t('customers.title'),
+        dataIndex: ['customer', 'name'],
+        key: 'customer',
+        ellipsis: true,
+        render: (v: string) => <Text>{v ?? '—'}</Text>,
+      },
+      {
+        title: t('trips.route'),
+        key: 'route',
+        ellipsis: true,
+        render: (_: unknown, row: Trip) => (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {row.start_point} → {row.end_point}
+          </Text>
+        ),
+      },
+      {
+        title: t('common.status'),
+        dataIndex: 'status',
+        key: 'status',
+        width: 120,
+        render: (value: string) => {
+          const { label, color, style } = getTripConventionDisplay(value, t);
+          return (
+            <Tag color={color} style={{ ...style, fontSize: 11 }}>
+              {label}
+            </Tag>
+          );
+        },
+      },
+    ],
+    [t],
+  );
 
   return (
-    <div className="space-y-4 px-4 pb-6 lg:px-6">
-      <PageHeader title={t("dashboard.title")} breadcrumb={[{ label: t("dashboard.title"), path: ROUTES.dashboard }]} />
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">{t("dashboard.title")}</h2>
-          <p className="text-sm text-slate-500">{dayjs().format("DD/MM/YYYY")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {[
-            { value: "7months", label: "7 tháng" },
-            { value: "30d", label: "30 ngày" },
-            { value: "7d", label: "7 ngày" },
-          ].map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              onClick={() => setTimeRange(item.value as "7months" | "30d" | "7d")}
-              className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                timeRange === item.value
-                  ? "bg-blue-600 text-white"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Card className="rounded-xl border shadow-sm" styles={{ body: { padding: 20 } }}>
-        <div className="rounded-xl border bg-white p-4">
-          <Flex gap={12} wrap="wrap">
+    <div style={{ padding: '0 0 24px' }}>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${token.colorPrimary} 0%, #0958d9 100%)`,
+          borderRadius: `0 0 ${token.borderRadiusLG}px ${token.borderRadiusLG}px`,
+          padding: '24px 28px 32px',
+          marginBottom: -16,
+        }}
+      >
+        <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16}>
+          <div>
+            <Title level={3} style={{ margin: 0, color: '#fff' }}>
+              {t('dashboard.title')}
+            </Title>
+            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4, display: 'block' }}>
+              {t('dashboard.welcome')}, <strong style={{ color: '#fff' }}>{user?.username ?? 'User'}</strong>
+              {' · '}{dayjs().format('dddd, DD/MM/YYYY')}
+            </Text>
+          </div>
+          <Space wrap>
             <Select
               value={effectiveCompanyId}
               onChange={setCompanyId}
-              options={companies.map((company) => ({ label: company.name, value: company.id }))}
-              placeholder={t("dashboard.filterByCompany")}
-              style={{ minWidth: 240 }}
+              options={companies.map((c) => ({ label: c.name, value: c.id }))}
+              placeholder={t('dashboard.filterByCompany')}
+              style={{ minWidth: 200, background: 'rgba(255,255,255,0.15)' }}
               allowClear
             />
             <DatePicker
               value={selectedDate}
-              onChange={(value) => setSelectedDate(value ?? dayjs())}
-              style={{ minWidth: 180 }}
+              onChange={(v) => setSelectedDate(v ?? dayjs())}
+              picker="month"
+              format="MM/YYYY"
+              allowClear={false}
             />
-            <Space>
-              <Button onClick={handleReset}>{t("common.reset")}</Button>
-              <Button
-                type="primary"
-                onClick={() => {
-                  void refetchStats()
-                  void refetchTripRevenue()
-                }}
-              >
-                {t("common.search")}
-              </Button>
-            </Space>
-          </Flex>
-        </div>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => void refetchStats()}
+              style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: '#fff' }}
+            >
+              {t('common.refresh')}
+            </Button>
+          </Space>
+        </Flex>
+      </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-4">
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.total ?? 0}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.completedTrips")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{revenueTripCount}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.totalRevenue")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{statsLoading || revenueLoading ? t("common.loading") : formatMoney(revenueTotal, { withCurrency: true })}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll Net</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{formatMoney(payrollSummaryData?.total_net ?? 0, { withCurrency: true })}</Typography.Title></Card>
-        </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-5">
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeCompanies")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.companies?.active ?? 0}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeEmployees")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.employees?.active ?? 0}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t("dashboard.cards.activeVehicles")}</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.vehicles?.active ?? 0}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Pending trips</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{stats?.trips?.pending ?? 0}</Typography.Title></Card>
-          <Card className="rounded-xl border" size="small" styles={{ body: { padding: 14 } }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>Payroll employees</Typography.Text><Typography.Title level={4} style={{ margin: "4px 0 0", fontSize: 30 }}>{payrollSummaryData?.employees_count ?? 0}</Typography.Title></Card>
-        </div>
+      <div style={{ padding: '0 24px' }}>
+        {statsError && (
+          <Alert
+            type="error"
+            showIcon
+            message={t('common.loadError')}
+            description={String(statsError)}
+            style={{ marginBottom: 16, marginTop: 24 }}
+          />
+        )}
 
-        {statsError ? (
-          <div className="mt-4">
-            <Alert
-              type="error"
-              message={t("common.loadError")}
-              description={statsError}
-              showIcon
+        {/* ── KPI strip ───────────────────────────────────────────────────── */}
+        <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              title={t('dashboard.todayNewOrders')}
+              value={todayKpis.newCount}
+              loading={todayKpis.loading}
+              icon={<FileTextOutlined />}
+              iconBg="#e6f4ff"
+              iconColor="#1677ff"
+              description="Đơn mới trong ngày"
             />
-          </div>
-        ) : null}
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              title={t('dashboard.todayInProgress')}
+              value={todayKpis.runningCount}
+              loading={todayKpis.loading}
+              icon={<TruckOutlined />}
+              iconBg="#fff7e6"
+              iconColor="#fa8c16"
+              description="Chuyến đang vận chuyển"
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              title={t('dashboard.todayCompleted')}
+              value={todayKpis.completedCount}
+              loading={todayKpis.loading}
+              icon={<CheckCircleOutlined />}
+              iconBg="#f6ffed"
+              iconColor="#52c41a"
+              description="Chuyến hoàn thành hôm nay"
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              title={t('dashboard.todayRevenue')}
+              value={todayKpis.revenueToday}
+              loading={todayKpis.loading}
+              icon={<DollarCircleOutlined />}
+              iconBg="#fff0f6"
+              iconColor="#eb2f96"
+              formatter={(v) => formatMoney(v, { withCurrency: true })}
+              description="Doanh thu trong ngày"
+            />
+          </Col>
+        </Row>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <Suspense fallback={<DashboardChartSkeleton />}>
+        {/* ── Alerts + Recent trips ──────────────────────────────────────── */}
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} lg={12}>
+            <Card style={sectionCardStyle} styles={{ body: { padding: 0 } }}>
+              <div style={{ padding: '16px 20px 0' }}>
+                <Flex align="center" gap={8} justify="space-between">
+                  <Flex align="center" gap={8}>
+                    <ClockCircleOutlined style={{ color: '#faad14', fontSize: 16 }} />
+                    <Text strong style={{ fontSize: 15 }}>
+                      {t('dashboard.alertsTitle')}
+                    </Text>
+                  </Flex>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<RightOutlined />}
+                    onClick={() => navigate(ROUTES.admin.dispatch.board)}
+                    style={{ padding: 0 }}
+                  >
+                    Điều phối
+                  </Button>
+                </Flex>
+              </div>
+              <div style={{ padding: '12px 20px 20px' }}>
+                <ExpirationAlerts />
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <Flex align="center" gap={8}>
+                  <TruckOutlined style={{ color: token.colorPrimary }} />
+                  <span>{t('dashboard.recentTrips')}</span>
+                </Flex>
+              }
+              extra={
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<RightOutlined />}
+                  onClick={() => navigate(ROUTES.admin.trips.list)}
+                  style={{ padding: 0 }}
+                >
+                  Xem tất cả
+                </Button>
+              }
+              style={sectionCardStyle}
+              styles={{ body: { padding: 0 } }}
+            >
+              <Table<Trip>
+                rowKey="id"
+                columns={recentTripColumns}
+                dataSource={recentTrips}
+                loading={recentTripsLoading}
+                pagination={false}
+                size="small"
+                scroll={{ x: 560 }}
+                onRow={(record) => ({
+                  style: { cursor: 'pointer' },
+                  onClick: () => navigate(ROUTES.admin.trips.showById(record.id)),
+                })}
+                locale={{ emptyText: t('common.noData') }}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* ── Chart + Stats ─────────────────────────────────────────────── */}
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} xl={16}>
             <ChartAreaInteractive
               companyId={effectiveCompanyId}
-              onCompanyIdChange={setCompanyId}
               companies={companies}
               offices={offices}
             />
-          </Suspense>
-          <Card className="rounded-xl border" title={t("dashboard.topOffices")} size="small">
-            {rankingLoading ? (
-              <Typography.Text type="secondary">{t("common.loading")}</Typography.Text>
-            ) : topOfficeRows.length === 0 ? (
-              <Typography.Text type="secondary">{t("common.noData")}</Typography.Text>
-            ) : (
-              <Space direction="vertical" size={10} style={{ width: "100%" }}>
-                {topOfficeRows.map((row, index) => (
-                  <div key={row.key}>
-                    <Flex justify="space-between" align="center">
-                      <Typography.Text style={{ fontSize: 12, maxWidth: 180 }} ellipsis>
-                        {index + 1}.{" "}
-                        {row.officeName === "__UNASSIGNED__" ? t("dashboard.chart.unassigned") : row.officeName}
-                      </Typography.Text>
-                      <Typography.Text style={{ fontSize: 12 }}>{Math.round((row.revenue / maxRevenue) * 100)}%</Typography.Text>
+          </Col>
+          <Col xs={24} xl={8}>
+            <Card
+              style={sectionCardStyle}
+              styles={{ body: { padding: '20px 24px', height: '100%' } }}
+              loading={statsLoading}
+            >
+              <Flex vertical gap={0} style={{ height: '100%' }}>
+                <Flex align="center" gap={8} style={{ marginBottom: 20 }}>
+                  <AppstoreOutlined style={{ color: token.colorPrimary }} />
+                  <Text strong style={{ fontSize: 15 }}>
+                    Tháng {period.month}/{period.year}
+                  </Text>
+                </Flex>
+
+                <Flex vertical gap={20} style={{ flex: 1 }}>
+                  <div>
+                    <Flex justify="space-between" align="center" style={{ marginBottom: 6 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Tổng chuyến</Text>
+                      <Text strong style={{ fontSize: 22 }}>{(stats?.trips?.total ?? 0).toLocaleString('vi-VN')}</Text>
                     </Flex>
-                    <div style={{ marginTop: 4, height: 6, background: "#eef2f7", borderRadius: 999 }}>
-                      <div
-                        style={{
-                          width: `${Math.max(8, Math.round((row.revenue / maxRevenue) * 100))}%`,
-                          height: 6,
-                          background: "#7ea8f8",
-                          borderRadius: 999,
-                        }}
+                  </div>
+
+                  <div>
+                    <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+                      <Flex align="center" gap={6}>
+                        <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 14 }} />
+                        <Text type="secondary" style={{ fontSize: 12 }}>Hoàn thành</Text>
+                      </Flex>
+                      <Text strong>{(stats?.trips?.completed ?? 0).toLocaleString('vi-VN')}</Text>
+                    </Flex>
+                    <Progress
+                      percent={completionRate}
+                      size="small"
+                      strokeColor="#52c41a"
+                      trailColor={token.colorFillAlter}
+                      format={(p) => <Text style={{ fontSize: 11 }}>{p}%</Text>}
+                    />
+                  </div>
+
+                  <div>
+                    <Flex align="center" gap={6} style={{ marginBottom: 6 }}>
+                      <DollarCircleOutlined style={{ color: '#faad14', fontSize: 14 }} />
+                      <Text type="secondary" style={{ fontSize: 12 }}>Doanh thu tháng</Text>
+                    </Flex>
+                    <Text strong style={{ fontSize: 18 }}>
+                      {formatMoney(stats?.revenue?.total ?? 0, { withCurrency: true })}
+                    </Text>
+                  </div>
+
+                  {unassignedCount > 0 && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message={`${unassignedCount} chuyến chờ phân công`}
+                      action={
+                        <Button
+                          size="small"
+                          type="link"
+                          icon={<RightOutlined />}
+                          onClick={() => navigate(ROUTES.admin.dispatch.board)}
+                          style={{ padding: 0 }}
+                        >
+                          Phân công
+                        </Button>
+                      }
+                    />
+                  )}
+
+                  <div style={{ marginTop: 'auto' }}>
+                    <Flex align="center" gap={6} style={{ marginBottom: 10 }}>
+                      <CarOutlined style={{ color: token.colorPrimary, fontSize: 14 }} />
+                      <Text type="secondary" style={{ fontSize: 12 }}>Xe đang hoạt động ({activeVehicles.length})</Text>
+                    </Flex>
+                    {activeVehiclesLoading ? (
+                      <Skeleton active paragraph={{ rows: 3, width: '100%' }} title={false} />
+                    ) : activeVehicles.length === 0 ? (
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('common.noData')} />
+                    ) : (
+                      <Flex vertical gap={6}>
+                        {activeVehicles.slice(0, 4).map((v) => (
+                          <VehicleChip key={v.id} vehicle={v} />
+                        ))}
+                        {activeVehicles.length > 4 && (
+                          <Button
+                            type="link"
+                            size="small"
+                            style={{ padding: 0, height: 'auto', textAlign: 'left' }}
+                            onClick={() => navigate(ROUTES.admin.vehicles.list)}
+                          >
+                            Xem thêm {activeVehicles.length - 4} xe khác
+                          </Button>
+                        )}
+                      </Flex>
+                    )}
+                  </div>
+                </Flex>
+              </Flex>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* ── Top drivers + Daily summary ─────────────────────────────────── */}
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <Flex align="center" gap={8}>
+                  <TruckOutlined style={{ color: token.colorPrimary }} />
+                  <span>Top tài xế tháng {period.month}/{period.year}</span>
+                </Flex>
+              }
+              style={{
+                borderRadius: token.borderRadiusLG,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                height: '100%',
+              }}
+              styles={{ body: { padding: 16 } }}
+              loading={topDriversLoading}
+            >
+              {topDrivers.length === 0 ? (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('common.noData')} />
+              ) : (
+                <Flex vertical gap={12}>
+                  {topDrivers.map((row, idx) => (
+                    <div key={row.driverId}>
+                      <Flex justify="space-between" align="center" style={{ marginBottom: 6 }}>
+                        <Flex align="center" gap={10}>
+                          <Avatar
+                            size={28}
+                            style={{
+                              background: idx === 0 ? '#fff7e6' : token.colorFillAlter,
+                              color: idx === 0 ? '#fa8c16' : token.colorTextSecondary,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {idx + 1}
+                          </Avatar>
+                          <div>
+                            <Text strong style={{ fontSize: 13 }}>{row.driverName}</Text>
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
+                              {row.trips} chuyến
+                            </Text>
+                          </div>
+                        </Flex>
+                        <Text strong style={{ color: token.colorPrimary }}>
+                          {formatMoney(row.revenue, { withCurrency: true })}
+                        </Text>
+                      </Flex>
+                      <Progress
+                        percent={maxTopDriverRevenue > 0 ? Math.round((row.revenue / maxTopDriverRevenue) * 100) : 0}
+                        size="small"
+                        showInfo={false}
+                        strokeColor={token.colorPrimary}
                       />
                     </div>
-                  </div>
-                ))}
-              </Space>
-            )}
-          </Card>
-        </div>
+                  ))}
+                </Flex>
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <Flex align="center" gap={8}>
+                  <AppstoreOutlined style={{ color: token.colorPrimary }} />
+                  <span>Tổng quan hôm nay</span>
+                </Flex>
+              }
+              style={{
+                borderRadius: token.borderRadiusLG,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                height: '100%',
+              }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Row gutter={[12, 12]}>
+                <Col span={12}>
+                  <Card size="small" styles={{ body: { padding: 12 } }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Chưa phân công</Text>
+                    <Title level={4} style={{ margin: '4px 0 0' }}>{dailySummary?.unassigned ?? unassignedCount}</Title>
+                  </Card>
+                </Col>
+                <Col span={12}>
+                  <Card size="small" styles={{ body: { padding: 12 } }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Đang chạy</Text>
+                    <Title level={4} style={{ margin: '4px 0 0' }}>{dailySummary?.in_progress ?? todayKpis.runningCount}</Title>
+                  </Card>
+                </Col>
+                <Col span={12}>
+                  <Card size="small" styles={{ body: { padding: 12 } }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Tài xế bận / sẵn sàng</Text>
+                    <Title level={4} style={{ margin: '4px 0 0' }}>
+                      {dailySummary?.busy_drivers ?? '—'} / {dailySummary?.available_drivers ?? '—'}
+                    </Title>
+                  </Card>
+                </Col>
+                <Col span={12}>
+                  <Card size="small" styles={{ body: { padding: 12 } }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Xe bận / sẵn sàng</Text>
+                    <Title level={4} style={{ margin: '4px 0 0' }}>
+                      {dailySummary?.busy_vehicles ?? '—'} / {dailySummary?.available_vehicles ?? '—'}
+                    </Title>
+                  </Card>
+                </Col>
+                {unreadCount > 0 && (
+                  <Col span={24}>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message={`Bạn có ${unreadCount} thông báo chưa đọc`}
+                      action={
+                        <Button
+                          size="small"
+                          type="link"
+                          onClick={() => navigate(ROUTES.admin.notifications)}
+                          style={{ padding: 0 }}
+                        >
+                          Xem
+                        </Button>
+                      }
+                    />
+                  </Col>
+                )}
+              </Row>
+            </Card>
+          </Col>
+        </Row>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
-          <Card className="rounded-xl border" size="small" title="Payroll snapshot">
-            {payrollSummaryLoading ? (
-              <Typography.Text type="secondary">{t("common.loading")}</Typography.Text>
-            ) : payrollSummaryIsError ? (
-              <Alert type="error" showIcon message={((payrollSummaryError as unknown) as Error | null)?.message ?? t("common.loadError")} />
-            ) : payrollSummaryData ? (
-              <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                <Flex justify="space-between"><Typography.Text type="secondary">Payroll ID</Typography.Text><Typography.Text>{payrollSummaryData.payroll?.id ?? "-"}</Typography.Text></Flex>
-                <Flex justify="space-between"><Typography.Text type="secondary">Status</Typography.Text><Typography.Text>{payrollSummaryData.payroll?.status ?? "-"}</Typography.Text></Flex>
-                <Flex justify="space-between"><Typography.Text type="secondary">Employees</Typography.Text><Typography.Text>{payrollSummaryData.employees_count ?? 0}</Typography.Text></Flex>
-                <Flex justify="space-between"><Typography.Text type="secondary">Total net</Typography.Text><Typography.Text strong>{formatMoney(payrollSummaryData.total_net ?? 0, { withCurrency: true })}</Typography.Text></Flex>
-              </Space>
-            ) : (
-              <Typography.Text type="secondary">{t("common.noData")}</Typography.Text>
-            )}
-          </Card>
-          <Card className="rounded-xl border" size="small" title="Fleet utilization">
-            <Space direction="vertical" size={10} style={{ width: "100%" }}>
-              {[
-                { label: t("dashboard.cards.activeVehicles"), value: stats?.vehicles?.active ?? 0, total: Math.max(stats?.vehicles?.total ?? 1, 1) },
-                { label: t("dashboard.cards.activeEmployees"), value: stats?.employees?.active ?? 0, total: Math.max(stats?.employees?.total ?? 1, 1) },
-                { label: t("dashboard.cards.completedTrips"), value: revenueTripCount, total: Math.max(stats?.trips?.total ?? 1, 1) },
-              ].map((item) => {
-                const percent = Math.round((item.value / item.total) * 100)
-                return (
-                  <div key={item.label}>
-                    <Flex justify="space-between">
-                      <Typography.Text style={{ fontSize: 12 }}>{item.label}</Typography.Text>
-                      <Typography.Text style={{ fontSize: 12 }}>{percent}%</Typography.Text>
-                    </Flex>
-                    <div style={{ marginTop: 4, height: 6, background: "#eef2f7", borderRadius: 999 }}>
-                      <div style={{ width: `${Math.max(percent, 6)}%`, height: 6, background: "#8db0f8", borderRadius: 999 }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </Space>
-          </Card>
-          <Card className="rounded-xl border" size="small" title="Operations health">
-            <Space direction="vertical" size={8} style={{ width: "100%" }}>
-              <Flex justify="space-between"><Typography.Text type="secondary">Completion rate</Typography.Text><Typography.Text>{Math.round(((stats?.trips?.completed ?? 0) / Math.max(stats?.trips?.total ?? 1, 1)) * 100)}%</Typography.Text></Flex>
-              <Flex justify="space-between"><Typography.Text type="secondary">Pending rate</Typography.Text><Typography.Text>{Math.round(((stats?.trips?.pending ?? 0) / Math.max(stats?.trips?.total ?? 1, 1)) * 100)}%</Typography.Text></Flex>
-              <Flex justify="space-between"><Typography.Text type="secondary">Revenue / trip</Typography.Text><Typography.Text>{formatMoney((revenueTotal || 0) / Math.max(revenueTripCount || 1, 1), { withCurrency: true })}</Typography.Text></Flex>
-              <Flex justify="space-between"><Typography.Text type="secondary">Companies active</Typography.Text><Typography.Text>{stats?.companies?.active ?? 0}</Typography.Text></Flex>
-            </Space>
-          </Card>
-        </div>
-
-        <div className="mt-4">
-          <Typography.Title level={5} style={{ marginTop: 0 }}>
-            {t("dashboard.revenueByOffice")}
-          </Typography.Title>
+        {/* ── Revenue by office ──────────────────────────────────────────── */}
+        <div style={{ marginTop: 16 }}>
           <DashboardRevenueByOffice
             offices={offices}
             companyId={effectiveCompanyId}
-            officeId={officeId}
+            officeId={undefined}
             month={period.month}
             year={period.year}
           />
         </div>
-      </Card>
+
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 16, textAlign: 'right' }}>
+          {t('dashboard.todayKpiHint', { date: `${period.month}/${period.year}` })}
+        </Text>
+      </div>
     </div>
-  )
+  );
 }

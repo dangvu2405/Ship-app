@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createSafeStorage } from '@/lib/safe-storage';
 import type { Locale } from '@/locales';
+import { STORAGE_KEYS } from '@/utils/constants';
 
 interface AppState {
   theme: 'light' | 'dark';
@@ -65,7 +66,7 @@ export const useAppStore = create<AppState>()(
         }),
     }),
     {
-      name: 'app-storage:v1',
+      name: STORAGE_KEYS.APP_STORAGE,
       storage: createSafeStorage(),
     }
   )

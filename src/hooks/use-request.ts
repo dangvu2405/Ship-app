@@ -2,6 +2,18 @@ import { useQuery, type QueryKey, type UseQueryOptions, type UseQueryResult } fr
 import api from '@/services/api';
 import type { ApiResponse } from '@/types';
 
+// Track consecutive 401 occurrences globally to trigger forced logout after N failures.
+const AUTH_401_COUNTER_KEY = '__app_auth_401_count';
+const increment401Count = (): number => {
+  // store on window to survive across hook instances
+  const w = window as any;
+  w[AUTH_401_COUNTER_KEY] = (w[AUTH_401_COUNTER_KEY] || 0) + 1;
+  return w[AUTH_401_COUNTER_KEY];
+};
+const reset401Count = (): void => {
+  (window as any)[AUTH_401_COUNTER_KEY] = 0;
+};
+
 type UseRequestConfig<TData> = {
   queryKey: QueryKey;
   url: string;
@@ -31,12 +43,24 @@ export function useRequest<TData>(config: UseRequestConfig<TData>): UseQueryResu
     select,
   } = config;
 
-  return useQuery({
+  return useQuery<TData | undefined, Error>({
     queryKey,
     enabled,
     staleTime,
     gcTime,
     refetchInterval,
+    // Retry at most 3 times with react-query default backoff
+    retry: (failureCount: number, error: unknown) => {
+      const respStatus = (error as any)?.response?.status;
+      if (respStatus === 401) {
+        const count = increment401Count();
+        // If we've seen 3 or more 401s globally, trigger force-logout event (session expired)
+        if (count >= 3) {
+          window.dispatchEvent(new CustomEvent('auth:force-logout'));
+        }
+      }
+      return failureCount < 3;
+    },
     queryFn: async () => {
       const response = await api.get<ApiResponse<TData>>(url, {
         params,
@@ -48,6 +72,8 @@ export function useRequest<TData>(config: UseRequestConfig<TData>): UseQueryResu
       if (!body.success) {
         throw new Error(body.message || 'Request failed');
       }
+      // reset 401 counter on success
+      reset401Count();
       return body.data;
     },
     select,
@@ -61,14 +87,14 @@ type UseCustomRequestConfig<TData> = {
 
 export function useCustomRequest<TData>(config: UseCustomRequestConfig<TData>): UseQueryResult<TData, Error> {
   const { queryKey, queryFn, enabled, staleTime, gcTime, refetchInterval, retry, select } = config;
-  return useQuery({
+  return useQuery<TData, Error>({
     queryKey,
     queryFn,
     enabled,
     staleTime,
     gcTime,
     refetchInterval,
-    retry,
+    retry: retry ?? ((failureCount: number) => failureCount < 3),
     select,
   });
 }

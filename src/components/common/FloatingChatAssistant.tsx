@@ -4,6 +4,7 @@ import { Button, Typography, theme } from 'antd';
 
 import { ChatAssistantPanel } from '@/components/common/ChatAssistantPanel';
 import { useTranslation } from '@/hooks/useTranslation';
+import { CHAT_ENABLED } from '@/utils/constants';
 
 export const FloatingChatAssistant = () => {
   const { t } = useTranslation();
@@ -11,6 +12,10 @@ export const FloatingChatAssistant = () => {
   const [open, setOpen] = useState(false);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [anchor, setAnchor] = useState({ x: 0, y: 0 });
+
+  if (!CHAT_ENABLED) {
+    return null;
+  }
 
   const dragStateRef = useRef({
     dragging: false,
@@ -108,11 +113,11 @@ export const FloatingChatAssistant = () => {
 
   const panelPosition = useMemo(() => {
     if (!viewport.width || !viewport.height) {
-      return { left: EDGE_GAP, top: EDGE_GAP, width: 320, maxHeight: 400 };
+      return { left: EDGE_GAP, top: EDGE_GAP, width: 380, maxHeight: 640 };
     }
 
-    const width = Math.min(980, Math.max(320, viewport.width - 16));
-    const maxHeight = Math.max(320, viewport.height - 16);
+    const width = Math.min(420, Math.max(360, viewport.width - 24));
+    const maxHeight = Math.min(760, Math.max(420, viewport.height - 24));
 
     let left = anchor.x + BUBBLE_SIZE + 10;
     if (left + width > viewport.width - EDGE_GAP) {
@@ -162,10 +167,10 @@ export const FloatingChatAssistant = () => {
             position: 'fixed',
             zIndex: 50,
             overflow: 'hidden',
-            borderRadius: token.borderRadiusLG,
+            borderRadius: 28,
             border: `1px solid ${token.colorBorderSecondary}`,
-            background: token.colorBgContainer,
-            boxShadow: token.boxShadowSecondary,
+            background: `linear-gradient(180deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 100%)`,
+            boxShadow: '0 24px 64px rgba(15, 23, 42, 0.24)',
             left: panelPosition.left,
             top: panelPosition.top,
             width: panelPosition.width,

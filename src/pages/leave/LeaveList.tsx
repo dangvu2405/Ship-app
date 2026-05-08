@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
   Card,
+  Flex,
   Form,
   Input,
   InputNumber,
@@ -10,17 +11,18 @@ import {
   Select,
   Space,
   Spin,
+  Table,
   Tag,
   Typography,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { useCustom, useList } from '@refinedev/core';
-import { PlusOutlined } from '@ant-design/icons';
+import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
-import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
-import { DataTable, type DataTableColumn } from '@/components/table';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/hooks/useAuth';
 import type { Driver } from '@/types';
 import leaveService from '@/services/leave.service';
 import { ENDPOINTS } from '@/services/endpoints';
@@ -32,8 +34,12 @@ import { FileUploader } from '@/components/common/FileUploader';
 import type { LeaveListProps, LeaveRequest, LeaveType } from './types';
 import { leaveStatusColor, leaveStatusLabel } from './types';
 
+const LEAVE_APPROVER_ROLES = ['admin', 'admin_company', 'hr_manager'] as const;
+
 export function LeaveList({ companyId, officeId, embedded = false }: LeaveListProps = {}) {
   const { t } = useTranslation();
+  const { hasRole } = useAuth();
+  const canApproveLeave = LEAVE_APPROVER_ROLES.some((r) => hasRole(r));
   const [current, setCurrent] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -59,6 +65,9 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
 
   const list = listData?.data ?? [];
   const total = listData?.total ?? 0;
+  const pendingCount = list.filter((item) => item.status === 'pending' || item.status === 'submitted').length;
+  const approvedCount = list.filter((item) => item.status === 'approved').length;
+  const rejectedCount = list.filter((item) => item.status === 'rejected').length;
 
   const { data: driversData } = useList<Driver>({ resource: 'drivers', pagination: { current: 1, pageSize: 200 } });
 
@@ -87,10 +96,19 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     method: 'get',
     queryOptions: { staleTime: 5 * 60 * 1000 },
   });
-  const leaveTypes = useMemo(
-    () => (leaveTypesResult?.data as LeaveType[] | null | undefined) ?? [],
-    [leaveTypesResult?.data],
-  );
+  const leaveTypes = useMemo<LeaveType[]>(() => {
+    const raw = leaveTypesResult?.data as unknown;
+    if (Array.isArray(raw)) {
+      return raw as LeaveType[];
+    }
+    if (raw && typeof raw === 'object') {
+      const nested = (raw as { data?: unknown }).data;
+      if (Array.isArray(nested)) {
+        return nested as LeaveType[];
+      }
+    }
+    return [];
+  }, [leaveTypesResult?.data]);
 
   const leaveTypeOptions = useMemo(
     () => leaveTypes.map((lt) => ({
@@ -114,36 +132,37 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     }
   };
 
-  const columns = useMemo<DataTableColumn<LeaveRequest>[]>(() => [
+  const columns = useMemo<ColumnsType<LeaveRequest>>(() => [
     {
       key: 'driver_id',
-      header: 'Tài xế',
-      render: (r) => driverOptions.find((d) => d.value === r.driver_id)?.label ?? `#${r.driver_id}`,
+      title: 'Tài xế',
+      render: (_, r) => driverOptions.find((d) => d.value === r.driver_id)?.label ?? `#${r.driver_id}`,
     },
     {
       key: 'leave_type',
-      header: 'Loại phép',
-      render: (r) => leaveTypes.find((lt) => lt.id === r.leave_type_id)?.name ?? `#${r.leave_type_id}`,
+      title: 'Loại phép',
+      render: (_, r) => leaveTypes.find((lt) => lt.id === r.leave_type_id)?.name ?? `#${r.leave_type_id}`,
     },
     {
       key: 'from_date',
-      header: 'Từ ngày',
-      render: (r) => <DateTimeBadge value={r.from_date} mode="date" />,
+      title: 'Từ ngày',
+      render: (_, r) => <DateTimeBadge value={r.from_date} mode="date" />,
     },
     {
       key: 'to_date',
-      header: 'Đến ngày',
-      render: (r) => <DateTimeBadge value={r.to_date} mode="date" />,
+      title: 'Đến ngày',
+      render: (_, r) => <DateTimeBadge value={r.to_date} mode="date" />,
     },
     {
       key: 'total_days',
-      header: 'Số ngày',
-      render: (r) => r.total_days != null ? `${r.total_days} ngày` : '-',
+      title: 'Số ngày',
+      render: (_, r) =>
+        r.total_days != null ? `${Number(r.total_days).toLocaleString('vi-VN')} ngày` : '-',
     },
     {
       key: 'reason',
-      header: 'Lý do',
-      render: (r) => (
+      title: 'Lý do',
+      render: (_, r) => (
         <Typography.Text ellipsis={{ tooltip: r.reason }} style={{ maxWidth: 160 }}>
           {r.reason ?? '-'}
         </Typography.Text>
@@ -151,19 +170,21 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     },
     {
       key: 'status',
-      header: t('common.status'),
-      render: (r) => <Tag color={leaveStatusColor(r.status)}>{leaveStatusLabel(r.status)}</Tag>,
+      title: t('common.status'),
+      render: (_, r) => <Tag color={leaveStatusColor(r.status)}>{leaveStatusLabel(r.status)}</Tag>,
     },
     {
       key: 'actions',
-      header: t('common.actions'),
-      render: (r) => {
+      title: t('common.actions'),
+      fixed: 'right' as const,
+      width: 160,
+      render: (_, r) => {
         const isBusy = busyId === r.id;
-        const canApprove = r.status === 'pending' || r.status === 'submitted';
-        const canCancel = r.status === 'pending' || r.status === 'submitted' || r.status === 'approved';
+        const canApprove = canApproveLeave && (r.status === 'pending' || r.status === 'submitted');
+        const canCancel = r.status === 'pending';
         return (
           <Space size={4} onClick={(e) => e.stopPropagation()}>
-            {canApprove && (
+            {canApprove ? (
               <>
                 <Button size="small" type="primary" loading={isBusy}
                   onClick={() => void runAction(r.id, () => leaveService.approve(r.id), 'Đã duyệt đơn nghỉ phép')}
@@ -172,12 +193,12 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
                   onClick={() => { setActiveRecord(r); rejectForm.resetFields(); setRejectOpen(true); }}
                 >Từ chối</Button>
               </>
-            )}
-            {canCancel && (
+            ) : null}
+            {canCancel ? (
               <Button size="small"
                 onClick={() => void runAction(r.id, () => leaveService.cancel(r.id), 'Đã hủy đơn nghỉ phép')}
               >Hủy</Button>
-            )}
+            ) : null}
             {r.rejection_reason && r.status === 'rejected' && (
               <Typography.Text type="danger" style={{ fontSize: 12 }}>{r.rejection_reason}</Typography.Text>
             )}
@@ -185,11 +206,25 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
         );
       },
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, busyId, driverOptions, leaveTypes, rejectForm]);
+  ], [t, busyId, canApproveLeave, driverOptions, leaveTypes, rejectForm]);
 
   const selectedDriverId = Form.useWatch('driver_id', createForm);
   const selectedLeaveTypeId = Form.useWatch('leave_type_id', createForm);
+  const fromDateValue = Form.useWatch('from_date', createForm);
+  const toDateValue = Form.useWatch('to_date', createForm);
+
+  useEffect(() => {
+    if (!fromDateValue || !toDateValue) {
+      return;
+    }
+    const fromTime = new Date(fromDateValue).getTime();
+    const toTime = new Date(toDateValue).getTime();
+    if (Number.isNaN(fromTime) || Number.isNaN(toTime) || toTime < fromTime) {
+      return;
+    }
+    const days = Math.floor((toTime - fromTime) / (24 * 60 * 60 * 1000)) + 1;
+    createForm.setFieldValue('total_days', days);
+  }, [fromDateValue, toDateValue, createForm]);
 
   const { data: balanceResult, isLoading: isLoadingBalance } = useCustom({
     url: ENDPOINTS.leaveOps.balance,
@@ -200,7 +235,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
   const balanceData = balanceResult?.data as { available: number; total: number; used: number; pending: number } | null | undefined;
 
   return (
-    <>
+    <div className="enterprise-page space-y-4">
       {!embedded && (
         <PageHeader
           title="Nghỉ phép"
@@ -217,13 +252,21 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
         />
       )}
 
-      <Card>
-        <Space style={{ marginBottom: 16 }} wrap>
-          {embedded && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
-              Tạo đơn nghỉ phép
+      <Card
+        className="enterprise-section-card"
+        title={<Flex align="center" gap={8}><CalendarOutlined /><span>Nghỉ phép ({total})</span></Flex>}
+        extra={
+          embedded ? (
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
+              Tạo đơn
             </Button>
-          )}
+          ) : null
+        }
+      >
+        <Flex gap={8} style={{ marginBottom: 16 }} wrap="wrap">
+          <Tag color="blue">Chờ duyệt: {pendingCount}</Tag>
+          <Tag color="green">Đã duyệt: {approvedCount}</Tag>
+          <Tag color="red">Từ chối: {rejectedCount}</Tag>
           <Select
             allowClear
             style={{ width: 200 }}
@@ -237,7 +280,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
               { label: 'Đã hủy', value: 'cancelled' },
             ]}
           />
-        </Space>
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -246,15 +289,22 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
             onRetry={() => void refetch()}
           />
         ) : (
-          <PageLoadingOverlay loading={loading} className="overflow-hidden rounded-lg">
-            <DataTable<LeaveRequest>
-              data={list}
-              columns={columns}
-              emptyMessage={t('common.noData')}
-              emptyDescription="Chưa có đơn nghỉ phép nào"
-              pagination={{ current, total, pageSize: 20, onPageChange: setCurrent }}
-            />
-          </PageLoadingOverlay>
+          <Table<LeaveRequest>
+            rowKey="id"
+            columns={columns}
+            dataSource={list}
+            loading={loading}
+            scroll={{ x: 900 }}
+            className="enterprise-table"
+            locale={{ emptyText: t('common.noData') }}
+            pagination={{
+              current,
+              total,
+              pageSize: 20,
+              showSizeChanger: false,
+              onChange: setCurrent,
+            }}
+          />
         )}
       </Card>
 
@@ -292,7 +342,24 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
             <Form.Item name="from_date" label="Từ ngày" rules={[{ required: true, message: 'Nhập ngày bắt đầu' }]}>
               <Input type="date" />
             </Form.Item>
-            <Form.Item name="to_date" label="Đến ngày" rules={[{ required: true, message: 'Nhập ngày kết thúc' }]}>
+            <Form.Item
+              name="to_date"
+              label="Đến ngày"
+              dependencies={['from_date']}
+              rules={[
+                { required: true, message: 'Nhập ngày kết thúc' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const from = getFieldValue('from_date') as string | undefined;
+                    if (!value || !from) return Promise.resolve();
+                    if (value < from) {
+                      return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
+                    }
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
+            >
               <Input type="date" />
             </Form.Item>
           </Space>
@@ -372,6 +439,6 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </div>
   );
 }

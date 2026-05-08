@@ -1,5 +1,5 @@
 import type { AxiosInstance } from 'axios';
-import { unwrapEnvelope } from './envelope';
+import { unwrapEnvelope, unwrapList } from './envelope';
 import type { ApiListPayload } from './types';
 
 export interface ResourceClientConfig {
@@ -15,7 +15,7 @@ export function createResourceClient<TItem, TCreate = Partial<TItem>, TUpdate = 
   return {
     async getList(params?: Record<string, unknown>): Promise<ApiListPayload<TItem>> {
       const response = await config.http.get(basePath, { params });
-      return unwrapEnvelope<ApiListPayload<TItem>>(response.data);
+      return unwrapList<TItem>(response.data);
     },
     async getById(id: string | number): Promise<TItem> {
       const response = await config.http.get(`${basePath}/${id}`);

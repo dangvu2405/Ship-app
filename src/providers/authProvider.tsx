@@ -3,31 +3,41 @@ import { User } from '@/types';
 import authService from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
-import { clearAuthToken, hasAuthToken, setAuthToken } from '@/lib/auth-session';
+import { clearAuthToken, hasAuthToken, setAuthToken, setRefreshToken } from '@/lib/auth-session';
 
-// Get store state outside of component
 const getAuthStoreState = () => {
   return useAuthStore.getState();
+};
+
+const setCurrentUser = (user: User | null) => {
+  useAuthStore.getState().setUser(user);
+};
+
+const getApiErrorMessage = (error: unknown) => {
+  if (!error || typeof error !== 'object' || !('response' in error)) return undefined;
+  return (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
 };
 
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
     try {
       const response = await authService.login({ email, password });
-      
+
       if (response.success && response.data?.user) {
-        // Store token in localStorage
-        if (response.data.token) {
-          setAuthToken(response.data.token);
+        const accessToken = response.data.access_token || response.data.token;
+        if (accessToken) {
+          setAuthToken(accessToken);
         }
-        // Update Zustand store
-        useAuthStore.getState().setUser(response.data.user);
+        if (response.data.refresh_token) {
+          setRefreshToken(response.data.refresh_token);
+        }
+        setCurrentUser(response.data.user);
         return {
           success: true,
           redirectTo: ROUTES.dashboard,
         };
       }
-      
+
       return {
         success: false,
         error: {
@@ -36,15 +46,10 @@ export const authProvider: AuthProvider = {
         },
       };
     } catch (error: unknown) {
-      console.log(error);
-      const errorMessage = 
-        error && typeof error === 'object' && 'response' in error
-          ? (error as { response?: { data?: { message?: string } } })?.response?.data?.message
-          : undefined;
       return {
         success: false,
         error: {
-          message: errorMessage || 'Login failed',
+          message: getApiErrorMessage(error) || 'Login failed',
           name: 'LoginError',
         },
       };
@@ -55,13 +60,11 @@ export const authProvider: AuthProvider = {
     try {
       await authService.logout();
     } catch {
-      // no-op: local logout still executes in finally
     } finally {
-      // Remove token from localStorage
       clearAuthToken();
-      useAuthStore.getState().setUser(null);
+      setCurrentUser(null);
     }
-    
+
     return {
       success: true,
       redirectTo: ROUTES.login,
@@ -73,20 +76,17 @@ export const authProvider: AuthProvider = {
     const AUTHENTICATED = { authenticated: true } as const;
     const hasToken = hasAuthToken();
 
-    // No token and no local identity means not authenticated.
     if (!hasToken) {
-      useAuthStore.getState().setUser(null);
+      setCurrentUser(null);
       return UNAUTHENTICATED;
     }
 
-    // Try to get current user from API
     const tryGetCurrentUser = async (): Promise<boolean> => {
       try {
         const response = await authService.getCurrentUser();
         const user = authService.getUserFromMeResponse(response);
         if (response.success && user) {
-          // Update store with API response
-          useAuthStore.getState().setUser(user);
+          setCurrentUser(user);
           return true;
         }
         return false;
@@ -95,10 +95,9 @@ export const authProvider: AuthProvider = {
       }
     };
 
-    // Check if user is already authenticated via API
     if (await tryGetCurrentUser()) return AUTHENTICATED;
 
-    useAuthStore.getState().setUser(null);
+    setCurrentUser(null);
     clearAuthToken();
 
     return UNAUTHENTICATED;
@@ -107,7 +106,7 @@ export const authProvider: AuthProvider = {
   onError: async (error) => {
     if (error?.status === 401) {
       clearAuthToken();
-      useAuthStore.getState().setUser(null);
+      setCurrentUser(null);
       return {
         logout: true,
         redirectTo: ROUTES.login,
@@ -124,18 +123,16 @@ export const authProvider: AuthProvider = {
       return storeState.user;
     }
 
-    // Fallback to API
     try {
       const response = await authService.getCurrentUser();
       const user = authService.getUserFromMeResponse(response);
       if (response.success && user) {
-        // Update store with API response
-        useAuthStore.getState().setUser(user);
+        setCurrentUser(user);
         return user as User;
       }
-      
+
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   },
@@ -143,12 +140,12 @@ export const authProvider: AuthProvider = {
   register: async ({ username, password }) => {
     try {
       const response = await authService.register({
-        email: username, // Use username as email for now
+        email: username,
         password,
         username,
         password_confirmation: password,
       });
-      
+
       if (response.success) {
         return {
           success: true,
@@ -164,14 +161,10 @@ export const authProvider: AuthProvider = {
         },
       };
     } catch (error: unknown) {
-      const errorMessage = 
-        error && typeof error === 'object' && 'response' in error
-          ? (error as { response?: { data?: { message?: string } } })?.response?.data?.message
-          : undefined;
       return {
         success: false,
         error: {
-          message: errorMessage || 'Registration failed',
+          message: getApiErrorMessage(error) || 'Registration failed',
           name: 'RegistrationError',
         },
       };

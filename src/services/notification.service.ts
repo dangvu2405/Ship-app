@@ -25,12 +25,12 @@ class NotificationService {
   }
 
   async markRead(id: number | string): Promise<ApiResponse<ActivityLog>> {
-    const response = await api.post(ENDPOINTS.notifications.markRead(id));
+    const response = await api.patch(ENDPOINTS.notifications.markRead(id));
     return response.data;
   }
 
   async markAllRead(): Promise<ApiResponse<void>> {
-    const response = await api.post(ENDPOINTS.notifications.markAllRead);
+    const response = await api.patch(ENDPOINTS.notifications.markAllRead);
     return response.data;
   }
 

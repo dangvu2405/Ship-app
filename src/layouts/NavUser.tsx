@@ -8,7 +8,7 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Button, Dropdown, Flex, Typography } from 'antd';
+import { Avatar, Button, Divider, Dropdown, Flex, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
@@ -37,7 +37,6 @@ export function NavUser({
         .slice(0, 2)
     : user.email?.[0].toUpperCase() || 'U';
 
-
   const handleLogout = () => {
     logout();
     navigate(ROUTES.login);
@@ -45,23 +44,16 @@ export function NavUser({
 
   const dropdownItems: MenuProps['items'] = [
     {
-      key: 'logout',
-      danger: true,
-      icon: <LogoutOutlined />,
-      label: t('auth.logout'),
-      onClick: handleLogout,
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: t('header.profile'),
+      onClick: () => navigate(ROUTES.admin.profile),
     },
     {
       key: 'notifications',
       icon: <BellOutlined />,
       label: t('header.notifications'),
       onClick: () => navigate(ROUTES.admin.notifications),
-    },
-    {
-      key: 'profile',
-      icon: <UserOutlined />,
-      label: t('header.profile'),
-      onClick: () => navigate(ROUTES.admin.profile),
     },
     {
       key: 'billing',
@@ -73,7 +65,15 @@ export function NavUser({
       key: 'settings',
       icon: <SettingOutlined />,
       label: t('header.settings'),
-      onClick: () => navigate(ROUTES.admin.settings),
+      onClick: () => navigate(ROUTES.admin.settings.root),
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      danger: true,
+      icon: <LogoutOutlined />,
+      label: t('auth.logout'),
+      onClick: handleLogout,
     },
   ];
 
@@ -81,7 +81,12 @@ export function NavUser({
     return (
       <Flex vertical align="center" gap={4}>
         <Dropdown menu={{ items: dropdownItems }} trigger={['click']} placement="topRight">
-          <Button type="text" icon={<Avatar size="small">{userInitials}</Avatar>} aria-label={user.name} />
+        <Button
+          type="text"
+          icon={<Avatar size="small">{userInitials}</Avatar>}
+          aria-label={user.name}
+          style={{ width: 40, height: 40 }}
+        />
         </Dropdown>
       </Flex>
     );
@@ -101,6 +106,7 @@ export function NavUser({
                 {user.email}
               </Typography.Text>
             </Flex>
+            <Divider type="vertical" style={{ height: 16, margin: 0 }} />
             <MoreOutlined />
           </Flex>
         </Button>

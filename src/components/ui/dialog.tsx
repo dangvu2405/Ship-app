@@ -44,7 +44,7 @@ export function DialogContent({
       centered
       width={960}
       className={className}
-      destroyOnClose
+      destroyOnHidden
     >
       {children}
     </Modal>

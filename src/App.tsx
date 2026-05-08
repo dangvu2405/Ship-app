@@ -4,10 +4,13 @@ import { queryClient } from './lib/query-client';
 import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
+import { shipEnterpriseTheme } from '@/providers/theme-provider';
 import { Toaster } from 'react-hot-toast';
 import { Fragment, Suspense, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthToken } from '@/lib/auth-session';
+import { useAuthStore } from '@/stores/auth.store';
 import { antdUtils } from './utils/antdGlobal';
-import { FloatingChatAssistant } from '@/components/common/FloatingChatAssistant';
 import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import { resources } from './providers/resources';
@@ -28,8 +31,25 @@ function TenantGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
+  const navigate = useNavigate();
   const { message, notification, modal } = AntdApp.useApp();
   const notificationProvider = useAppNotificationProvider();
+
+  useEffect(() => {
+    const handler = () => {
+      // Ensure local cleanup and navigate to login when session force-logout occurs.
+      try {
+        clearAuthToken();
+      } catch {}
+      try {
+        useAuthStore.getState().setUser(null);
+      } catch {}
+      navigate(ROUTES.login);
+    };
+
+    window.addEventListener('auth:force-logout', handler);
+    return () => window.removeEventListener('auth:force-logout', handler);
+  }, [navigate]);
 
   useEffect(() => {
     antdUtils.setMessageInstance(message);
@@ -55,7 +75,11 @@ function AppContent() {
         <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading...</div>}>
           <Routes>
             <Route path={ROUTES.login} element={<AppPages.LoginForm />} />
+            <Route path={ROUTES.noRoleAccess} element={<AppPages.NoRoleAccessPage />} />
             <Route path={ROUTES.register} element={<AppPages.RegisterForm />} />
+            <Route path={ROUTES.forgotPassword} element={<AppPages.ForgotPasswordForm />} />
+            <Route path={ROUTES.forgotPasswordVerify} element={<AppPages.ForgotPasswordVerifyForm />} />
+            <Route path={ROUTES.selectTenant} element={<AppPages.TenantSelector />} />
             <Route
               element={
                 <Authenticated key="authenticated-layout" fallback={<Navigate to={ROUTES.login} replace />}>
@@ -86,7 +110,6 @@ function AppContent() {
         <UnsavedChangesNotifier />
         <DocumentTitleHandler />
         <Toaster position="top-right" />
-        <FloatingChatAssistant />
       </TenantGuard>
     </Refine>
   );
@@ -103,7 +126,12 @@ function App() {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <ConfigProvider theme={{ algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm }}>
+      <ConfigProvider
+        theme={{
+          ...shipEnterpriseTheme,
+          algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm,
+        }}
+      >
         <AntdApp>
           <QueryClientProvider client={queryClient}>
             <AppContent />

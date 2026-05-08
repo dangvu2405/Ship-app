@@ -2,15 +2,15 @@ import { useEffect } from 'react';
 import { Alert, Button, Form, Space } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { useLocation, useParams } from 'react-router-dom';
-import { useCreate, useNavigation, useOne, useUpdate } from '@refinedev/core';
+import { useCreate, useOne, useUpdate } from '@refinedev/core';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { DriverForm } from './DriverForm';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogBase } from '@/hooks/useFormDialogBase';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type { Driver } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { mergeVnAddressIntoPayload } from '@/utils/vnAddressForm';
@@ -83,16 +83,10 @@ interface DriverFormDialogProps {
 
 export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: DriverFormDialogProps = {}) {
   const { t } = useTranslation();
-  const { id } = useParams<{ id?: string }>();
-  const location = useLocation();
-  const { list } = useNavigation();
-  const [form] = Form.useForm();
-  const isControlled = typeof open === 'boolean';
-  const resolvedId = recordId ?? (id ? Number(id) : undefined);
-  const hasRecordId = !!resolvedId;
-  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
-  const isEdit = hasRecordId && !isViewMode;
-  const dialogOpen = isControlled ? open : true;
+  const feedback = useAppFeedback();
+  const { form, resolvedId, hasRecordId, isViewMode, isEdit, dialogOpen, handleClose } = useFormDialogBase({
+    open, mode, recordId, resource: 'drivers', onClose,
+  });
 
   const { data, isLoading: isLoadingData } = useOne<Driver>({
     resource: 'drivers',
@@ -103,13 +97,6 @@ export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: D
   const { mutate: createItem, isLoading: isCreating } = useCreate<Driver>();
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<Driver>();
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
-
-  const handleClose = () => {
-    onClose?.();
-    if (!isControlled) {
-      list('drivers');
-    }
-  };
 
   const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
     form,
@@ -126,13 +113,13 @@ export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: D
         { resource: 'drivers', id: resolvedId, values: payload },
         {
           onSuccess: () => {
-            toast.success(t('notifications.updateSuccess', { item: t('drivers.title') }));
+            feedback.success(t('notifications.updateSuccess', { item: t('drivers.title') }));
             onSuccess?.();
             handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
-            toast.error(getErrorMessage(error) || t('notifications.updateError', { item: t('drivers.title') }));
+            feedback.error(getErrorMessage(error) || t('notifications.updateError', { item: t('drivers.title') }));
           },
         }
       );
@@ -141,13 +128,13 @@ export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: D
         { resource: 'drivers', values: payload },
         {
           onSuccess: () => {
-            toast.success(t('notifications.createSuccess', { item: t('drivers.title') }));
+            feedback.success(t('notifications.createSuccess', { item: t('drivers.title') }));
             onSuccess?.();
             handleClose();
           },
           onError: (error) => {
             if (!shouldShowLocalErrorToast(error)) return;
-            toast.error(getErrorMessage(error) || t('notifications.createError', { item: t('drivers.title') }));
+            feedback.error(getErrorMessage(error) || t('notifications.createError', { item: t('drivers.title') }));
           },
         }
       );
@@ -204,6 +191,7 @@ export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: D
           style={{ marginBottom: 16 }}
         />
         <Form
+          name="driver-form"
           form={form}
           onFinish={handleSubmit}
           layout="vertical"
@@ -223,7 +211,7 @@ export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: D
         title={title}
         description={description}
         footer={footer}
-        width={896}
+        width="min(56rem, calc(100vw - 2rem))"
       >
         {body}
       </ResourceFormModal>

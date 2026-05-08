@@ -1,25 +1,54 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigation } from '@refinedev/core';
-import { Button, Card, List, Select, Space, Tabs, Tag } from 'antd';
-import { NoImageAvatar } from '@/components/common/NoImageAvatar';
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import { useListFilters } from '@/hooks/useListFilters';
+import { useTable } from '@refinedev/antd';
+import type { CrudFilter } from '@refinedev/core';
+import { Button, Card, Flex, Input, Select, Space, Table, Tag, Tooltip } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import {
+  CarOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
-import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { VehicleFormDialog } from './VehicleFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type { Vehicle } from '@/types';
-import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
-import { useResourceListQuery } from '@/hooks/useResourceListQuery';
+
+
+const VEHICLE_TYPE_OPTIONS = ['truck', 'van', 'car', 'motorcycle'] as const;
+
+function vehicleStatusColor(status: string): string {
+  switch (status) {
+    case 'active':
+      return 'success';
+    case 'maintenance':
+      return 'warning';
+    case 'broken':
+      return 'error';
+    case 'inactive':
+    case 'out_of_service':
+      return 'default';
+    default:
+      return 'processing';
+  }
+}
 
 export function VehiclesList() {
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
   const { show } = useNavigation();
   const { mutate: deleteItem } = useResourceDeleteMutation('vehicles');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -27,69 +56,51 @@ export function VehiclesList() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
   const [activeId, setActiveId] = useState<number | undefined>(undefined);
-  const [current, setCurrent] = useState(1);
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [appliedKeyword, setAppliedKeyword] = useState('');
-  const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
+  const { inputs: filterInputs, applied: filterApplied, setInput: setFilterInput, apply: applyFilters, clear: clearFiltersBase } = useListFilters({
+    plate: '',
+    type: undefined as string | undefined,
+    status: undefined as string | undefined,
+  });
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  const statusSelectOptions = useMemo(
-    () => [
-      { value: 'all', label: t('common.all') },
-      { value: 'active', label: t('common.active') },
-      { value: 'inactive', label: t('common.inactive') },
-    ],
-    [t],
-  );
+  const permanentFilters = useMemo<CrudFilter[]>(() => {
+    const f: CrudFilter[] = [];
+    if (filterApplied.plate.trim()) {
+      f.push({ field: 'plate_number', operator: 'contains', value: filterApplied.plate.trim() });
+    }
+    if (filterApplied.status) {
+      f.push({ field: 'status', operator: 'eq', value: filterApplied.status });
+    }
+    if (filterApplied.type) {
+      f.push({ field: 'type', operator: 'eq', value: filterApplied.type });
+    }
+    return f;
+  }, [filterApplied]);
 
-  const statusTabsItems = useMemo(
-    () => [
-      { key: 'all', label: t('common.all') },
-      { key: 'active', label: t('common.active') },
-      { key: 'inactive', label: t('common.inactive') },
-    ],
-    [t],
-  );
-
-  const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Vehicle>({
+  const { tableProps, tableQuery } = useTable<Vehicle>({
     resource: 'vehicles',
-    current,
-    pageSize: 15,
-    filters: [
-      ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
-      ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
-    ],
+    pagination: { pageSize: 15 },
+    filters: { permanent: permanentFilters },
+    syncWithLocation: true,
   });
 
-  const safeRefetch = useSafeRefetch('vehicles-vehicleslist', refetch);
+  const safeRefetch = useSafeRefetch('vehicles-vehicleslist', tableQuery.refetch);
 
-  const applyStatusFilter = (raw: string) => {
-    const next = raw === 'all' ? undefined : raw;
-    setAppliedStatus(next);
-    setCurrent(1);
+  const clearFilters = () => {
+    clearFiltersBase();
+    setSelectedRowKeys([]);
   };
 
-  const handleSearchFilters = () => {
-    setAppliedKeyword(searchKeyword.trim());
-    setCurrent(1);
-  };
-
-  const handleClearFilters = () => {
-    setSearchKeyword('');
-    setAppliedKeyword('');
-    setAppliedStatus(undefined);
-    setCurrent(1);
-  };
-
-  const handleDelete = useCallback((vehicle: Vehicle) => {
+  const handleDelete = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setDeleteDialogOpen(true);
-  }, []);
+  };
 
-  const handleOpenDialog = useCallback((mode: 'create' | 'edit' | 'show', id?: number) => {
+  const handleOpenDialog = (mode: 'create' | 'edit' | 'show', id?: number) => {
     setDialogMode(mode);
     setActiveId(id);
     setDialogOpen(true);
-  }, []);
+  };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
@@ -101,12 +112,10 @@ export function VehiclesList() {
     if (!selectedVehicle) return;
 
     deleteItem(
-      {
-        id: selectedVehicle.id,
-      },
+      { id: selectedVehicle.id },
       {
         onSuccess: () => {
-          toast.success(t('notifications.deleteSuccess', { item: t('vehicles.title') }));
+          feedback.success(t('notifications.deleteSuccess', { item: t('vehicles.title') }));
           setDeleteDialogOpen(false);
           setSelectedVehicle(null);
           void safeRefetch(true);
@@ -115,10 +124,9 @@ export function VehiclesList() {
           if (!shouldShowLocalErrorToast(error)) {
             return;
           }
-
-          toast.error(t('notifications.deleteError', { item: t('vehicles.title') }));
+          feedback.error(t('notifications.deleteError', { item: t('vehicles.title') }));
         },
-      }
+      },
     );
   };
 
@@ -127,110 +135,213 @@ export function VehiclesList() {
     { label: t('vehicles.title') },
   ];
 
-  const listData = data?.data ?? [];
-  const total = data?.total ?? 0;
-  const pageSize = 15;
+  const total = tableQuery.data?.total ?? 0;
+  const tableRows = tableProps.dataSource ?? [];
+
+  const handleExportCsv = () => {
+    const rows = tableRows.map((row) => ({
+      plate_number: row.plate_number,
+      vehicle_type: row.vehicle_type?.name ?? row.type ?? '',
+      status: row.status,
+      max_load_ton: row.max_load_ton ?? row.capacity ?? '',
+      warning_count: row.status === 'maintenance' || row.status === 'broken' ? 1 : 0,
+    }));
+    const header = ['plate_number', 'vehicle_type', 'status', 'max_load_ton', 'warning_count'];
+    const csv = [header.join(','), ...rows.map((row) => header.map((key) => JSON.stringify(String((row as Record<string, unknown>)[key] ?? ''))).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vehicles.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const columns: ColumnsType<Vehicle> = useMemo(
+    () => [
+      {
+        title: t('vehicles.plateNumber'),
+        dataIndex: 'plate_number',
+        key: 'plate_number',
+        render: (v: string, row) => (
+          <Space wrap size={4}>
+            <Button type="link" style={{ padding: 0 }} onClick={() => show('vehicles', row.id)}>
+              {v}
+            </Button>
+            {(row.status === 'broken' || row.status === 'maintenance') && (
+              <Tooltip title={t('vehicles.dispatchExclusionWarning')}>
+                <Tag icon={<WarningOutlined />} color="warning">
+                  {t('vehicles.dispatchExclusionShort')}
+                </Tag>
+              </Tooltip>
+            )}
+          </Space>
+        ),
+      },
+      {
+        title: t('vehicles.vehicleTypeCatalog'),
+        key: 'vehicle_type_id',
+        render: (_: unknown, row) =>
+          row.vehicle_type?.name ?? (row.vehicle_type_id != null ? `#${row.vehicle_type_id}` : row.type ?? '—'),
+      },
+      {
+        title: t('vehicles.maxLoadTon'),
+        key: 'max_load_ton',
+        align: 'right',
+        render: (_: unknown, row) =>
+          row.max_load_ton != null ? `${row.max_load_ton}` : row.capacity != null ? `${row.capacity}` : '—',
+      },
+      {
+        title: t('drivers.title'),
+        key: 'responsible_driver',
+        render: () => '—',
+      },
+      {
+        title: t('dashboard.alertsTitle'),
+        key: 'warning_count',
+        align: 'center',
+        render: (_: unknown, row) => (row.status === 'maintenance' || row.status === 'broken' ? 1 : 0),
+      },
+      {
+        title: t('common.status'),
+        dataIndex: 'status',
+        key: 'status',
+        render: (s: string) => (
+          <Tag color={vehicleStatusColor(s)}>{t(`vehicles.status.${s}`, { defaultValue: s })}</Tag>
+        ),
+      },
+      {
+        title: t('vehicles.currentOdometer'),
+        dataIndex: 'current_odometer_km',
+        key: 'current_odometer_km',
+        align: 'right',
+        render: (v: number | null | undefined) => (v != null ? `${v}` : '—'),
+      },
+      {
+        title: t('common.actions'),
+        key: 'actions',
+        fixed: 'right',
+        width: 140,
+        render: (_: unknown, row) => (
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined aria-hidden />}
+              aria-label={t('common.view')}
+              onClick={() => show('vehicles', row.id)}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined aria-hidden />}
+              aria-label={t('common.edit')}
+              onClick={() => handleOpenDialog('edit', row.id)}
+            />
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined aria-hidden />}
+              aria-label={t('common.delete')}
+              onClick={() => handleDelete(row)}
+            />
+          </Space>
+        ),
+      },
+    ],
+    [show, t],
+  );
+
+  if (tableQuery.isError) {
+    return (
+      <>
+        <PageHeader title={t('vehicles.title')} description={t('vehicles.description')} breadcrumb={breadcrumb} />
+        <ErrorState
+          title={t('common.loadError')}
+          description={t('common.tryAgainDescription')}
+          onRetry={() => void tableQuery.refetch()}
+        />
+      </>
+    );
+  }
 
   return (
-    <>
+    <div className="enterprise-page vehicles-page space-y-4">
       <PageHeader
         title={t('vehicles.title')}
         description={t('vehicles.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
-            {t('vehicles.createVehicle')}
-          </Button>
+          <Space>
+            <Button icon={<DownloadOutlined />} onClick={handleExportCsv}>
+              {t('common.export')}
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
+              {t('vehicles.createVehicle')}
+            </Button>
+          </Space>
         }
       />
 
-      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">{t('vehicles.title')}</h2>
-          <p className="text-sm text-slate-500">
-            {total} {t('common.records')}
-          </p>
-        </div>
-        <Tabs activeKey={appliedStatus ?? 'all'} onChange={applyStatusFilter} items={statusTabsItems} />
-        <div className="contents min-w-0 w-full">
-          <ListPageFilters variant="grid-2" className="rounded-xl border bg-white p-4">
-            <ListPageFilters.Search
-              placeholder={t('common.search')}
-              value={searchKeyword}
-              onChange={setSearchKeyword}
-            />
-            <Select
-              className="list-page-filters__radix-select"
-              value={appliedStatus ?? 'all'}
-              options={statusSelectOptions}
-              onChange={(v) => applyStatusFilter(String(v))}
-              placeholder={t('common.status')}
-            />
-          </ListPageFilters>
-          <div className="list-page-filters__btn-row">
+      <Card
+        className="enterprise-section-card"
+        title={<Flex align="center" gap={8}><CarOutlined /><span>{t('vehicles.title')}</span></Flex>}
+        extra={<Tag>{total} {t('common.records')}</Tag>}
+        styles={{ body: { padding: 16 } }}
+      >
+        <ListPageFilters variant="grid-3" className="enterprise-filter-bar mb-4">
+          <Input
+            placeholder={t('vehicles.plateSearchPlaceholder')}
+            value={filterInputs.plate}
+            onChange={(e) => setFilterInput('plate', e.target.value)}
+            onPressEnter={applyFilters}
+            allowClear
+            onClear={() => setFilterInput('plate', '')}
+          />
+          <Select
+            className="w-full"
+            allowClear
+            placeholder={t('common.status')}
+            value={filterInputs.status}
+            onChange={(v) => setFilterInput('status', v)}
+            options={[
+              { value: 'active', label: t('vehicles.status.active') },
+              { value: 'maintenance', label: t('vehicles.status.maintenance') },
+              { value: 'inactive', label: t('vehicles.status.inactive') },
+              { value: 'broken', label: t('vehicles.status.broken') },
+              { value: 'out_of_service', label: t('vehicles.status.out_of_service') },
+            ]}
+          />
+          <Select
+            className="w-full"
+            allowClear
+            placeholder={t('vehicles.type')}
+            value={filterInputs.type}
+            onChange={(v) => setFilterInput('type', v)}
+            options={VEHICLE_TYPE_OPTIONS.map((v) => ({ value: v, label: v }))}
+          />
+          <div className="list-page-filters__btn-row col-span-full">
             <ListPageFilters.Actions
-              onSearch={handleSearchFilters}
-              onReset={handleClearFilters}
-              busy={isFetching && !isLoading}
+              onSearch={applyFilters}
+              onReset={clearFilters}
+              busy={tableQuery.isFetching && !tableQuery.isLoading}
             />
           </div>
-        </div>
+        </ListPageFilters>
 
-        {isError ? (
-          <ErrorState
-            title={t('common.loadError')}
-            description={t('common.tryAgainDescription')}
-            onRetry={() => void safeRefetch(true)}
-          />
-        ) : (
-          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-            <List
-              itemLayout="vertical"
-              size="large"
-              dataSource={listData}
-              locale={{
-                emptyText: t('emptyState.listDescription', { resource: t('vehicles.title') }),
-              }}
-              pagination={{
-                current,
-                total,
-                pageSize,
-                onChange: setCurrent,
-              }}
-              renderItem={(item) => (
-                <List.Item
-                  key={item.id}
-                  actions={[
-                    <Button key="view" type="text" size="small" icon={<EyeOutlined aria-hidden />} aria-label={t('common.view')} onClick={() => show('vehicles', item.id)} />,
-                    <Button key="edit" type="text" size="small" icon={<EditOutlined aria-hidden />} aria-label={t('common.edit')} onClick={() => handleOpenDialog('edit', item.id)} />,
-                    <Button key="delete" type="text" size="small" danger icon={<DeleteOutlined aria-hidden />} aria-label={t('common.delete')} onClick={() => handleDelete(item)} />,
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={<NoImageAvatar src={item.image_url} />}
-                    title={(
-                      <Button type="link" style={{ padding: 0 }} onClick={() => show('vehicles', item.id)}>
-                        {item.plate_number}
-                      </Button>
-                    )}
-                    description={(
-                      <Space wrap size={[8, 8]}>
-                        <span>{`${t('vehicles.type')}: ${item.type || '-'}`}</span>
-                        <span>{`${t('vehicles.brand')}: ${item.brand || '-'}`}</span>
-                        <span>{`${t('vehicles.model')}: ${item.model || '-'}`}</span>
-                        <span>{`${t('vehicles.year')}: ${item.year || '-'}`}</span>
-                        <span>{`${t('vehicles.capacity')}: ${item.capacity ? `${item.capacity} ${t('vehicles.capacityUnit')}` : '-'}`}</span>
-                        <Tag color={item.status === 'active' ? 'success' : 'default'}>
-                          {item.status === 'active' ? t('common.active') : t('common.inactive')}
-                        </Tag>
-                      </Space>
-                    )}
-                  />
-                </List.Item>
-              )}
-            />
-          </PageLoadingOverlay>
-        )}
+        <Table<Vehicle>
+          {...tableProps}
+          rowKey="id"
+          columns={columns}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+          }}
+          scroll={{ x: 'max-content' }}
+          loading={tableProps.loading}
+          className="enterprise-table"
+        />
       </Card>
 
       <DeleteConfirmDialog
@@ -248,6 +359,6 @@ export function VehiclesList() {
           void safeRefetch(true);
         }}
       />
-    </>
+    </div>
   );
 }

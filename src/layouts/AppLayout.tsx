@@ -32,7 +32,6 @@ export function AppLayout() {
           width={260}
           collapsed={collapsed}
           onCollapse={(c) => setSidebarOpen(!c)}
-          collapsible
           breakpoint="lg"
           collapsedWidth={72}
           style={{
@@ -80,7 +79,7 @@ export function AppLayout() {
                   margin: '0 auto',
                   width: '100%',
                   maxWidth: 1600,
-                  padding: '16px 16px 24px',
+                  padding: `${token.paddingMD}px ${token.paddingMD}px ${token.paddingLG}px`,
                 }}
               >
                 <Suspense fallback={<AppLoadingSpin variant="outlet" />}>

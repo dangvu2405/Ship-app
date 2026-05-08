@@ -12,9 +12,10 @@ export interface ApplyOfficeSchedulePayload {
 
 class WorkScheduleService {
   async listTemplates(companyId: number): Promise<WorkScheduleTemplate[]> {
-    const response = await api.get<ApiResponse<{ templates?: WorkScheduleTemplate[] }>>(ENDPOINTS.workScheduleTemplates, {
-      params: { company_id: companyId },
-    });
+    const response = await api.get<ApiResponse<{ templates?: WorkScheduleTemplate[] }>>(
+      ENDPOINTS.driverSchedules.base,
+      { params: { company_id: companyId } },
+    );
     const body = response.data;
     if (!body?.success || !body.data) return [];
     const templates = body.data.templates;

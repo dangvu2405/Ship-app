@@ -5,6 +5,7 @@ import { queryClient } from '@/lib/query-client';
 import { Tenant, User } from '@/types';
 import authService from '@/services/auth.service';
 import toast from 'react-hot-toast';
+import { STORAGE_KEYS } from '@/utils/constants';
 import {
   clearAuthToken,
   clearTenantId,
@@ -23,7 +24,7 @@ interface AuthState {
   currentTenantId: number | null;
   /** Danh sách tenant chờ user chọn sau khi login (chỉ có khi user thuộc ≥ 2 tenant). */
   pendingTenants: Tenant[];
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   socialLogin: (credentials: { provider: 'google' | 'facebook' | 'apple'; access_token?: string; id_token?: string }) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -72,15 +73,15 @@ export const useAuthStore = create<AuthState>()(
       currentTenantId: null,
       pendingTenants: [],
 
-      login: async (email: string, password: string) => {
+      login: async (email: string, password: string, rememberMe = true) => {
         try {
           set({ isLoading: true });
           const response = await authService.login({ email, password });
           if (response.success && response.data?.user) {
             const accessToken = response.data.access_token || response.data.token;
             const refreshToken = response.data.refresh_token;
-            if (accessToken) setAuthToken(accessToken);
-            if (refreshToken) setRefreshToken(refreshToken);
+            if (accessToken) setAuthToken(accessToken, rememberMe);
+            if (refreshToken) setRefreshToken(refreshToken, rememberMe);
 
             const user: User = { ...response.data.user, tenants: response.data.tenants ?? response.data.user.tenants ?? [] };
             const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
@@ -180,7 +181,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'auth-storage:v1',
+      name: STORAGE_KEYS.AUTH_STORAGE,
       storage: createSafeStorage(),
       partialize: (state) => ({
         user: state.user,

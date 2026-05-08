@@ -1,0 +1,23 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@import 'variables';
+@import 'mixins';
+@import 'typography';
+@import 'components';
+@import 'utilities';
+
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-sider {
+  background: hsl(var(--sidebar-background));
+}
+
+.dark {
+  .ant-layout-sider {
+    background: hsl(var(--sidebar-background));
+  }
+}

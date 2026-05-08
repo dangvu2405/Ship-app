@@ -66,8 +66,39 @@ class DriverScheduleService {
   }
 
   async list(params: Record<string, unknown> = {}): Promise<ListResult<DriverSchedule>> {
-    const res = await api.get(ENDPOINTS.workforce.driverSchedules, { params });
-    return getListCompat<DriverSchedule>(res.data);
+    try {
+      const res = await api.get(ENDPOINTS.workSchedules.base, {
+        params,
+        skipErrorToast: true,
+      } as Parameters<typeof api.get>[1]);
+      return getListCompat<DriverSchedule>(res.data);
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) throw err;
+      const fallback = await api.get(ENDPOINTS.workforce.driverSchedules, { params });
+      return getListCompat<DriverSchedule>(fallback.data);
+    }
+  }
+
+  async generate(payload: {
+    driver_ids?: number[];
+    office_id?: number;
+    from: string;
+    to: string;
+    template_id?: number;
+    shift_code?: string;
+    skip_weekends?: boolean;
+  }): Promise<ApiResponse<{ created?: number; skipped?: number }>> {
+    try {
+      const res = await api.post(ENDPOINTS.workSchedules.generate, payload, {
+        skipErrorToast: true,
+      } as Parameters<typeof api.post>[2]);
+      return res.data;
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) throw err;
+      return { success: false, message: 'Endpoint chưa sẵn sàng', data: {} } as ApiResponse<{ created?: number; skipped?: number }>;
+    }
   }
 
   async submit(id: number): Promise<ApiResponse<DriverSchedule>> {

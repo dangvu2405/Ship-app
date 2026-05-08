@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ActivityLog } from '@/types';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ActivityLog, PaginatedResponse } from '@/types';
 import notificationService from '@/services/notification.service';
+
+export const NOTIFICATIONS_LIST_QUERY_KEY = ['notifications', 'list'] as const;
+export const NOTIFICATIONS_UNREAD_QUERY_KEY = ['notifications', 'unread-count'] as const;
 
 interface UseNotificationsReturn {
   activityLogs: ActivityLog[];
@@ -14,93 +18,56 @@ interface UseNotificationsReturn {
 export const useNotifications = (options?: {
   enablePolling?: boolean;
   pollingInterval?: number;
+  /** When false, skip list fetch (e.g. until header popover opens). Unread count still loads. */
+  fetchList?: boolean;
 }): UseNotificationsReturn => {
-  const { enablePolling = false, pollingInterval = 60000 } = options ?? {};
+  const { enablePolling = false, pollingInterval = 60000, fetchList = true } = options ?? {};
+  const queryClient = useQueryClient();
 
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [activityLoading, setActivityLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetchNotifications = useCallback(async () => {
-    try {
+  const listQuery = useQuery({
+    queryKey: NOTIFICATIONS_LIST_QUERY_KEY,
+    enabled: fetchList,
+    queryFn: async () => {
       const res = await notificationService.getList({ per_page: 50 });
-      if (res.data?.data) {
-        setActivityLogs(res.data.data);
-      }
-    } catch {
-      // silently fail — notifications are non-critical
-    }
-  }, []);
+      const page = res.data as PaginatedResponse<ActivityLog> | undefined;
+      if (page?.data && Array.isArray(page.data)) return page.data;
+      return [];
+    },
+  });
 
-  const fetchUnreadCount = useCallback(async () => {
-    try {
+  const unreadQuery = useQuery({
+    queryKey: NOTIFICATIONS_UNREAD_QUERY_KEY,
+    queryFn: async () => {
       const res = await notificationService.getUnreadCount();
-      if (typeof res.data?.count === 'number') {
-        setUnreadCount(res.data.count);
-      }
-    } catch {
-      // silently fail
-    }
-  }, []);
+      return typeof res.data?.count === 'number' ? res.data.count : 0;
+    },
+    refetchInterval: enablePolling ? pollingInterval : false,
+  });
 
   const refetchActivityLogs = useCallback(async () => {
-    setActivityLoading(true);
-    try {
-      await Promise.all([fetchNotifications(), fetchUnreadCount()]);
-    } finally {
-      setActivityLoading(false);
-    }
-  }, [fetchNotifications, fetchUnreadCount]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_LIST_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_UNREAD_QUERY_KEY }),
+    ]);
+  }, [queryClient]);
 
-  // Initial fetch
-  useEffect(() => {
-    void refetchActivityLogs();
-  }, [refetchActivityLogs]);
-
-  // Polling — only schedule unread count to keep traffic low
-  useEffect(() => {
-    if (!enablePolling) return;
-
-    const schedule = () => {
-      pollTimer.current = setTimeout(() => {
-        void fetchUnreadCount();
-        schedule();
-      }, pollingInterval);
-    };
-
-    schedule();
-    return () => {
-      if (pollTimer.current !== null) clearTimeout(pollTimer.current);
-    };
-  }, [enablePolling, pollingInterval, fetchUnreadCount]);
-
-  const markAsRead = useCallback(async (id: number | string) => {
-    try {
+  const markAsRead = useCallback(
+    async (id: number | string) => {
       await notificationService.markRead(id);
-      setActivityLogs((prev) =>
-        prev.map((log) => (log.id === id ? { ...log, read: true } : log)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch {
-      // silently fail
-    }
-  }, []);
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    [queryClient],
+  );
 
   const markAllAsRead = useCallback(async () => {
-    try {
-      await notificationService.markAllRead();
-      setActivityLogs((prev) => prev.map((log) => ({ ...log, read: true })));
-      setUnreadCount(0);
-    } catch {
-      // silently fail
-    }
-  }, []);
+    await notificationService.markAllRead();
+    await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  }, [queryClient]);
 
   return {
-    activityLogs,
-    activityLoading,
-    unreadCount,
+    activityLogs: listQuery.data ?? [],
+    activityLoading: listQuery.isLoading,
+    unreadCount: unreadQuery.data ?? 0,
     refetchActivityLogs,
     markAsRead,
     markAllAsRead,

@@ -1,32 +1,25 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Select } from 'antd';
+import { Button, Card, Input, Result, Select, Space, Table, Tabs, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SearchField } from '@/components/common/SearchField';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ListPageFilters } from '@/components/common/ListPageFilters';
 import { ErrorState } from '@/components/common/ErrorState';
-import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { CompanyFormDialog } from './CompanyFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
+import { useListFilters } from '@/hooks/useListFilters';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type { Company } from '@/types';
-import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
+const { Text } = Typography;
+
 export function CompaniesList() {
   const { t } = useTranslation();
+  const toast = useAppFeedback();
   const { show } = useNavigation();
   const { mutate: deleteItem } = useDelete();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -35,47 +28,29 @@ export function CompaniesList() {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'show'>('create');
   const [activeId, setActiveId] = useState<number | undefined>(undefined);
   const [current, setCurrent] = useState(1);
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
-  const [appliedKeyword, setAppliedKeyword] = useState('');
-  const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
 
-  const { data, isLoading, isError, refetch } = useList<Company>({
+  const { inputs: filterInputs, applied: filterApplied, setInput: setFilterInput, apply: applyFilters, clear: clearFilters } = useListFilters({
+    keyword: '',
+    status: undefined as string | undefined,
+  });
+
+  const { data, isLoading, isError, error: listError, refetch } = useList<Company>({
     resource: 'companies',
-    pagination: {
-      current,
-      pageSize: 15,
-    },
+    pagination: { current, pageSize: 15 },
     filters: [
-      ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
-      ...(appliedStatus ? [{ field: 'status', operator: 'eq' as const, value: appliedStatus }] : []),
+      ...(filterApplied.keyword.trim() ? [{ field: 'search', operator: 'contains' as const, value: filterApplied.keyword.trim() }] : []),
+      ...(filterApplied.status ? [{ field: 'status', operator: 'eq' as const, value: filterApplied.status }] : []),
     ],
   });
 
-  const handleSearchFilters = () => {
-    setAppliedKeyword(searchKeyword.trim());
-    setAppliedStatus(selectedStatus);
-    setCurrent(1);
-  };
-
-  const handleClearFilters = () => {
-    setSearchKeyword('');
-    setSelectedStatus(undefined);
-    setAppliedKeyword('');
-    setAppliedStatus(undefined);
-    setCurrent(1);
-  };
+  const handleApplyFilters = () => { applyFilters(); setCurrent(1); };
+  const handleClearFilters = () => { clearFilters(); setCurrent(1); };
 
   const handleStatusTabChange = (value: string) => {
-    const nextStatus = value === 'all' ? undefined : value;
-    setSelectedStatus(nextStatus);
-    setAppliedStatus(nextStatus);
+    const next = value === 'all' ? undefined : value;
+    setFilterInput('status', next);
+    applyFilters();
     setCurrent(1);
-  };
-
-  const handleDelete = (company: Company) => {
-    setSelectedCompany(company);
-    setDeleteDialogOpen(true);
   };
 
   const handleOpenDialog = (mode: 'create' | 'edit' | 'show', id?: number) => {
@@ -92,77 +67,65 @@ export function CompaniesList() {
 
   const confirmDelete = () => {
     if (!selectedCompany) return;
-
     deleteItem(
-      {
-        resource: 'companies',
-        id: selectedCompany.id,
-      },
+      { resource: 'companies', id: selectedCompany.id },
       {
         onSuccess: () => {
           toast.success(t('notifications.deleteSuccess', { item: t('companies.title') }));
           setDeleteDialogOpen(false);
           setSelectedCompany(null);
-          refetch();
+          void refetch();
         },
         onError: (error) => {
-          if (!shouldShowLocalErrorToast(error)) {
-            return;
-          }
-
+          if (!shouldShowLocalErrorToast(error)) return;
           toast.error(t('notifications.deleteError', { item: t('companies.title') }));
         },
       }
     );
   };
 
-  const columns: DataTableColumn<Company>[] = [
-    { key: 'code', header: t('companies.code'), dataIndex: 'code' },
-    { key: 'name', header: t('companies.name'), dataIndex: 'name' },
-    { key: 'tax_code', header: t('companies.taxCode'), dataIndex: 'tax_code' },
-    { key: 'address', header: t('companies.address'), dataIndex: 'address' },
-    { key: 'phone', header: t('companies.phone'), dataIndex: 'phone' },
-    { key: 'email', header: t('companies.email'), dataIndex: 'email' },
+  const columns = useMemo<ColumnsType<Company>>(() => [
     {
-      key: 'status',
-      header: t('common.status'),
+      title: t('companies.code'),
+      dataIndex: 'code',
+      key: 'code',
+      width: 120,
+      render: (code: string, row) => (
+        <Button type="link" style={{ padding: 0 }} onClick={() => show('companies', row.id)}>
+          {code ?? `#${row.id}`}
+        </Button>
+      ),
+    },
+    { title: t('companies.name'), dataIndex: 'name', key: 'name', ellipsis: true },
+    { title: t('companies.taxCode'), dataIndex: 'tax_code', key: 'tax_code', width: 140 },
+    { title: t('companies.phone'), dataIndex: 'phone', key: 'phone', width: 130 },
+    { title: t('companies.email'), dataIndex: 'email', key: 'email', ellipsis: true },
+    {
+      title: t('common.status'),
       dataIndex: 'status',
-      render: (item) => (
-        <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
-          {item.status === 'active' ? t('common.active') : t('common.inactive')}
-        </Badge>
+      key: 'status',
+      width: 110,
+      render: (s: string) => (
+        <Tag color={s === 'active' ? 'success' : 'default'}>
+          {s === 'active' ? t('common.active') : t('common.inactive')}
+        </Tag>
       ),
     },
     {
+      title: t('common.actions'),
       key: 'actions',
-      header: t('common.actions'),
-      render: (record) => (
-        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('common.actions')}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => show('companies', record.id)}>
-                <Eye className="h-4 w-4 mr-2" />
-                {t('common.view')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleOpenDialog('edit', record.id)}>
-                <Edit className="h-4 w-4 mr-2" />
-                {t('common.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(record)}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                {t('common.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      fixed: 'right',
+      width: 120,
+      render: (_, row) => (
+        <Space size="small">
+          <Button type="text" size="small" icon={<EyeOutlined aria-hidden />} aria-label={t('common.view')} onClick={() => show('companies', row.id)} />
+          <Button type="text" size="small" icon={<EditOutlined aria-hidden />} aria-label={t('common.edit')} onClick={() => handleOpenDialog('edit', row.id)} />
+          <Button type="text" size="small" danger icon={<DeleteOutlined aria-hidden />} aria-label={t('common.delete')}
+            onClick={() => { setSelectedCompany(row); setDeleteDialogOpen(true); }} />
+        </Space>
       ),
     },
-  ];
+  ], [show, t]);
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },
@@ -171,82 +134,101 @@ export function CompaniesList() {
 
   const listData = data?.data ?? [];
   const total = data?.total ?? 0;
-  const pageSize = 15;
+
+  if (isError) {
+    const status = (listError as { statusCode?: number; status?: number })?.statusCode ?? (listError as { status?: number })?.status;
+    if (status === 403) {
+      return (
+        <>
+          <PageHeader title={t('companies.title')} description={t('companies.description')} breadcrumb={breadcrumb} />
+          <Result status="403" title="403" subTitle={t('common.forbidden')} />
+        </>
+      );
+    }
+    return (
+      <>
+        <PageHeader title={t('companies.title')} description={t('companies.description')} breadcrumb={breadcrumb} />
+        <ErrorState title={t('common.loadError')} description={t('common.tryAgainDescription')} onRetry={() => void refetch()} />
+      </>
+    );
+  }
 
   return (
-    <>
+    <div className="enterprise-page space-y-4">
       <PageHeader
         title={t('companies.title')}
         description={t('companies.description')}
         breadcrumb={breadcrumb}
         actions={
-          <Button onClick={() => handleOpenDialog('create')} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
             {t('companies.createCompany')}
           </Button>
         }
       />
 
-      <Card className="rounded-xl shadow-sm border">
-        <CardContent className="p-6 space-y-4">
-          <Tabs value={appliedStatus ?? 'all'} onValueChange={handleStatusTabChange}>
-            <TabsList variant="line" className="w-full justify-start">
-              <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
-              <TabsTrigger value="active">{t('common.active')}</TabsTrigger>
-              <TabsTrigger value="inactive">{t('common.inactive')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <Card className="enterprise-section-card" styles={{ body: { padding: 16 } }}>
+        <div className="mb-3">
+          <h2 className="enterprise-title text-slate-900">{t('companies.title')}</h2>
+          <Text type="secondary" className="enterprise-record-count">
+            {total} {t('common.records')}
+          </Text>
+        </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <SearchField
-              placeholder={t('common.search')}
-              value={searchKeyword}
-              onChange={setSearchKeyword}
-            />
+        <Tabs
+          activeKey={filterApplied.status ?? 'all'}
+          onChange={handleStatusTabChange}
+          className="mb-3"
+          items={[
+            { key: 'all', label: t('common.all') },
+            { key: 'active', label: t('common.active') },
+            { key: 'inactive', label: t('common.inactive') },
+          ]}
+        />
 
-            <Select
-              allowClear
-              placeholder={t('common.status')}
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              options={[
-                { label: t('common.active'), value: 'active' },
-                { label: t('common.inactive'), value: 'inactive' },
-              ]}
-            />
-
-            <Button type="button" onClick={handleSearchFilters}>
-              {t('common.search')}
-            </Button>
-
-            <Button type="button" variant="outline" onClick={handleClearFilters}>
-              {t('common.reset')}
-            </Button>
+        <ListPageFilters variant="grid-3" className="enterprise-filter-bar mb-4">
+          <Input
+            placeholder={t('common.search')}
+            value={filterInputs.keyword}
+            onChange={(e) => setFilterInput('keyword', e.target.value)}
+            allowClear
+            onPressEnter={handleApplyFilters}
+          />
+          <Select
+            className="w-full"
+            allowClear
+            placeholder={t('common.status')}
+            value={filterInputs.status}
+            onChange={(v) => setFilterInput('status', v)}
+            options={[
+              { label: t('common.active'), value: 'active' },
+              { label: t('common.inactive'), value: 'inactive' },
+            ]}
+          />
+          <div className="list-page-filters__btn-row col-span-full">
+            <ListPageFilters.Actions onSearch={handleApplyFilters} onReset={handleClearFilters} busy={isLoading} />
           </div>
+        </ListPageFilters>
 
-          {isLoading ? (
-            <TableSkeleton rows={5} columns={columns.length} />
-          ) : isError ? (
-            <ErrorState
-              title={t('common.loadError')}
-              description={t('common.tryAgainDescription')}
-              onRetry={() => refetch()}
-            />
-          ) : (
-            <DataTable<Company>
-              data={listData}
-              columns={columns}
-              onRowClick={(record) => show('companies', record.id)}
-              emptyMessage={t('common.noData')}
-              pagination={{
-                current,
-                total,
-                pageSize,
-                onPageChange: setCurrent,
-              }}
-            />
-          )}
-        </CardContent>
+        <Table<Company>
+          rowKey="id"
+          columns={columns}
+          dataSource={listData}
+          loading={isLoading}
+          scroll={{ x: 900 }}
+          className="enterprise-table"
+          pagination={{
+            current,
+            total,
+            pageSize: 15,
+            showSizeChanger: false,
+            showTotal: (n) => `${n} ${t('common.records')}`,
+            onChange: (page) => setCurrent(page),
+          }}
+          onRow={(row) => ({
+            onClick: () => show('companies', row.id),
+            style: { cursor: 'pointer' },
+          })}
+        />
       </Card>
 
       <DeleteConfirmDialog
@@ -260,10 +242,8 @@ export function CompaniesList() {
         mode={dialogMode}
         recordId={activeId}
         onClose={handleCloseDialog}
-        onSuccess={() => {
-          refetch();
-        }}
+        onSuccess={() => void refetch()}
       />
-    </>
+    </div>
   );
 }

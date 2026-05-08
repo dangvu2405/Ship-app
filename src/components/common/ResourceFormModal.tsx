@@ -28,6 +28,7 @@ export function ResourceFormModal({
       width={width}
       footer={footer}
       maskClosable={false}
+      destroyOnHidden
       styles={{
         body: { maxHeight: 'min(70vh, 720px)', overflowY: 'auto', paddingTop: 8 },
       }}

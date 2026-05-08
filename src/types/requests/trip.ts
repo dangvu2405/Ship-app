@@ -1,5 +1,5 @@
 export type StoreTripRequest = {
-  code: string;
+  code?: string;
   company_id?: number;
   customer_id: number;
   contact_name?: string;
@@ -49,5 +49,8 @@ export type AssignTripRequest = {
 };
 
 export type CancelTripRequest = {
+  /** Lý do hủy đơn (BE đang yêu cầu field `reason` ở `POST /trips/{id}/cancel`). */
   reason: string;
+  /** @deprecated Dùng `reason` cho khớp BE. */
+  cancellation_reason?: string;
 };

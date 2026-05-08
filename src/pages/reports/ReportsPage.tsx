@@ -1,22 +1,25 @@
 import React, { useMemo, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Row, Space, Table, Tag, Typography, theme } from 'antd';
+import { App, Button, Card, Col, DatePicker, Drawer, Row, Space, Table, Tag, Typography, theme } from 'antd';
 import {
+  AppstoreOutlined,
+  BarChartOutlined,
   CarOutlined,
   DollarOutlined,
   ExportOutlined,
   FileTextOutlined,
+  FundOutlined,
   LineChartOutlined,
   UserOutlined,
   WalletOutlined,
 } from '@ant-design/icons';
-import { useList, useNavigation } from '@refinedev/core';
+import { useList } from '@refinedev/core';
 import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
 import type { Trip, Vehicle, Driver } from '@/types';
 import { formatMoney } from '@/utils/displayFormat';
 import { ROUTES } from '@/routes';
 import { useTranslation } from '@/hooks/useTranslation';
-import { getTripStatusLabel, getTripStatusTagColor } from '@/utils/tripStatus';
+import { getTripStatusDisplay } from '@/utils/tripStatus';
 
 const { Text } = Typography;
 
@@ -28,12 +31,22 @@ interface StatItem {
   color?: string;
 }
 
+type ReportCategoryKey =
+  | 'orders'
+  | 'revenue'
+  | 'costs'
+  | 'profit'
+  | 'fleet'
+  | 'drivers'
+  | 'debt'
+  | 'other';
+
 export function ReportsPage() {
   const { t } = useTranslation();
   const { token } = theme.useToken();
   const { message } = App.useApp();
   const [period, setPeriod] = useState<dayjs.Dayjs>(dayjs());
-  const { push } = useNavigation();
+  const [drillDown, setDrillDown] = useState<ReportCategoryKey | null>(null);
 
   const startOfMonth = period.startOf('month').format('YYYY-MM-DD');
   const endOfMonth = period.endOf('month').format('YYYY-MM-DD');
@@ -78,8 +91,9 @@ export function ReportsPage() {
     : 0;
 
   const summaryCards = useMemo(
-    (): Array<{ icon: React.ReactNode; title: string; stats: StatItem[]; link?: string }> => [
+    (): Array<{ key: ReportCategoryKey; icon: React.ReactNode; title: string; stats: StatItem[]; detailLink?: string }> => [
       {
+        key: 'orders',
         icon: <FileTextOutlined style={{ fontSize: 24, color: token.colorPrimary }} />,
         title: t('reports.cardOrders'),
         stats: [
@@ -88,9 +102,10 @@ export function ReportsPage() {
           { label: t('reports.cardOrdersCancelled'), value: cancelledTrips, suffix: t('reports.ordersUnit'), color: cancelledTrips > 0 ? token.colorError : undefined },
           { label: t('reports.cardCompletionRate'), value: completionRate, suffix: '%', color: token.colorSuccess },
         ],
-        link: ROUTES.admin.trips.list,
+        detailLink: ROUTES.admin.trips.list,
       },
       {
+        key: 'revenue',
         icon: <DollarOutlined style={{ fontSize: 24, color: token.colorSuccess }} />,
         title: t('reports.cardRevenue'),
         stats: [
@@ -101,32 +116,57 @@ export function ReportsPage() {
             format: 'money',
           },
         ],
-        link: ROUTES.admin.accounting.revenue,
+        detailLink: ROUTES.admin.accounting.revenue,
       },
       {
+        key: 'costs',
+        icon: <FundOutlined style={{ fontSize: 24, color: token.colorWarning }} />,
+        title: 'Chi phí',
+        stats: [{ label: 'Xem chi tiết tại trang Chi phí', value: '—' }],
+        detailLink: ROUTES.admin.accounting.costs,
+      },
+      {
+        key: 'profit',
+        icon: <BarChartOutlined style={{ fontSize: 24, color: token.colorSuccess }} />,
+        title: 'Lợi nhuận',
+        stats: [
+          { label: 'Doanh thu', value: totalRevenue, format: 'money', color: token.colorSuccess },
+          { label: 'Lưu ý', value: 'Trừ chi phí ở mục Chi phí' },
+        ],
+      },
+      {
+        key: 'fleet',
         icon: <CarOutlined style={{ fontSize: 24, color: token.colorWarning }} />,
-        title: t('reports.cardFleet'),
+        title: 'Hiệu suất xe',
         stats: [
           { label: t('reports.cardFleetTotal'), value: vehicles.length, suffix: '' },
           { label: t('reports.cardFleetActive'), value: activeVehicles, suffix: '', color: token.colorSuccess },
           { label: t('reports.cardFleetUtil'), value: vehicleUtilRate, suffix: '%' },
         ],
-        link: ROUTES.admin.vehicles.list,
+        detailLink: ROUTES.admin.vehicles.list,
       },
       {
+        key: 'drivers',
         icon: <UserOutlined style={{ fontSize: 24, color: token.colorInfo }} />,
-        title: t('reports.cardDrivers'),
+        title: 'Hiệu suất tài xế',
         stats: [
           { label: t('reports.cardDriversTotal'), value: drivers.length, suffix: t('reports.peopleUnit') },
           { label: t('reports.cardDriversAvgTrips'), value: avgTripsPerDriver, suffix: t('reports.ordersUnit') },
         ],
-        link: ROUTES.admin.drivers.list,
+        detailLink: ROUTES.admin.drivers.list,
       },
       {
+        key: 'debt',
         icon: <WalletOutlined style={{ fontSize: 24, color: token.colorError }} />,
         title: t('reports.cardDebt'),
         stats: [{ label: t('reports.cardDebtHint'), value: '—' }],
-        link: ROUTES.admin.accounting.debt,
+        detailLink: ROUTES.admin.accounting.debt,
+      },
+      {
+        key: 'other',
+        icon: <AppstoreOutlined style={{ fontSize: 24, color: token.colorTextSecondary }} />,
+        title: 'Tiêu chí khác',
+        stats: [{ label: 'Báo cáo bổ sung', value: 'Xem trong drawer' }],
       },
     ],
     [
@@ -136,6 +176,7 @@ export function ReportsPage() {
       token.colorWarning,
       token.colorInfo,
       token.colorError,
+      token.colorTextSecondary,
       totalTrips,
       completedTrips,
       cancelledTrips,
@@ -177,12 +218,12 @@ export function ReportsPage() {
       />
 
       <Row gutter={[16, 16]}>
-        {summaryCards.map((card, idx) => (
-          <Col xs={24} sm={12} xl={8} key={`${card.title}-${idx}`}>
+        {summaryCards.map((card) => (
+          <Col xs={24} sm={12} xl={6} key={card.key}>
             <Card
               hoverable
-              onClick={() => card.link && push(card.link)}
-              style={{ cursor: card.link ? 'pointer' : 'default' }}
+              onClick={() => setDrillDown(card.key)}
+              style={{ cursor: 'pointer', height: '100%' }}
             >
               <Space align="start" size="middle">
                 {card.icon}
@@ -200,11 +241,9 @@ export function ReportsPage() {
                       </div>
                     ))}
                   </div>
-                  {card.link && (
-                    <div style={{ marginTop: 8 }}>
-                      <Text type="secondary" style={{ fontSize: 11 }}>{t('reports.viewDetail')} →</Text>
-                    </div>
-                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <Text type="secondary" style={{ fontSize: 11 }}>{t('reports.viewDetail')} →</Text>
+                  </div>
                 </div>
               </Space>
             </Card>
@@ -219,6 +258,7 @@ export function ReportsPage() {
           rowKey="id"
           size="small"
           pagination={false}
+          scroll={{ x: 'max-content' }}
           locale={{ emptyText: t('common.noData') }}
           columns={[
             { title: t('trips.code'), dataIndex: 'code', key: 'code', width: 130 },
@@ -239,13 +279,55 @@ export function ReportsPage() {
               title: t('common.status'),
               dataIndex: 'status',
               key: 'status',
-              render: (v: string) => (
-                <Tag color={getTripStatusTagColor(v)}>{getTripStatusLabel(v, t)}</Tag>
-              ),
+              render: (v: string) => {
+                const { label, color } = getTripStatusDisplay(v, t);
+                return <Tag color={color}>{label}</Tag>;
+              },
             },
           ]}
         />
       </Card>
+
+      <Drawer
+        title={summaryCards.find((c) => c.key === drillDown)?.title ?? 'Chi tiết báo cáo'}
+        placement="right"
+        width={Math.min(720, typeof window !== 'undefined' ? window.innerWidth - 80 : 720)}
+        open={drillDown !== null}
+        onClose={() => setDrillDown(null)}
+        destroyOnHidden
+        extra={
+          summaryCards.find((c) => c.key === drillDown)?.detailLink ? (
+            <Button
+              type="link"
+              href={summaryCards.find((c) => c.key === drillDown)!.detailLink!}
+            >
+              Mở trang chi tiết
+            </Button>
+          ) : null
+        }
+      >
+        {drillDown ? (
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Kỳ báo cáo: {period.format('MM/YYYY')}
+            </Text>
+            {summaryCards
+              .find((c) => c.key === drillDown)
+              ?.stats.map((s) => (
+                <Card key={s.label} size="small">
+                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{s.label}</Text>
+                    <Text strong style={{ color: s.color }}>
+                      {s.format === 'money'
+                        ? formatMoney(Number(s.value))
+                        : `${s.value}${s.suffix ? ` ${s.suffix}` : ''}`}
+                    </Text>
+                  </Space>
+                </Card>
+              ))}
+          </Space>
+        ) : null}
+      </Drawer>
     </div>
   );
 }

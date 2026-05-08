@@ -35,7 +35,7 @@ export function UnsavedChangesWarningDialog({
       centered
       zIndex={1060}
       styles={{ mask: { zIndex: 1059 } }}
-      destroyOnClose
+      destroyOnHidden
     >
       <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
         {t('unsavedChanges.description')}

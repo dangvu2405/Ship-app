@@ -29,6 +29,7 @@ export interface User {
   email: string;
   employee_id?: number;
   status: string;
+  role?: string;
   roles?: Role[];
   employee?: import('./employee').Employee;
   avatar_url?: string;

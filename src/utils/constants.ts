@@ -75,11 +75,15 @@ export const AUTH_FORGOT_PASSWORD = {
   verifyPath: normalizeApiPath(import.meta.env.VITE_AUTH_FORGOT_PASSWORD_VERIFY_PATH || '/auth/reset-password'),
 } as const;
 
+/** Bật UI chat khi backend triển khai đầy đủ (mặc định tắt — API trả 501). */
+export const CHAT_ENABLED = import.meta.env.VITE_CHAT_ENABLED === 'true';
+
 // Versioned localStorage keys - bump version on schema changes
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth-token:v1',
   REFRESH_TOKEN: 'refresh-token:v1',
   TENANT_ID: 'tenant-id:v1',
+  AUTH_STORAGE: 'auth-storage:v1',
   APP_STORAGE: 'app-storage:v1',
 } as const;
 

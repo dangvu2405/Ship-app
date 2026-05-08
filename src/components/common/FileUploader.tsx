@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Upload, Button, type UploadFile, type UploadProps } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
@@ -24,6 +24,7 @@ export function FileUploader({
   buttonText,
 }: FileUploaderProps) {
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
 
   // Convert string URLs to UploadFile objects for Ant Design
   const [fileList, setFileList] = useState<UploadFile[]>(() =>
@@ -52,12 +53,12 @@ export function FileUploader({
     void publicFileUploadToUrl({
       ...options,
       onSuccess: (body, xhr) => {
-        toast.success(t('notifications.uploadSuccess'));
+        feedback.success(t('notifications.uploadSuccess'));
         options.onSuccess?.(body, xhr);
       },
       onError: (err) => {
         const msg = getErrorMessage(err);
-        toast.error(msg === 'An error occurred' ? t('notifications.uploadError') : msg);
+        feedback.error(msg === 'An error occurred' ? t('notifications.uploadError') : msg);
         options.onError?.(err);
       },
     });

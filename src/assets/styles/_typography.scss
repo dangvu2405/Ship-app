@@ -1,0 +1,16 @@
+// Enterprise typography — matches ConfigProvider token.fontFamily
+
+$font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+$font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+
+.text-enterprise-body {
+  font-family: $font-sans;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.text-enterprise-title {
+  font-family: $font-sans;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}

@@ -4,7 +4,7 @@ import type { DescriptionsProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import type { UploadProps } from 'antd/es/upload';
 import { Inbox } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import { useList } from '@refinedev/core';
 import {
   FormAccordionSections,
@@ -17,7 +17,27 @@ import { VnAdminAddressFields } from '@/components/form/vn-admin-address-fields'
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
+import api from '@/services/api';
 import type { Driver, Employee } from '@/types';
+
+/** Vietnam-friendly phone pattern; reused if a phone field is added at form level. */
+export const PHONE_PATTERN = /^[0-9+()\-\s]{8,15}$/;
+
+let licenseCheckTimer: ReturnType<typeof setTimeout> | null = null;
+const checkLicenseUnique = (licenseNo: string, currentId?: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    if (licenseCheckTimer) clearTimeout(licenseCheckTimer);
+    licenseCheckTimer = setTimeout(async () => {
+      try {
+        const res = await api.get('/drivers', { params: { license_no: licenseNo, per_page: 5 } });
+        const data = (res.data?.data?.data ?? res.data?.data ?? []) as Array<{ id: number; license_no?: string }>;
+        const conflict = Array.isArray(data) && data.some((d) => (d.license_no ?? '').toUpperCase() === licenseNo.toUpperCase() && d.id !== currentId);
+        resolve(!conflict);
+      } catch {
+        resolve(true);
+      }
+    }, 400);
+  });
 
 interface DriverFormProps {
   form: ReturnType<typeof Form.useForm>[0];
@@ -32,22 +52,23 @@ const normFile = (e: { fileList?: UploadFile[] }) => e?.fileList ?? [];
 export function DriverForm(props: DriverFormProps) {
   const { form, initialValues, isViewMode } = props;
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
 
   const driverFileCustomRequest = useMemo<NonNullable<UploadProps['customRequest']>>(
     () => (options) => {
       void publicFileUploadToUrl({
         ...options,
         onSuccess: (body, xhr) => {
-          toast.success(t('notifications.uploadSuccess'));
+          feedback.success(t('notifications.uploadSuccess'));
           options.onSuccess?.(body, xhr);
         },
         onError: (err) => {
-          toast.error(getErrorMessage(err) || t('notifications.uploadError'));
+          feedback.error(getErrorMessage(err) || t('notifications.uploadError'));
           options.onError?.(err);
         },
       });
     },
-    [t],
+    [t, feedback],
   );
   const { data: empData, isLoading } = useList<Employee>({
     resource: 'employees',
@@ -188,7 +209,18 @@ export function DriverForm(props: DriverFormProps) {
                     name="license_no"
                     label={t('drivers.licenseNo')}
                     required
-                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.licenseNo') }) }]}
+                    rules={[
+                      { required: true, message: t('validation.required', { field: t('drivers.licenseNo') }) },
+                      {
+                        validator: async (_: unknown, value: string) => {
+                          if (!value) return;
+                          const trimmed = String(value).trim();
+                          if (!trimmed) return;
+                          const ok = await checkLicenseUnique(trimmed, initialValues?.id);
+                          if (!ok) throw new Error('Số GPLX đã tồn tại');
+                        },
+                      },
+                    ]}
                   />
                   <FormItemText
                     name="license_class"
@@ -196,7 +228,22 @@ export function DriverForm(props: DriverFormProps) {
                     required
                     rules={[{ required: true, message: t('validation.required', { field: t('drivers.licenseClass') }) }]}
                   />
-                  <FormItemText name="expired_date" label={t('drivers.expiredDate')} type="date" />
+                  <FormItemText
+                    name="expired_date"
+                    label={t('drivers.expiredDate')}
+                    type="date"
+                    rules={[
+                      {
+                        validator: async (_rule, value: string | undefined) => {
+                          if (!value) return;
+                          const today = new Date().toISOString().slice(0, 10);
+                          if (value < today) {
+                            throw new Error(t('validation.invalidDate'));
+                          }
+                        },
+                      },
+                    ]}
+                  />
                   <FormItemSelect name="available_status" label={t('drivers.availableStatus')} options={statusOptions} allowClear />
                 </>
               ),
@@ -217,7 +264,18 @@ export function DriverForm(props: DriverFormProps) {
                     label={t('drivers.idCardIssueDate')}
                     type="date"
                     required
-                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.idCardIssueDate') }) }]}
+                    rules={[
+                      { required: true, message: t('validation.required', { field: t('drivers.idCardIssueDate') }) },
+                      {
+                        validator: async (_rule, value: string | undefined) => {
+                          if (!value) return;
+                          const today = new Date().toISOString().slice(0, 10);
+                          if (value > today) {
+                            throw new Error(t('validation.invalidDate'));
+                          }
+                        },
+                      },
+                    ]}
                   />
                   <VnAdminAddressFields
                     form={form}
@@ -297,7 +355,18 @@ export function DriverForm(props: DriverFormProps) {
                     label={t('drivers.insuranceExpiryDate')}
                     type="date"
                     required
-                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.insuranceExpiryDate') }) }]}
+                    rules={[
+                      { required: true, message: t('validation.required', { field: t('drivers.insuranceExpiryDate') }) },
+                      {
+                        validator: async (_rule, value: string | undefined) => {
+                          if (!value) return;
+                          const today = new Date().toISOString().slice(0, 10);
+                          if (value < today) {
+                            throw new Error(t('validation.invalidDate'));
+                          }
+                        },
+                      },
+                    ]}
                   />
 
                   <FormItemUploadDragger

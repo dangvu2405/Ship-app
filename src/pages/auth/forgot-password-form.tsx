@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Alert, Button, Card, Flex, Input, Space, Typography, theme } from 'antd';
+import { Alert, Button, Card, Flex, Input, Space, Steps, Typography, theme } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import authService from '@/services/auth.service';
 import { ROUTES } from '@/routes';
@@ -67,6 +67,16 @@ export function ForgotPasswordForm() {
                 </Typography.Title>
                 <Typography.Text type="secondary">{t('auth.forgotPasswordSubtitle')}</Typography.Text>
               </div>
+
+              <Steps
+                size="small"
+                current={0}
+                items={[
+                  { title: t('auth.forgotPasswordStepEmail') },
+                  { title: t('auth.forgotPasswordStepOtp') },
+                  { title: t('auth.forgotPasswordStepNewPassword') },
+                ]}
+              />
 
               <div>
                 <Typography.Text strong>{t('auth.email')}</Typography.Text>

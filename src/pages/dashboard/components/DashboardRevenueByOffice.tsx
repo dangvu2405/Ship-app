@@ -92,6 +92,7 @@ export function DashboardRevenueByOffice({
           dataSource={rows}
           rowKey="key"
           columns={columns}
+          scroll={{ x: 'max-content' }}
           rowClassName={(_, index) => (index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60')}
           onRow={(_, index = 0) => ({
             style: {

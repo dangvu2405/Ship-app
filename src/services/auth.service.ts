@@ -83,6 +83,13 @@ class AuthService {
     return response.data;
   }
 
+  async checkOtp(payload: { email: string; otp: string }): Promise<
+    ApiResponse<{ token?: string; reset_token?: string } | Record<string, unknown>>
+  > {
+    const response = await api.post(ENDPOINTS.auth.checkOtp, payload, { skipErrorToast: true, errorMode: 'silent' });
+    return response.data;
+  }
+
   async resetForgotPassword(payload: {
     email: string;
     token: string;

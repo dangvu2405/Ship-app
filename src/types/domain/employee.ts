@@ -50,14 +50,46 @@ export interface Company {
 
 export interface Customer {
   id: number;
+  company_id?: number;
   code?: string;
   name: string;
   type: 'company' | 'individual';
+  company_name?: string;
+  full_name?: string;
+  extra_contact_name?: string;
+  extra_contact_phone?: string;
   tax_code?: string;
   email?: string;
   phone?: string;
   address?: string;
   contact_person?: string;
+  group_id?: number | null;
+  assigned_dispatcher_id?: number | null;
+  credit_limit?: number | null;
+  payment_terms_days?: number | null;
+  contract_file_url?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
+  notes?: string | null;
+  is_active?: number | boolean;
+  status?: 'active' | 'inactive' | string;
+  trips_count?: number;
+  group?: {
+    id: number;
+    name: string;
+  };
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
+}
+
+export interface CustomerGroup {
+  id: number;
+  company_id?: number;
+  name: string;
+  description?: string | null;
+  assigned_dispatcher_id?: number | null;
+  is_active?: number | boolean;
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
@@ -92,6 +124,8 @@ export interface Employee {
   bank_name?: string;
   bank_account_no?: string;
   bank_account_name?: string;
+  /** GPLX / giấy phép — có khi employee gắn bản ghi tài xế. */
+  expired_date?: string;
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;

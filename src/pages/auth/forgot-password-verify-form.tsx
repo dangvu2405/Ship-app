@@ -1,13 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Alert, Button, Card, Flex, Input, Typography, theme } from 'antd';
+import { Alert, Button, Card, Flex, Input, Steps, Typography, theme } from 'antd';
 import { ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import authService from '@/services/auth.service';
 import { ROUTES } from '@/routes';
 import { notifyErrorOnce } from '@/utils/errorToast';
 import { useTranslation } from '@/hooks/useTranslation';
 import { FORGOT_PASSWORD_EMAIL_STORAGE_KEY } from '@/lib/forgot-password-flow';
+import { forgotPasswordConfirmSchema } from '@/schemas/password';
+import type { ApiResponse } from '@/types';
+
+const extractResetToken = (body: ApiResponse<unknown>): string | null => {
+  const payload = body.data;
+  if (!payload || typeof payload !== 'object') return null;
+  const o = payload as Record<string, unknown>;
+  const nested = o.data && typeof o.data === 'object' ? (o.data as Record<string, unknown>) : o;
+  const t = nested.token ?? nested.reset_token ?? nested.password_reset_token;
+  return typeof t === 'string' && t.trim() ? t.trim() : null;
+};
 
 export function ForgotPasswordVerifyForm() {
   const navigate = useNavigate();
@@ -15,6 +26,8 @@ export function ForgotPasswordVerifyForm() {
   const { t } = useTranslation();
   const { token } = theme.useToken();
   const [email, setEmail] = useState('');
+  const [phase, setPhase] = useState<'otp' | 'password'>('otp');
+  const [otp, setOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
@@ -34,38 +47,66 @@ export function ForgotPasswordVerifyForm() {
     setEmail(resolved);
   }, [location.state, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEnabled) {
-      toast.error(t('auth.forgotPasswordResetUnavailable'));
+    if (!resetEnabled || isSubmitting || !email) return;
+    const code = otp.replace(/\D/g, '').slice(0, 6);
+    if (code.length !== 6) {
+      toast.error(t('auth.forgotPasswordOtpLength'));
       return;
     }
-    if (isSubmitting || !email) return;
-    const trimmedToken = resetToken.trim();
-    if (!trimmedToken) {
-      toast.error(t('auth.forgotPasswordResetTokenRequired'));
-      return;
+    try {
+      setIsSubmitting(true);
+      const response = await authService.checkOtp({ email, otp: code });
+      if (!response.success) {
+        toast.error(response.message || t('auth.forgotPasswordOtpInvalid'));
+        return;
+      }
+      const tok = extractResetToken(response as ApiResponse<unknown>);
+      if (tok) {
+        setResetToken(tok);
+      } else {
+        // Fallback: backend did not return a dedicated reset token in the check-otp response,
+        // so we use the OTP code itself as the token passed to reset-password.
+        // TODO: confirm with Laravel whether the reset endpoint expects the OTP string or a
+        // separate token field; remove this branch once the contract is settled.
+        setResetToken(code);
+      }
+      setPhase('password');
+      toast.success(t('auth.forgotPasswordOtpVerified'));
+    } catch (error) {
+      notifyErrorOnce('auth-check-otp', error, { fallbackMessage: t('auth.forgotPasswordOtpInvalid') });
+    } finally {
+      setIsSubmitting(false);
     }
-    if (!password || password.length < 8) {
-      toast.error(t('auth.forgotPasswordResetPasswordMinLength'));
-      return;
-    }
-    if (password !== passwordConfirmation) {
-      toast.error(t('auth.registerPasswordMismatch'));
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEnabled || isSubmitting || !email || !resetToken) return;
+    const parsed = forgotPasswordConfirmSchema.safeParse({
+      password,
+      password_confirmation: passwordConfirmation,
+    });
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? t('auth.forgotPasswordResetFailed');
+      toast.error(msg);
       return;
     }
     try {
       setIsSubmitting(true);
       const response = await authService.resetForgotPassword({
         email,
-        token: trimmedToken,
-        password,
-        password_confirmation: passwordConfirmation,
+        token: resetToken,
+        password: parsed.data.password,
+        password_confirmation: parsed.data.password_confirmation,
       });
       if (response.success) {
         sessionStorage.removeItem(FORGOT_PASSWORD_EMAIL_STORAGE_KEY);
         toast.success(t('auth.forgotPasswordResetSuccess'));
-        navigate(ROUTES.login, { replace: true });
+        window.setTimeout(() => {
+          navigate(ROUTES.login, { replace: true });
+        }, 3000);
         return;
       }
       toast.error(response.message || t('auth.forgotPasswordResetFailed'));
@@ -106,6 +147,8 @@ export function ForgotPasswordVerifyForm() {
     return null;
   }
 
+  const stepIndex = phase === 'otp' ? 1 : 2;
+
   return (
     <div
       style={{
@@ -117,90 +160,113 @@ export function ForgotPasswordVerifyForm() {
         background: token.colorFillAlter,
       }}
     >
-      <div style={{ width: '100%', maxWidth: 448 }}>
+      <div style={{ width: '100%', maxWidth: 480 }}>
         <Card style={{ boxShadow: token.boxShadowSecondary }}>
-          <form onSubmit={handleSubmit}>
-            <Flex vertical gap={20} align="stretch">
-              <div style={{ textAlign: 'center' }}>
-                <SafetyCertificateOutlined style={{ fontSize: 40, color: token.colorPrimary }} aria-hidden />
-                <Typography.Title level={2} style={{ marginTop: 16, marginBottom: 8 }}>
-                  {t('auth.forgotPasswordVerifyTitle')}
-                </Typography.Title>
-                <Typography.Text type="secondary">{t('auth.forgotPasswordResetSubtitle')}</Typography.Text>
-              </div>
+          <Flex vertical gap={20} align="stretch">
+            <div style={{ textAlign: 'center' }}>
+              <SafetyCertificateOutlined style={{ fontSize: 40, color: token.colorPrimary }} aria-hidden />
+              <Typography.Title level={2} style={{ marginTop: 16, marginBottom: 8 }}>
+                {t('auth.forgotPasswordVerifyTitle')}
+              </Typography.Title>
+              <Typography.Text type="secondary">{t('auth.forgotPasswordResetSubtitle')}</Typography.Text>
+            </div>
 
-              <div>
-                <Typography.Text strong>{t('auth.email')}</Typography.Text>
-                <Typography.Paragraph style={{ marginTop: 8, marginBottom: 0 }} copyable>
-                  {email}
-                </Typography.Paragraph>
-                <Button type="link" size="small" onClick={goChangeEmail} style={{ padding: 0, height: 'auto' }}>
-                  {t('auth.forgotPasswordChangeEmail')}
-                </Button>
-              </div>
+            <Steps
+              size="small"
+              current={stepIndex}
+              items={[
+                { title: t('auth.forgotPasswordStepEmail') },
+                { title: t('auth.forgotPasswordStepOtp') },
+                { title: t('auth.forgotPasswordStepNewPassword') },
+              ]}
+            />
 
-              <div>
-                <Typography.Text strong>{t('auth.forgotPasswordResetTokenLabel')}</Typography.Text>
-                <Input
-                  size="large"
-                  style={{ marginTop: 8 }}
-                  value={resetToken}
-                  onChange={(e) => setResetToken(e.target.value)}
-                  disabled={isSubmitting || !resetEnabled}
-                  placeholder={t('auth.forgotPasswordResetTokenPlaceholder')}
-                  autoComplete="one-time-code"
-                />
-              </div>
-
-              <div>
-                <Typography.Text strong>{t('auth.password')}</Typography.Text>
-                <Input.Password
-                  size="large"
-                  style={{ marginTop: 8 }}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting || !resetEnabled}
-                  placeholder={t('auth.registerPasswordPlaceholder')}
-                  autoComplete="new-password"
-                />
-              </div>
-
-              <div>
-                <Typography.Text strong>{t('auth.confirmPassword')}</Typography.Text>
-                <Input.Password
-                  size="large"
-                  style={{ marginTop: 8 }}
-                  value={passwordConfirmation}
-                  onChange={(e) => setPasswordConfirmation(e.target.value)}
-                  disabled={isSubmitting || !resetEnabled}
-                  placeholder={t('auth.registerPasswordConfirmPlaceholder')}
-                  autoComplete="new-password"
-                />
-              </div>
-
-              {!resetEnabled && <Alert type="info" message={t('auth.forgotPasswordResetUnavailable')} showIcon />}
-
-              <Button type="primary" htmlType="submit" block size="large" loading={isSubmitting} disabled={!resetEnabled}>
-                {t('auth.forgotPasswordResetSubmit')}
+            <div>
+              <Typography.Text strong>{t('auth.email')}</Typography.Text>
+              <Typography.Paragraph style={{ marginTop: 8, marginBottom: 0 }} copyable>
+                {email}
+              </Typography.Paragraph>
+              <Button type="link" size="small" onClick={goChangeEmail} style={{ padding: 0, height: 'auto' }}>
+                {t('auth.forgotPasswordChangeEmail')}
               </Button>
+            </div>
 
-              <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-                <Button
-                  type="link"
-                  onClick={() => void handleResend()}
-                  loading={isResending}
-                  disabled={isSubmitting || !sendEnabled}
-                >
-                  {t('auth.forgotPasswordResend')}
-                </Button>
-                <Link to={ROUTES.login}>
-                  <Button type="link" icon={<ArrowLeftOutlined />} style={{ padding: 0, height: 'auto' }}>
-                    {t('auth.forgotPasswordBackToLogin')}
+            {phase === 'otp' ? (
+              <form onSubmit={handleVerifyOtp}>
+                <Flex vertical gap={16}>
+                  <div>
+                    <Typography.Text strong>{t('auth.forgotPasswordOtpLabel')}</Typography.Text>
+                    <Input.OTP
+                      length={6}
+                      size="large"
+                      style={{ marginTop: 8 }}
+                      value={otp}
+                      onChange={setOtp}
+                      disabled={isSubmitting || !resetEnabled}
+                    />
+                  </div>
+                  {!resetEnabled && <Alert type="info" message={t('auth.forgotPasswordResetUnavailable')} showIcon />}
+                  <Button type="primary" htmlType="submit" block size="large" loading={isSubmitting} disabled={!resetEnabled}>
+                    {t('auth.forgotPasswordOtpSubmit')}
                   </Button>
-                </Link>
-              </Flex>
+                </Flex>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword}>
+                <Flex vertical gap={16}>
+                  <div>
+                    <Typography.Text strong>{t('auth.password')}</Typography.Text>
+                    <Input.Password
+                      size="large"
+                      style={{ marginTop: 8 }}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isSubmitting || !resetEnabled}
+                      placeholder={t('auth.registerPasswordPlaceholder')}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div>
+                    <Typography.Text strong>{t('auth.confirmPassword')}</Typography.Text>
+                    <Input.Password
+                      size="large"
+                      style={{ marginTop: 8 }}
+                      value={passwordConfirmation}
+                      onChange={(e) => setPasswordConfirmation(e.target.value)}
+                      disabled={isSubmitting || !resetEnabled}
+                      placeholder={t('auth.registerPasswordConfirmPlaceholder')}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('auth.forgotPasswordStrongHint')}
+                  </Typography.Text>
+                  <Button type="primary" htmlType="submit" block size="large" loading={isSubmitting} disabled={!resetEnabled}>
+                    {t('auth.forgotPasswordResetSubmit')}
+                  </Button>
+                  <Button type="link" onClick={() => setPhase('otp')} disabled={isSubmitting} style={{ padding: 0 }}>
+                    {t('auth.forgotPasswordBackOtp')}
+                  </Button>
+                </Flex>
+              </form>
+            )}
+
+            <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+              <Button
+                type="link"
+                onClick={() => void handleResend()}
+                loading={isResending}
+                disabled={isSubmitting || !sendEnabled}
+              >
+                {t('auth.forgotPasswordResend')}
+              </Button>
+              <Link to={ROUTES.login}>
+                <Button type="link" icon={<ArrowLeftOutlined />} style={{ padding: 0, height: 'auto' }}>
+                  {t('auth.forgotPasswordBackToLogin')}
+                </Button>
+              </Link>
             </Flex>
-          </form>
+          </Flex>
         </Card>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import api from './api';
 import type { ApiResponse } from '@/types';
+import { ENDPOINTS } from './endpoints';
 
 export type AuthLogAuditRow = {
   id: string;
@@ -45,14 +46,14 @@ const authLogService = {
     to?: string;
     status_code?: number;
   }): Promise<ApiResponse<AuthLogAuditRow[]>> {
-    const response = await api.get('/auth/actions', {
+    const response = await api.get(ENDPOINTS.auth.actions, {
       params: filters,
     });
     return response.data;
   },
 
   async listAuthLogsPaginated(page: number, pageSize: number = PAGE_SIZE_DEFAULT): Promise<ApiResponse<AuthLogsPaginatedPayload>> {
-    const response = await api.get('/auth/sessions', {
+    const response = await api.get(ENDPOINTS.auth.sessions.base, {
       params: {
         page,
         per_page: pageSize,
@@ -62,17 +63,17 @@ const authLogService = {
   },
 
   async getSummary(): Promise<ApiResponse<AuthSummary>> {
-    const response = await api.get('/auth/sessions/summary');
+    const response = await api.get(ENDPOINTS.auth.sessions.summary);
     return response.data;
   },
 
   async revokeSession(sessionId: string): Promise<ApiResponse<null>> {
-    const response = await api.post(`/auth/sessions/${sessionId}/revoke`);
+    const response = await api.post(ENDPOINTS.auth.sessions.revoke(sessionId));
     return response.data;
   },
 
   async lockAccountForSession(sessionId: string): Promise<ApiResponse<null>> {
-    const response = await api.post(`/auth/sessions/${sessionId}/lock-account`);
+    const response = await api.post(ENDPOINTS.auth.sessions.lockAccount(sessionId));
     return response.data;
   },
 };

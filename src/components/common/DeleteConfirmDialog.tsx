@@ -48,7 +48,7 @@ export function DeleteConfirmDialog({
       okButtonProps={{ danger: true, loading: isLoading }}
       cancelButtonProps={{ disabled: isLoading }}
       title={title || t('deleteConfirm.title')}
-      destroyOnClose
+      destroyOnHidden
     >
       <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
         {description || (

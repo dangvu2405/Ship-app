@@ -24,8 +24,8 @@ import {
   SafetyOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import toast from 'react-hot-toast';
 
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import { useTranslation } from '@/hooks/useTranslation';
 import authLogService, {
   type AuthLogAuditRow,
@@ -57,6 +57,7 @@ function actionClassName(action: string): string {
 
 export const AuthLogsAndSessionManagement = () => {
   const { t } = useTranslation();
+  const toast = useAppFeedback();
   const tRef = useRef(t);
 
   const { token } = theme.useToken();

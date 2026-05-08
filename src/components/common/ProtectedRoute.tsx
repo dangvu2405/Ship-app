@@ -1,37 +1,41 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { usePermission } from '@/hooks/usePermission';
+import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
+import { userHasRole, userHasPermission } from '@/utils/authPermissions';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRole?: string;
+  /** User phải có ít nhất một trong các role này (case-insensitive). */
+  requiredRoles?: string[];
   requiredPermission?: string;
 }
 
-export const ProtectedRoute = ({ children, requiredRole, requiredPermission }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const { hasRole, can } = usePermission();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
+export const ProtectedRoute = ({
+  children,
+  requiredRole,
+  requiredRoles,
+  requiredPermission,
+}: ProtectedRouteProps) => {
+  // Đọc trực tiếp từ store — không trigger checkAuth() như useAuth() làm.
+  // Auth đã được xác thực bởi <Authenticated> của Refine ở tầng trên.
+  const { user, isAuthenticated } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to={ROUTES.login} replace />;
   }
 
-  if (requiredRole && !hasRole(requiredRole)) {
-    return <Navigate to={ROUTES.dashboard} replace />;
+  if (requiredRole && !userHasRole(user, requiredRole)) {
+    return <Navigate to={ROUTES.noRoleAccess} replace />;
   }
 
-  if (requiredPermission && !can(requiredPermission)) {
-    return <Navigate to={ROUTES.dashboard} replace />;
+  if (requiredRoles?.length && !requiredRoles.some((r) => userHasRole(user, r))) {
+    return <Navigate to={ROUTES.noRoleAccess} replace />;
+  }
+
+  if (requiredPermission && !userHasPermission(user, requiredPermission)) {
+    return <Navigate to={ROUTES.noRoleAccess} replace />;
   }
 
   return <>{children}</>;

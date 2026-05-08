@@ -1,31 +1,54 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useListFilters } from '@/hooks/useListFilters';
 import { Link } from 'react-router-dom';
-import { useNavigation } from '@refinedev/core';
-import { Button, Card, Form, List, Space, Tabs, Tag } from 'antd';
-import { NoImageAvatar } from '@/components/common/NoImageAvatar';
-import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import { useNavigation, useList } from '@refinedev/core';
+import { Button, Card, Flex, Form, Space, Table, Tabs, Tag, Tooltip } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import {
+  CalendarOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  UserOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { FormItemSelect } from '@/components/form';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ListPageFilters } from '@/components/common/ListPageFilters';
-import { PageLoadingOverlay } from '@/components/common/PageLoadingOverlay';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type { Driver } from '@/types';
-import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { DriverFormDialog } from './DriverFormDialog';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
+import { tableDefaults } from '@/utils/tableDefaults';
 
 type DriverFilterForm = {
   available_status?: string;
+  team_id?: number;
+};
+
+interface DriverWithVehicle extends Driver {
+  current_vehicle?: { id?: number; plate_number?: string } | null;
+}
+
+const STATUS_TAG_COLOR: Record<string, string> = {
+  available: 'success',
+  on_trip: 'processing',
+  off: 'default',
 };
 
 export function DriversList() {
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
   const { show } = useNavigation();
   const { mutate: deleteItem } = useResourceDeleteMutation('drivers');
   const [filterForm] = Form.useForm<DriverFilterForm>();
@@ -35,9 +58,27 @@ export function DriversList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Driver | null>(null);
   const [current, setCurrent] = useState(1);
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [appliedKeyword, setAppliedKeyword] = useState('');
-  const [appliedStatus, setAppliedStatus] = useState<string | undefined>(undefined);
+  const {
+    inputs: filterInputs,
+    applied: filterApplied,
+    setInput: setFilterInput,
+    apply: applyFilters,
+    clear: clearFiltersBase,
+  } = useListFilters({
+    keyword: '',
+    status: undefined as string | undefined,
+    team_id: undefined as number | undefined,
+  });
+
+  const { data: teamsData } = useList<{ id: number; name: string }>({
+    resource: 'driver-teams',
+    pagination: { current: 1, pageSize: 100 },
+    queryOptions: { retry: false },
+  });
+  const teamOptions = useMemo(
+    () => (teamsData?.data ?? []).map((tm) => ({ label: tm.name, value: tm.id })),
+    [teamsData?.data],
+  );
 
   const availableStatusOptions = useMemo(
     () => [
@@ -58,14 +99,19 @@ export function DriversList() {
     [t],
   );
 
-  const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Driver>({
+  const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<DriverWithVehicle>({
     resource: 'drivers',
     current,
     pageSize: 15,
     filters: [
-      ...(appliedKeyword ? [{ field: 'search', operator: 'contains' as const, value: appliedKeyword }] : []),
-      ...(appliedStatus
-        ? [{ field: 'available_status', operator: 'eq' as const, value: appliedStatus }]
+      ...(filterApplied.keyword
+        ? [{ field: 'search', operator: 'contains' as const, value: filterApplied.keyword }]
+        : []),
+      ...(filterApplied.status
+        ? [{ field: 'available_status', operator: 'eq' as const, value: filterApplied.status }]
+        : []),
+      ...(filterApplied.team_id
+        ? [{ field: 'team_id', operator: 'eq' as const, value: filterApplied.team_id }]
         : []),
     ],
   });
@@ -73,24 +119,20 @@ export function DriversList() {
   const safeRefetch = useSafeRefetch('drivers-driverslist', refetch);
 
   const handleSearchFilters = () => {
-    const { available_status } = filterForm.getFieldsValue();
-    setAppliedKeyword(searchKeyword.trim());
-    setAppliedStatus(available_status);
+    applyFilters();
     setCurrent(1);
   };
 
   const handleClearFilters = () => {
-    setSearchKeyword('');
+    clearFiltersBase();
     filterForm.resetFields();
-    setAppliedKeyword('');
-    setAppliedStatus(undefined);
     setCurrent(1);
   };
 
   const handleStatusTabChange = (value: string) => {
     const next = value === 'all' ? undefined : value;
     filterForm.setFieldsValue({ available_status: next });
-    setAppliedStatus(next);
+    setFilterInput('status', next);
     setCurrent(1);
   };
 
@@ -112,16 +154,16 @@ export function DriversList() {
       { id: selected.id },
       {
         onSuccess: () => {
-          toast.success(t('notifications.deleteSuccess', { item: t('drivers.title') }));
+          feedback.success(t('notifications.deleteSuccess', { item: t('drivers.title') }));
           setDeleteDialogOpen(false);
           setSelected(null);
           void safeRefetch(true);
         },
         onError: (error) => {
           if (!shouldShowLocalErrorToast(error)) return;
-          toast.error(t('notifications.deleteError', { item: t('drivers.title') }));
+          feedback.error(t('notifications.deleteError', { item: t('drivers.title') }));
         },
-      }
+      },
     );
   };
 
@@ -129,8 +171,146 @@ export function DriversList() {
   const total = data?.total ?? 0;
   const pageSize = 15;
 
+  const handleExportCsv = () => {
+    const header = ['code', 'name', 'phone', 'license_no', 'license_expired_date', 'available_status'];
+    const csv = [
+      header.join(','),
+      ...listData.map((driver) =>
+        [
+          driver.code ?? '',
+          driver.employee?.name ?? driver.name ?? '',
+          driver.phone ?? driver.employee?.phone ?? '',
+          driver.license_no ?? '',
+          driver.expired_date ?? '',
+          driver.available_status ?? '',
+        ]
+          .map((value) => JSON.stringify(String(value)))
+          .join(','),
+      ),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'drivers.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const columns = useMemo<ColumnsType<DriverWithVehicle>>(
+    () => [
+      {
+        title: 'Mã TX',
+        dataIndex: 'code',
+        key: 'code',
+        width: 120,
+        fixed: 'left',
+        render: (code: string | undefined, row) => (
+          <Button type="link" style={{ padding: 0 }} onClick={() => show('drivers', row.id)}>
+            {code ?? `#${row.id}`}
+          </Button>
+        ),
+      },
+      {
+        title: 'Họ tên',
+        key: 'name',
+        ellipsis: true,
+        render: (_, row) => row.employee?.name ?? row.name ?? '—',
+      },
+      {
+        title: 'SĐT',
+        key: 'phone',
+        width: 140,
+        render: (_, row) => row.phone ?? row.employee?.phone ?? '—',
+      },
+      {
+        title: 'Xe phụ trách',
+        key: 'vehicle',
+        width: 140,
+        render: (_, row) => row.current_vehicle?.plate_number ?? '—',
+      },
+      {
+        title: t('common.status'),
+        dataIndex: 'available_status',
+        key: 'available_status',
+        width: 140,
+        render: (s: string | undefined) => {
+          const label =
+            s === 'available'
+              ? t('drivers.statusAvailable')
+              : s === 'on_trip'
+                ? t('drivers.statusOnTrip')
+                : t('drivers.statusOff');
+          return <Tag color={STATUS_TAG_COLOR[s ?? 'off']}>{label}</Tag>;
+        },
+      },
+      {
+        title: t('dashboard.alertsTitle'),
+        key: 'warnings',
+        width: 140,
+        render: (_, row) => {
+          if (!row.expired_date) return '—';
+          const date = dayjs(row.expired_date);
+          if (!date.isValid()) return '—';
+          const days = date.diff(dayjs(), 'day');
+          if (days < 0) {
+            return (
+              <Tooltip title={`GPLX hết hạn ${date.format('DD/MM/YYYY')}`}>
+                <Tag icon={<WarningOutlined />} color="error">GPLX hết hạn</Tag>
+              </Tooltip>
+            );
+          }
+          if (days <= 30) {
+            return (
+              <Tooltip title={`Còn ${days} ngày tới hạn`}>
+                <Tag icon={<WarningOutlined />} color="warning">{`Sắp hết hạn (${days}d)`}</Tag>
+              </Tooltip>
+            );
+          }
+          return '—';
+        },
+      },
+      {
+        title: t('common.actions'),
+        key: 'actions',
+        fixed: 'right',
+        width: 132,
+        render: (_, row) => (
+          <Space size={4}>
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined aria-hidden />}
+              aria-label={t('common.view')}
+              onClick={() => show('drivers', row.id)}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined aria-hidden />}
+              aria-label={t('common.edit')}
+              onClick={() => handleEdit(row.id)}
+            />
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined aria-hidden />}
+              aria-label={t('common.delete')}
+              onClick={() => {
+                setSelected(row);
+                setDeleteDialogOpen(true);
+              }}
+            />
+          </Space>
+        ),
+      },
+    ],
+    [t, show, handleEdit],
+  );
+
   return (
-    <>
+    <div className="enterprise-page space-y-4">
       <PageHeader
         title={t('drivers.title')}
         description={t('drivers.description')}
@@ -140,26 +320,43 @@ export function DriversList() {
             <Link to={ROUTES.admin.driversSchedule}>
               <Button icon={<CalendarOutlined aria-hidden />}>{t('drivers.openScheduleButton')}</Button>
             </Link>
+            <Button icon={<DownloadOutlined aria-hidden />} onClick={handleExportCsv}>
+              {t('common.export')}
+            </Button>
             <Button type="primary" icon={<PlusOutlined aria-hidden />} onClick={handleCreate}>
               {t('drivers.createDriver')}
             </Button>
           </div>
         }
       />
-      <Card className="rounded-xl shadow-sm border" styles={{ body: { padding: 24, display: 'flex', flexDirection: 'column', gap: 16 } }}>
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">{t('drivers.title')}</h2>
-          <p className="text-sm text-slate-500">
+      <Card
+        className="enterprise-section-card"
+        title={
+          <Flex align="center" gap={8}>
+            <UserOutlined />
+            <span>{t('drivers.title')}</span>
+          </Flex>
+        }
+        extra={
+          <Tag>
             {total} {t('common.records')}
-          </p>
-        </div>
-        <Tabs activeKey={appliedStatus ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
-        <Form form={filterForm} layout="vertical" requiredMark={false} colon={false} className="contents min-w-0 w-full">
-          <ListPageFilters variant="grid-2" className="rounded-xl border bg-white p-4">
+          </Tag>
+        }
+        styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 } }}
+      >
+        <Tabs activeKey={filterApplied.status ?? 'all'} onChange={handleStatusTabChange} items={statusTabsItems} />
+        <Form
+          form={filterForm}
+          layout="vertical"
+          requiredMark={false}
+          colon={false}
+          className="contents min-w-0 w-full"
+        >
+          <ListPageFilters variant="grid-2" className="enterprise-filter-bar">
             <ListPageFilters.Search
               placeholder={t('common.search')}
-              value={searchKeyword}
-              onChange={setSearchKeyword}
+              value={filterInputs.keyword}
+              onChange={(v) => setFilterInput('keyword', v)}
             />
             <FormItemSelect
               noStyle
@@ -169,6 +366,17 @@ export function DriversList() {
               options={availableStatusOptions}
               allowClear
               classNames={{ root: 'list-page-filters__select' }}
+            />
+            <FormItemSelect
+              noStyle
+              name="team_id"
+              label={null}
+              placeholder="Đội tài xế"
+              options={teamOptions}
+              showSearch
+              allowClear
+              classNames={{ root: 'list-page-filters__select' }}
+              onChange={(v) => setFilterInput('team_id', v as number | undefined)}
             />
           </ListPageFilters>
           <div className="list-page-filters__btn-row">
@@ -187,83 +395,30 @@ export function DriversList() {
             onRetry={() => void safeRefetch(true)}
           />
         ) : (
-          <PageLoadingOverlay loading={isLoading} className="overflow-hidden rounded-lg">
-            <List
-              itemLayout="horizontal"
-              dataSource={listData}
-              locale={{
-                emptyText: t('emptyState.listDescription', { resource: t('drivers.title') }),
-              }}
-              pagination={{ current, total, pageSize, onChange: setCurrent }}
-              renderItem={(item) => {
-                  const statusLabel =
-                    item.available_status === 'available'
-                      ? t('drivers.statusAvailable')
-                      : item.available_status === 'on_trip'
-                        ? t('drivers.statusOnTrip')
-                        : t('drivers.statusOff');
-                  const color =
-                    item.available_status === 'available'
-                      ? 'success'
-                      : item.available_status === 'on_trip'
-                        ? 'processing'
-                        : undefined;
-                  return (
-                    <List.Item
-                      actions={[
-                        <Button
-                          key="view"
-                          type="text"
-                          size="small"
-                          icon={<EyeOutlined aria-hidden />}
-                          aria-label={t('common.view')}
-                          onClick={() => show('drivers', item.id)}
-                        />,
-                        <Button
-                          key="edit"
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined aria-hidden />}
-                          aria-label={t('common.edit')}
-                          onClick={() => handleEdit(item.id)}
-                        />,
-                        <Button
-                          key="delete"
-                          type="text"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined aria-hidden />}
-                          aria-label={t('common.delete')}
-                          onClick={() => {
-                            setSelected(item);
-                            setDeleteDialogOpen(true);
-                          }}
-                        />,
-                      ]}
-                    >
-                      <List.Item.Meta
-                        avatar={<NoImageAvatar src={item.employee?.avatar_url} shape="circle" />}
-                        title={
-                          <Button type="link" style={{ padding: 0 }} onClick={() => show('drivers', item.id)}>
-                            {item.employee?.name ?? `#${item.employee_id}`}
-                          </Button>
-                        }
-                        description={
-                          <Space wrap size={[8, 8]}>
-                            <span>{`${t('drivers.licenseNo')}: ${item.license_no || '-'}`}</span>
-                            <span>{`${t('drivers.licenseClass')}: ${item.license_class || '-'}`}</span>
-                            <Tag color={color}>{statusLabel}</Tag>
-                          </Space>
-                        }
-                      />
-                    </List.Item>
-                  );
-                }}
-            />
-          </PageLoadingOverlay>
+          <Table<DriverWithVehicle>
+            {...tableDefaults}
+            rowKey="id"
+            loading={isLoading}
+            dataSource={listData}
+            columns={columns}
+            pagination={{
+              current,
+              total,
+              pageSize,
+              onChange: setCurrent,
+              showSizeChanger: false,
+            }}
+            className="enterprise-table"
+            locale={{ emptyText: t('emptyState.listDescription', { resource: t('drivers.title') }) }}
+          />
         )}
       </Card>
-      <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.license_no} />
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        itemName={selected?.license_no}
+      />
       {formOpen && (
         <DriverFormDialog
           open={formOpen}
@@ -278,6 +433,6 @@ export function DriversList() {
           }}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -1,65 +1,78 @@
 import { useState } from 'react';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { WarningOutlined, ArrowLeftOutlined, FileOutlined, AppstoreOutlined, EnvironmentOutlined, MoneyCollectOutlined, DollarOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
   Card,
   Descriptions,
+  Empty,
   Flex,
   Modal,
   Input,
   Space,
+  Table,
+  Tabs,
   Tag,
-  Timeline,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useNavigation, useOne, useInvalidate } from '@refinedev/core';
 import { useParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { ErrorState } from '@/components/common/ErrorState';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Trip } from '@/types';
+import { useAuthStore } from '@/stores/auth.store';
+import type { Trip, TripStop } from '@/types';
 import { ROUTES } from '@/routes';
 import { formatDateTime, formatMoney } from '@/utils/displayFormat';
 import {
   getAvailableActions,
-  getTripStatusLabel,
-  getTripStatusTagColor,
+  getTripStatusDisplay,
   TERMINAL_TRIP_STATUSES,
 } from '@/utils/tripStatus';
 import tripService from '@/services/trip.service';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { notifyErrorOnce } from '@/utils/errorToast';
+import { userHasRole } from '@/utils/authPermissions';
+import { StatusTimeline } from '@/pages/trips/components/StatusTimeline';
+import { RevenueCard } from '@/pages/trips/components/RevenueCard';
+import { TripCostsTab } from '@/pages/trips/components/TripCostsTab';
 
 const REASON_ACTIONS = new Set(['cancel', 'emergency', 'delay']);
 
 const TITLE_KEY_MAP: Record<string, string> = {
-  cancel:    'trips.confirmCancelTitle',
+  cancel: 'trips.confirmCancelTitle',
   emergency: 'trips.confirmEmergencyTitle',
-  delay:     'trips.confirmDelayTitle',
+  delay: 'trips.confirmDelayTitle',
 };
 
 const REASON_KEY_MAP: Record<string, string> = {
-  cancel:    'trips.cancelReason',
+  cancel: 'trips.cancelReason',
   emergency: 'trips.emergencyReason',
-  delay:     'trips.delayReason',
+  delay: 'trips.delayReason',
 };
 
 export function TripDetailPage() {
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
   const { id } = useParams<{ id?: string }>();
   const { list } = useNavigation();
   const invalidate = useInvalidate();
+  const { user } = useAuthStore();
   const resolvedId = id ? Number(id) : undefined;
 
-  const { data, isLoading } = useOne<Trip>({
+  const { data, isLoading, isError, error } = useOne<Trip>({
     resource: 'trips',
     id: resolvedId || '',
-    queryOptions: { enabled: !!resolvedId },
+    queryOptions: { enabled: !!resolvedId, retry: false },
   });
 
   const trip = data?.data;
+  const isAdmin = userHasRole(user, 'admin') || userHasRole(user, 'super_admin');
+  const canDispatch = isAdmin || userHasRole(user, 'dispatcher') || userHasRole(user, 'manager');
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [reasonModal, setReasonModal] = useState<{ open: boolean; action: string }>({ open: false, action: '' });
   const [reasonValue, setReasonValue] = useState('');
@@ -69,7 +82,7 @@ export function TripDetailPage() {
     setBusyAction(action);
     try {
       await tripService.dispatchAction(trip.id, action, { reason });
-      toast.success(t('notifications.updateSuccess', { item: t('trips.title') }));
+      feedback.success(t('notifications.updateSuccess', { item: t('trips.title') }));
       await invalidate({ resource: 'trips', invalidates: ['detail'], id: trip.id });
     } catch (error) {
       if (shouldShowLocalErrorToast(error)) {
@@ -99,27 +112,31 @@ export function TripDetailPage() {
 
   const availableActions = trip ? getAvailableActions(trip.status) : [];
   const isTerminal = trip ? TERMINAL_TRIP_STATUSES.includes(trip.status as never) : false;
+  const tripStatusDisplay = trip ? getTripStatusDisplay(trip.status, t) : null;
 
-  const timelineItems = trip
-    ? [
-        { color: 'gray',  children: `${t('common.create')}: ${formatDateTime(trip.created_at)}` },
-        ...(trip.start_time
-          ? [{ color: 'blue', children: `${t('trips.startTime')}: ${formatDateTime(trip.start_time)}` }]
-          : []),
-        ...(trip.end_time
-          ? [{ color: 'green', children: `${t('trips.endTime')}: ${formatDateTime(trip.end_time)}` }]
-          : []),
-        {
-          color: TERMINAL_TRIP_STATUSES.includes(trip.status as never) ? 'green' : 'blue',
-          children: (
-            <Flex gap={8} align="center">
-              <Typography.Text>{t('common.status')}:</Typography.Text>
-              <Tag color={getTripStatusTagColor(trip.status)}>{getTripStatusLabel(trip.status, t)}</Tag>
-            </Flex>
-          ),
-        },
-      ]
-    : [];
+  const driverLicenseExpired =
+    trip?.driver?.expired_date != null &&
+    trip.driver.expired_date !== '' &&
+    dayjs(trip.driver.expired_date).isBefore(dayjs(), 'day');
+
+  const stopsColumns = [
+    { title: '#', dataIndex: 'sequence', key: 'sequence', width: 56 },
+    { title: 'Loại', dataIndex: 'stop_type', key: 'stop_type', width: 100 },
+    { title: 'Địa chỉ', dataIndex: 'address', key: 'address', ellipsis: true },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      width: 110,
+      render: (s: string) => <Tag>{s}</Tag>,
+    },
+    {
+      title: 'Dự kiến',
+      dataIndex: 'scheduled_time',
+      key: 'scheduled_time',
+      render: (v: string | null) => (v ? formatDateTime(v) : '—'),
+    },
+  ];
 
   return (
     <>
@@ -138,73 +155,139 @@ export function TripDetailPage() {
         }
       />
 
-      {isLoading || !trip ? (
+      {isError ? (
+        <ErrorState
+          title="Không tìm thấy chuyến"
+          description={getErrorMessage(error) || 'Chuyến này không tồn tại hoặc bạn không có quyền truy cập.'}
+          onRetry={() => list('trips')}
+        />
+      ) : isLoading || !trip ? (
         <TableSkeleton rows={8} columns={1} />
       ) : (
-        <Flex vertical gap={12}>
-          {/* Action panel */}
-          {!isTerminal && availableActions.length > 0 && (
-            <Card size="small">
-              <Flex gap={8} wrap="wrap" align="center">
-                <Typography.Text type="secondary" style={{ marginRight: 4 }}>
-                  {t('common.actions')}:
-                </Typography.Text>
-                {availableActions.map((cfg) => (
-                  <Button
-                    key={cfg.action}
-                    type={cfg.danger ? 'default' : 'primary'}
-                    danger={cfg.danger}
-                    size="small"
-                    loading={busyAction === cfg.action}
-                    disabled={busyAction !== null && busyAction !== cfg.action}
-                    onClick={() => handleAction(cfg.action)}
-                  >
-                    {t(cfg.labelKey as Parameters<typeof t>[0])}
-                  </Button>
-                ))}
-              </Flex>
-            </Card>
-          )}
+        <Tabs
+          defaultActiveKey="info"
+          items={[
+            {
+              key: 'info',
+              label: <Space><AppstoreOutlined />{t('trips.tabInfo')}</Space>,
+              children: (
+                <Flex vertical gap={12}>
+                  {canDispatch && !isTerminal && availableActions.length > 0 && (
+                    <Card size="small">
+                      <Flex gap={8} wrap="wrap" align="center">
+                        <Typography.Text type="secondary" style={{ marginRight: 4 }}>
+                          {t('common.actions')}:
+                        </Typography.Text>
+                        {availableActions.map((cfg) => (
+                          <Button
+                            key={cfg.action}
+                            type={cfg.danger ? 'default' : 'primary'}
+                            danger={cfg.danger}
+                            size="small"
+                            loading={busyAction === cfg.action}
+                            disabled={busyAction !== null && busyAction !== cfg.action}
+                            onClick={() => handleAction(cfg.action)}
+                          >
+                            {t(cfg.labelKey as Parameters<typeof t>[0])}
+                          </Button>
+                        ))}
+                      </Flex>
+                    </Card>
+                  )}
 
-          {isTerminal && (
-            <Alert
-              type={trip.status === 'completed' ? 'success' : 'warning'}
-              showIcon
-              message={getTripStatusLabel(trip.status, t)}
-            />
-          )}
+                  {isTerminal && tripStatusDisplay && (
+                    <Alert type={trip.status === 'completed' ? 'success' : 'warning'} showIcon message={tripStatusDisplay.label} />
+                  )}
 
-          {/* Main info */}
-          <Card>
-            <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label={t('trips.code')}>{trip.code}</Descriptions.Item>
-              <Descriptions.Item label={t('common.status')}>
-                <Tag color={getTripStatusTagColor(trip.status)}>{getTripStatusLabel(trip.status, t)}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label={t('trips.startPoint')}>{trip.start_point}</Descriptions.Item>
-              <Descriptions.Item label={t('trips.endPoint')}>{trip.end_point}</Descriptions.Item>
-              <Descriptions.Item label={t('trips.distance')}>{trip.distance_km} km</Descriptions.Item>
-              <Descriptions.Item label={t('trips.price')}>
-                {formatMoney(trip.price, { withCurrency: true })}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('trips.startTime')}>{formatDateTime(trip.start_time)}</Descriptions.Item>
-              <Descriptions.Item label={t('trips.endTime')}>{formatDateTime(trip.end_time)}</Descriptions.Item>
-              {trip.customer && (
-                <Descriptions.Item label={t('invoices.customer')} span={2}>
-                  {trip.customer.name}
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          </Card>
+                  <Card>
+                    <Descriptions column={2} bordered size="small">
+                      <Descriptions.Item label={t('trips.code')}>{trip.code}</Descriptions.Item>
+                      <Descriptions.Item label={t('common.status')}>
+                        {tripStatusDisplay && <Tag color={tripStatusDisplay.color}>{tripStatusDisplay.label}</Tag>}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('trips.startPoint')}>{trip.start_point}</Descriptions.Item>
+                      <Descriptions.Item label={t('trips.endPoint')}>{trip.end_point}</Descriptions.Item>
+                      <Descriptions.Item label={t('trips.distance')}>{trip.distance_km} km</Descriptions.Item>
+                      <Descriptions.Item label={t('trips.price')}>
+                        {formatMoney(trip.price, { withCurrency: true })}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('trips.startTime')}>{formatDateTime(trip.start_time)}</Descriptions.Item>
+                      <Descriptions.Item label={t('trips.endTime')}>{formatDateTime(trip.end_time)}</Descriptions.Item>
+                      {trip.customer && (
+                        <Descriptions.Item label={t('invoices.customer')} span={2}>
+                          {trip.customer.name}
+                        </Descriptions.Item>
+                      )}
+                      {trip.driver && (
+                        <Descriptions.Item label={t('drivers.title')} span={2}>
+                          <Space>
+                            {driverLicenseExpired ? (
+                              <Tooltip title="GPLX tài xế đã hết hạn (R03)">
+                                <WarningOutlined className="text-amber-500" />
+                              </Tooltip>
+                            ) : null}
+                            <span>{trip.driver.name}</span>
+                            {trip.driver.code ? (
+                              <Typography.Text type="secondary">({trip.driver.code})</Typography.Text>
+                            ) : null}
+                          </Space>
+                        </Descriptions.Item>
+                      )}
+                    </Descriptions>
+                  </Card>
 
-          {/* Timeline */}
-          <Card title={t('trips.statusTimeline')}>
-            <Timeline mode="left" items={timelineItems} />
-          </Card>
-        </Flex>
+                  <Card title={t('trips.statusTimeline')}>
+                    <StatusTimeline histories={trip.trip_status_histories} />
+                  </Card>
+                </Flex>
+              ),
+            },
+            {
+              key: 'stops',
+              label: <Space><EnvironmentOutlined />Điểm dừng</Space>,
+              children: (
+                <Card>
+                  {(trip.trip_stops?.length ?? 0) === 0 ? (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có điểm dừng bổ sung" />
+                  ) : (
+                    <Table<TripStop>
+                      size="small"
+                      rowKey="id"
+                      pagination={false}
+                      dataSource={trip.trip_stops}
+                      columns={stopsColumns}
+                      scroll={{ x: 'max-content' }}
+                    />
+                  )}
+                </Card>
+              ),
+            },
+            {
+              key: 'surcharges',
+              label: <Space><DollarOutlined />Doanh thu & phụ phí</Space>,
+              children: <RevenueCard trip={trip} />,
+            },
+            {
+              key: 'costs',
+              label: <Space><MoneyCollectOutlined />{t('trips.tabCosts')}</Space>,
+              children: <TripCostsTab tripId={trip.id} />,
+            },
+            {
+              key: 'documents',
+              label: <Space><FileOutlined />Chứng từ</Space>,
+              children: (
+                <Card>
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="Tab chứng từ sẽ kết nối tới /api/trips/{id}/documents khi backend bật endpoint"
+                  />
+                </Card>
+              ),
+            },
+          ]}
+        />
       )}
 
-      {/* Reason modal (cancel / delay / emergency) */}
       <Modal
         open={reasonModal.open}
         title={reasonModal.action ? t(TITLE_KEY_MAP[reasonModal.action] as Parameters<typeof t>[0]) : ''}
@@ -215,11 +298,11 @@ export function TripDetailPage() {
         }}
         onOk={handleReasonConfirm}
         onCancel={() => setReasonModal({ open: false, action: '' })}
-        destroyOnClose
+        destroyOnHidden
       >
         <Space direction="vertical" style={{ width: '100%' }}>
           {reasonModal.action === 'cancel' && (
-            <Alert type="warning" showIcon message={t('trips.confirmCancelTitle')} />
+            <Alert type="warning" showIcon message={t('trips.cancelReasonRequiredHint')} />
           )}
           {reasonModal.action === 'emergency' && (
             <Alert type="error" showIcon message={t('trips.confirmEmergencyTitle')} />

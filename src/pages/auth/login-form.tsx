@@ -1,15 +1,13 @@
-import { useState, useEffect, useRef, type ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
-import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { Button, Card, Divider, Flex, Input, Switch, Typography, theme } from 'antd';
+import { Button, Card, Divider, Flex, Form, Input, Switch, Typography, theme } from 'antd';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
-import { DEMO_PASSWORD, GOOGLE_OAUTH_CLIENT_ID, TEST_ACCOUNTS_ENABLED } from '@/utils/constants';
-
-const heroImage = 'https://www.figma.com/api/mcp/asset/4629245c-f613-41b7-a0ba-5f5a9aac02a8';
+import { GOOGLE_OAUTH_CLIENT_ID } from '@/utils/constants';
+import { getErrorStatus, getValidationErrors, isValidationError } from '@/utils/errorHandler';
 
 const inputStyle: React.CSSProperties = {
   height: 48,
@@ -25,33 +23,36 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.3px',
 };
 
+type LoginFormValues = {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+};
+
+let gsiInitialized = false;
+
 export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   const navigate = useNavigate();
+  const [form] = Form.useForm<LoginFormValues>();
   const { login, socialLogin } = useAuthStore();
   const { t } = useTranslation();
   const { token } = theme.useToken();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
-  const [testAccounts, setTestAccounts] = useState<{ role: string; role_display: string; email: string }[]>([]);
 
-  const isBusy = isSubmitting;
-  const socialBusy = isSubmitting || isSocialSubmitting;
+  const isBusy = isSubmitting || isSocialSubmitting;
 
-  // Ref for the Google-rendered button container
   const googleBtnRef = useRef<HTMLDivElement>(null);
-  // Stable ref so the renderButton effect runs only once without stale closures
   const googleCbRef = useRef<(r: GoogleCredentialResponse) => void>();
+  const lastSubmitAt = useRef(0);
+  const SUBMIT_COOLDOWN_MS = 1200;
 
   const navigateAfterLogin = () => {
     const { currentTenantId } = useAuthStore.getState();
     navigate(currentTenantId ? ROUTES.dashboard : ROUTES.selectTenant);
   };
 
-  // Always keep the callback ref up-to-date with latest state/closures
   googleCbRef.current = (response) => {
     void (async () => {
       try {
@@ -66,66 +67,69 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
     })();
   };
 
-  // Load test accounts in dev
-  useEffect(() => {
-    if (!TEST_ACCOUNTS_ENABLED) return;
-    api
-      .get('/auth/test-accounts', { skipErrorToast: true, errorMode: 'silent' })
-      .then((res) => { if (res.data?.success) setTestAccounts(res.data.data); })
-      .catch(() => {});
-  }, []);
-
-  // Render the official Google Sign-In button once the GIS script is ready
   useEffect(() => {
     if (!GOOGLE_OAUTH_CLIENT_ID) return;
-
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost && import.meta.env.VITE_ENABLE_GOOGLE_LOGIN !== 'true') {
+      return;
+    }
     const stableCallback = (r: GoogleCredentialResponse) => googleCbRef.current?.(r);
-
-    const tryRender = () => {
-      if (!googleBtnRef.current || !window.google?.accounts?.id) return false;
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_OAUTH_CLIENT_ID,
-        callback: stableCallback,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
+    const tryRender = (): boolean => {
+      const el = googleBtnRef.current;
+      if (!el || !window.google?.accounts?.id) return false;
+      if (!gsiInitialized) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_OAUTH_CLIENT_ID,
+          callback: stableCallback,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        gsiInitialized = true;
+      }
+      el.innerHTML = '';
+      window.google.accounts.id.renderButton(el, {
         theme: 'filled_black',
         size: 'large',
         text: 'signin_with',
         logo_alignment: 'left',
-        width: googleBtnRef.current.offsetWidth || 360,
+        width: el.offsetWidth || 360,
       });
       return true;
     };
-
-    if (!tryRender()) {
-      const timer = setInterval(() => { if (tryRender()) clearInterval(timer); }, 100);
-      return () => clearInterval(timer);
-    }
+    if (tryRender()) return undefined;
+    const timer = window.setInterval(() => {
+      if (tryRender()) window.clearInterval(timer);
+    }, 100);
+    return () => window.clearInterval(timer);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onFinish = async (values: LoginFormValues) => {
     if (isBusy) return;
-    try {
-      setIsSubmitting(true);
-      await login(email.trim(), password);
-      navigateAfterLogin();
-    } catch {
-      toast.error(t('auth.loginFailed'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    const now = Date.now();
+    if (now - lastSubmitAt.current < SUBMIT_COOLDOWN_MS) return;
+    lastSubmitAt.current = now;
 
-  const handleTestLogin = async (accEmail: string) => {
-    if (isBusy) return;
     try {
       setIsSubmitting(true);
-      await login(accEmail, DEMO_PASSWORD);
+      await login(values.email.trim(), values.password, values.rememberMe ?? false);
       navigateAfterLogin();
-    } catch {
+    } catch (err) {
+      if (isValidationError(err)) {
+        const ve = getValidationErrors(err);
+        const fields = Object.entries(ve).map(([name, msg]) => ({
+          name: name as keyof LoginFormValues,
+          errors: [msg],
+        }));
+        if (fields.length) {
+          form.setFields(fields);
+          return;
+        }
+      }
+      const status = getErrorStatus(err);
+      if (status === 401) {
+        toast.error(t('auth.loginInvalidCredentials'));
+        return;
+      }
       toast.error(t('auth.loginFailed'));
     } finally {
       setIsSubmitting(false);
@@ -146,20 +150,17 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
       >
         <div className="auth-screen__layout">
           <div className="auth-screen__hero">
-            <img src={heroImage} alt="" className="auth-screen__hero-image" />
+            <img src="login-hero.jpeg" alt={t('auth.heroImageAlt')} className="auth-screen__hero-image" />
           </div>
 
           <div className="auth-screen__panel">
             <div className="auth-screen__content">
-
-              {/* Brand */}
               <div className="auth-screen__brand">
-                <div className="auth-screen__brand-mark" />
+                <img src="icon.jpeg" className="auth-screen__brand-mark" alt="Ship ERP" />
                 <span className="auth-screen__brand-text">Ship ERP</span>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit}>
+              <Form form={form} layout="vertical" requiredMark={false} onFinish={onFinish} style={{ marginBottom: 0 }}>
                 <Flex vertical gap={24}>
                   <Typography.Title
                     level={4}
@@ -170,45 +171,51 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
 
                   <Flex vertical gap={20}>
                     <Flex vertical gap={16}>
-                      <Flex vertical gap={8}>
-                        <span style={labelStyle}>{t('auth.email')}</span>
+                      <Form.Item
+                        name="email"
+                        label={<span style={labelStyle}>{t('auth.email')}</span>}
+                        rules={[
+                          { required: true, message: t('validation.required', { field: t('auth.email') }) },
+                          { type: 'email', message: t('validation.email') },
+                        ]}
+                        style={{ marginBottom: 0 }}
+                      >
                         <Input
                           id="email"
                           type="email"
                           size="large"
                           style={inputStyle}
                           placeholder={t('auth.emailPlaceholder')}
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
+                          autoComplete="email"
                         />
-                      </Flex>
+                      </Form.Item>
 
-                      <Flex vertical gap={8}>
-                        <span style={labelStyle}>{t('auth.password')}</span>
+                      <Form.Item
+                        name="password"
+                        label={<span style={labelStyle}>{t('auth.password')}</span>}
+                        rules={[{ required: true, message: t('validation.required', { field: t('auth.password') }) }]}
+                        style={{ marginBottom: 0 }}
+                      >
                         <Input.Password
                           id="password"
                           size="large"
                           style={inputStyle}
                           placeholder={t('auth.registerPasswordPlaceholder')}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
+                          autoComplete="current-password"
                         />
-                      </Flex>
+                      </Form.Item>
                     </Flex>
 
                     <Flex justify="space-between" align="center">
-                      <Flex gap={8} align="center">
-                        <Switch size="small" checked={rememberMe} onChange={setRememberMe} />
-                        <span style={{ fontSize: 12, color: '#1a1a1a', letterSpacing: '0.3px' }}>
-                          {t('auth.rememberMe')}
-                        </span>
-                      </Flex>
-                      <Link
-                        to={ROUTES.forgotPassword}
-                        style={{ fontSize: 12, color: '#007aff', letterSpacing: '0.3px' }}
-                      >
+                      <Form.Item name="rememberMe" valuePropName="checked" noStyle initialValue={false}>
+                        <Flex gap={8} align="center">
+                          <Switch size="small" />
+                          <span style={{ fontSize: 12, color: '#1a1a1a', letterSpacing: '0.3px' }}>
+                            {t('auth.rememberMe')}
+                          </span>
+                        </Flex>
+                      </Form.Item>
+                      <Link to={ROUTES.forgotPassword} style={{ fontSize: 12, color: '#007aff', letterSpacing: '0.3px' }}>
                         {t('auth.forgotPassword')}
                       </Link>
                     </Flex>
@@ -224,36 +231,14 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
                     {t('auth.login')}
                   </Button>
 
-                  {testAccounts.length > 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      {testAccounts.map((acc) => (
-                        <Button
-                          key={acc.role}
-                          block
-                          size="small"
-                          disabled={isBusy || acc.email.startsWith('no-user')}
-                          onClick={() => void handleTestLogin(acc.email)}
-                        >
-                          {acc.role_display.split(' - ')[0] || acc.role}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-
                   <Divider style={{ margin: 0, borderColor: '#e5e5e5' }} />
 
-                  {/* Google Sign-In button rendered by GIS SDK */}
-                  {GOOGLE_OAUTH_CLIENT_ID ? (
-                    <div
-                      ref={googleBtnRef}
-                      style={{
-                        width: '100%',
-                        minHeight: 40,
-                        pointerEvents: socialBusy ? 'none' : 'auto',
-                        opacity: socialBusy ? 0.6 : 1,
-                      }}
-                    />
-                  ) : null}
+                  <Flex vertical gap={8} align="stretch">
+                    <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: 12 }}>
+                      {t('auth.orContinueWith')}
+                    </Typography.Text>
+                    <div ref={googleBtnRef} className="w-full" style={{ minHeight: 40 }} />
+                  </Flex>
 
                   <div className="auth-screen__switch-auth">
                     {t('auth.dontHaveAccount')}{' '}
@@ -262,7 +247,7 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
                     </Link>
                   </div>
                 </Flex>
-              </form>
+              </Form>
             </div>
 
             <Flex justify="space-between" align="center" className="auth-screen__footer">

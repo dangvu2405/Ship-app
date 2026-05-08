@@ -12,11 +12,139 @@ import {
   ChartLegendContent,
   ChartTooltip,
 } from "@/components/ui/chart"
-import { useDashboardRevenueChartData, type RevenueChartTimeRange } from "@/hooks/useDashboardRevenueChartData"
+import api from "@/services/api"
+import { getErrorMessage } from "@/utils/errorHandler"
 import { formatCurrencyVND } from "@/utils/format"
-import type { Company, Office } from "@/types"
+import type { Company, Office, Trip } from "@/types"
 
 const CHART_HUES = [1, 2, 3, 4, 5] as const
+
+type RevenueChartTimeRange = "90d" | "30d" | "7d"
+type RevenueChartRow = { date: string; [key: string]: string | number }
+
+function toDateKey(input: Date): string {
+  return input.toISOString().slice(0, 10)
+}
+
+function parseTripDate(trip: Trip): Date | null {
+  const candidates = [trip.actual_delivered_at, trip.end_time, trip.scheduled_date, trip.created_at]
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    const parsed = new Date(candidate)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+  }
+  return null
+}
+
+function revenueFromTrip(trip: Trip): number {
+  const raw = trip.total_revenue ?? trip.price
+  const value = typeof raw === "number" ? raw : Number(raw ?? 0)
+  return Number.isFinite(value) ? value : 0
+}
+
+function rangeStartByTimeRange(timeRange: RevenueChartTimeRange): Date {
+  const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const start = new Date(now)
+  start.setDate(start.getDate() - (days - 1))
+  return start
+}
+
+function useDashboardRevenueChartData(options: {
+  companyId?: number
+  timeRange: RevenueChartTimeRange
+  offices: Office[]
+}) {
+  const { companyId, timeRange, offices } = options
+
+  const [chartData, setChartData] = React.useState<RevenueChartRow[]>([])
+  const [seriesKeys, setSeriesKeys] = React.useState<string[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const fetchData = React.useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const startDate = rangeStartByTimeRange(timeRange)
+      const endDate = new Date()
+      endDate.setHours(23, 59, 59, 999)
+
+      const response = await api.get("/trips", {
+        params: {
+          status: "completed",
+          per_page: 1000,
+          ...(companyId != null ? { company_id: companyId } : {}),
+        },
+      })
+      const trips = (response.data?.data?.data ?? []) as Trip[]
+
+      const keysByDate: string[] = []
+      const cursor = new Date(startDate)
+      while (cursor <= endDate) {
+        keysByDate.push(toDateKey(cursor))
+        cursor.setDate(cursor.getDate() + 1)
+      }
+
+      const rowMap = new Map<string, RevenueChartRow>()
+      for (const dateKey of keysByDate) {
+        rowMap.set(dateKey, { date: dateKey })
+      }
+
+      const used = new Set<string>()
+      for (const trip of trips) {
+        const tripDate = parseTripDate(trip)
+        if (!tripDate) continue
+        if (tripDate < startDate || tripDate > endDate) continue
+
+        const dateKey = toDateKey(tripDate)
+        const row = rowMap.get(dateKey)
+        if (!row) continue
+
+        const seriesKey = companyId != null
+          ? trip.office_id ? `of_${trip.office_id}` : "of_other"
+          : trip.company_id ? `co_${trip.company_id}` : "co_other"
+
+        row[seriesKey] = Number(row[seriesKey] ?? 0) + revenueFromTrip(trip)
+        used.add(seriesKey)
+      }
+
+      let nextSeriesKeys = Array.from(used)
+      if (companyId != null) {
+        const officeKeys = offices
+          .filter((office) => office.company_id === companyId)
+          .map((office) => `of_${office.id}`)
+        nextSeriesKeys = Array.from(new Set([...officeKeys, ...nextSeriesKeys]))
+      }
+      nextSeriesKeys.sort((a, b) => a.localeCompare(b))
+
+      const nextRows = keysByDate.map((dateKey) => {
+        const source = rowMap.get(dateKey) ?? { date: dateKey }
+        const row: RevenueChartRow = { date: dateKey }
+        for (const key of nextSeriesKeys) {
+          row[key] = Number(source[key] ?? 0)
+        }
+        return row
+      })
+
+      setSeriesKeys(nextSeriesKeys)
+      setChartData(nextRows)
+    } catch (e) {
+      setSeriesKeys([])
+      setChartData([])
+      setError(getErrorMessage(e) || "Failed to load chart data")
+    } finally {
+      setLoading(false)
+    }
+  }, [companyId, offices, timeRange])
+
+  React.useEffect(() => {
+    void fetchData()
+  }, [fetchData])
+
+  return { chartData, seriesKeys, loading, error }
+}
 
 function formatAxisVnd(v: number): string {
   if (!Number.isFinite(v)) return ""

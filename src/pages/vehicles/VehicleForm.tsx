@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
+import { useList } from '@refinedev/core';
 import { useQuery } from '@tanstack/react-query';
 import { Badge, Descriptions, Form } from 'antd';
 import type { DescriptionsProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import type { UploadProps } from 'antd/es/upload';
 import { Inbox } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import {
   FormAccordionSections,
   FormItemNumber,
@@ -17,20 +18,53 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 import { fetchVpicAllMakes, fetchVpicModelsForMake } from '@/utils/vpicNhtsa';
-import type { Vehicle } from '@/types';
+import api from '@/services/api';
+import type { Vehicle, VehicleTypeCatalog } from '@/types';
+
+let plateCheckTimer: ReturnType<typeof setTimeout> | null = null;
+const checkPlateUnique = (plate: string, currentId?: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    if (plateCheckTimer) clearTimeout(plateCheckTimer);
+    plateCheckTimer = setTimeout(async () => {
+      try {
+        const res = await api.get('/vehicles', { params: { plate_number: plate, per_page: 5 } });
+        const data = (res.data?.data?.data ?? res.data?.data ?? []) as Array<{ id: number; plate_number?: string }>;
+        const conflict = Array.isArray(data) && data.some((v) => v.plate_number?.toUpperCase() === plate.toUpperCase() && v.id !== currentId);
+        resolve(!conflict);
+      } catch {
+        resolve(true);
+      }
+    }, 400);
+  });
 
 interface VehicleFormProps {
   form: ReturnType<typeof Form.useForm>[0];
   initialValues?: Partial<Vehicle>;
   isViewMode?: boolean;
+  isEdit?: boolean;
 }
 
 const normUploadFileList = (e: { fileList?: UploadFile[] }) => e?.fileList ?? [];
 
 export function VehicleForm(props: VehicleFormProps) {
-  const { form, initialValues, isViewMode } = props;
+  const { form, initialValues, isViewMode, isEdit } = props;
   const { t } = useTranslation();
+  const feedback = useAppFeedback();
   const brandWatch = Form.useWatch('brand', form);
+
+  const { data: vehicleTypesData } = useList<VehicleTypeCatalog>({
+    resource: 'vehicle_types',
+    pagination: { pageSize: 200 },
+    queryOptions: { enabled: !isViewMode },
+  });
+
+  const vehicleTypeOptions = useMemo(
+    () =>
+      (vehicleTypesData?.data ?? [])
+        .filter((vt) => vt.is_active !== false)
+        .map((vt) => ({ label: vt.name, value: vt.id })),
+    [vehicleTypesData?.data],
+  );
 
   const makesQuery = useQuery({
     queryKey: ['vpic', 'makes'],
@@ -87,21 +121,24 @@ export function VehicleForm(props: VehicleFormProps) {
       void publicFileUploadToUrl({
         ...options,
         onSuccess: (body, xhr) => {
-          toast.success(t('notifications.uploadSuccess'));
+          feedback.success(t('notifications.uploadSuccess'));
           options.onSuccess?.(body, xhr);
         },
         onError: (err) => {
-          toast.error(getErrorMessage(err) || t('notifications.uploadError'));
+          feedback.error(getErrorMessage(err) || t('notifications.uploadError'));
           options.onError?.(err);
         },
       });
     },
-    [t],
+    [t, feedback],
   );
 
   const statusOptions = [
-    { label: t('common.active'), value: 'active' },
-    { label: t('common.inactive'), value: 'inactive' },
+    { label: t('vehicles.status.active'), value: 'active' },
+    { label: t('vehicles.status.maintenance'), value: 'maintenance' },
+    { label: t('vehicles.status.inactive'), value: 'inactive' },
+    { label: t('vehicles.status.broken'), value: 'broken' },
+    { label: t('vehicles.status.out_of_service'), value: 'out_of_service' },
   ];
 
   if (isViewMode) {
@@ -137,6 +174,21 @@ export function VehicleForm(props: VehicleFormProps) {
         children: initialValues?.capacity ? `${initialValues.capacity} ${t('vehicles.capacityUnit')}` : '-',
       },
       {
+        key: 'max_load_ton',
+        label: t('vehicles.maxLoadTon'),
+        children: initialValues?.max_load_ton ?? '—',
+      },
+      {
+        key: 'current_odometer_km',
+        label: t('vehicles.currentOdometer'),
+        children: initialValues?.current_odometer_km ?? '—',
+      },
+      {
+        key: 'vehicle_type_id',
+        label: t('vehicles.vehicleTypeCatalog'),
+        children: initialValues?.vehicle_type?.name ?? initialValues?.vehicle_type_id ?? '—',
+      },
+      {
         key: 'office',
         label: t('offices.title'),
         children: initialValues?.office_id ?? '-',
@@ -160,7 +212,9 @@ export function VehicleForm(props: VehicleFormProps) {
         children: (
           <Badge
             status={initialValues?.status === 'active' ? 'success' : 'default'}
-            text={initialValues?.status === 'active' ? t('common.active') : t('common.inactive')}
+            text={t(`vehicles.status.${String(initialValues?.status ?? '')}`, {
+              defaultValue: String(initialValues?.status ?? '—'),
+            })}
           />
         ),
       },
@@ -191,11 +245,31 @@ export function VehicleForm(props: VehicleFormProps) {
                 required
                 rules={[
                   { required: true, message: t('validation.required', { field: t('vehicles.plateNumber') }) },
+                  {
+                    validator: async (_: unknown, value: string) => {
+                      if (!value || isEdit) return;
+                      const trimmed = String(value).trim();
+                      if (!trimmed) return;
+                      const ok = await checkPlateUnique(trimmed, initialValues?.id);
+                      if (!ok) throw new Error('Biển số đã tồn tại trong hệ thống');
+                    },
+                  },
                 ]}
                 placeholder={t('vehicles.plateNumberPlaceholder')}
+                disabled={isEdit}
               />
 
-              <FormItemText
+              <FormItemSelect
+                name="vehicle_type_id"
+                label={t('vehicles.vehicleTypeCatalog')}
+                placeholder={t('vehicles.vehicleTypeCatalogPlaceholder')}
+                options={vehicleTypeOptions}
+                allowClear
+                showSearch
+                optionFilterProp="label"
+              />
+
+              <FormItemSelect
                 name="type"
                 label={t('vehicles.type')}
                 required
@@ -203,6 +277,12 @@ export function VehicleForm(props: VehicleFormProps) {
                   { required: true, message: t('validation.required', { field: t('vehicles.type') }) },
                 ]}
                 placeholder={t('vehicles.typePlaceholder')}
+                options={[
+                  { label: 'truck', value: 'truck' },
+                  { label: 'van', value: 'van' },
+                  { label: 'car', value: 'car' },
+                  { label: 'motorcycle', value: 'motorcycle' },
+                ]}
               />
 
               <FormItemSelect
@@ -295,6 +375,21 @@ export function VehicleForm(props: VehicleFormProps) {
                 label={t('vehicles.capacity')}
                 min={0}
                 placeholder={t('vehicles.capacityPlaceholder')}
+              />
+
+              <FormItemNumber
+                name="max_load_ton"
+                label={t('vehicles.maxLoadTon')}
+                min={0}
+                step={0.01}
+                placeholder={t('vehicles.maxLoadTonPlaceholder')}
+              />
+
+              <FormItemNumber
+                name="current_odometer_km"
+                label={t('vehicles.currentOdometer')}
+                min={0}
+                placeholder={t('vehicles.currentOdometerPlaceholder')}
               />
 
               <FormItemSelect

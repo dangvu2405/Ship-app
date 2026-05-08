@@ -2,15 +2,15 @@ import { useEffect } from 'react';
 import { Alert, Button, Form, Space } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { useLocation, useParams } from 'react-router-dom';
-import { useCreate, useUpdate, useOne, useNavigation } from '@refinedev/core';
+import { useCreate, useUpdate, useOne } from '@refinedev/core';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ResourceFormModal } from '@/components/common/ResourceFormModal';
 import { VehicleForm } from './VehicleForm';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFormDialogBase } from '@/hooks/useFormDialogBase';
 import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
-import toast from 'react-hot-toast';
+import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type { Vehicle } from '@/types';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
@@ -70,16 +70,10 @@ const buildVehiclePayload = (values: VehicleFormSubmitValues, isEdit: boolean): 
 
 export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: VehicleFormDialogProps = {}) {
   const { t } = useTranslation();
-  const { id } = useParams<{ id?: string }>();
-  const location = useLocation();
-  const { list } = useNavigation();
-  const [form] = Form.useForm();
-  const isControlled = typeof open === 'boolean';
-  const resolvedId = recordId ?? (id ? Number(id) : undefined);
-  const hasRecordId = !!resolvedId;
-  const isViewMode = mode ? mode === 'show' : location.pathname.includes('/show/');
-  const isEdit = hasRecordId && !isViewMode;
-  const dialogOpen = isControlled ? open : true;
+  const feedback = useAppFeedback();
+  const { form, resolvedId, hasRecordId, isViewMode, isEdit, dialogOpen, handleClose } = useFormDialogBase({
+    open, mode, recordId, resource: 'vehicles', onClose,
+  });
 
   const { data, isLoading: isLoadingData } = useOne<Vehicle>({
     resource: 'vehicles',
@@ -91,13 +85,6 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
   const { mutate: updateItem, isLoading: isUpdating } = useUpdate<Vehicle>();
 
   const isLoading = isCreating || isUpdating || (hasRecordId && isLoadingData);
-
-  const handleClose = () => {
-    onClose?.();
-    if (!isControlled) {
-      list('vehicles');
-    }
-  };
 
   const { requestClose, handleDialogOpenChange, unsavedChangesWarningProps } = useFormDialogCloseGuard({
     form,
@@ -118,7 +105,7 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
         },
         {
           onSuccess: () => {
-            toast.success(t('notifications.updateSuccess', { item: t('vehicles.title') }));
+            feedback.success(t('notifications.updateSuccess', { item: t('vehicles.title') }));
             onSuccess?.();
             handleClose();
           },
@@ -127,7 +114,7 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
               return;
             }
 
-            toast.error(
+            feedback.error(
               getErrorMessage(error) || t('notifications.updateError', { item: t('vehicles.title') })
             );
           },
@@ -141,7 +128,7 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
         },
         {
           onSuccess: () => {
-            toast.success(t('notifications.createSuccess', { item: t('vehicles.title') }));
+            feedback.success(t('notifications.createSuccess', { item: t('vehicles.title') }));
             onSuccess?.();
             handleClose();
           },
@@ -150,7 +137,7 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
               return;
             }
 
-            toast.error(
+            feedback.error(
               getErrorMessage(error) || t('notifications.createError', { item: t('vehicles.title') })
             );
           },
@@ -204,13 +191,14 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
           style={{ marginBottom: 16 }}
         />
         <Form
+          name="vehicle-form"
           form={form}
           onFinish={handleSubmit}
           layout="vertical"
           validateTrigger={['onBlur', 'onSubmit']}
           disabled={isViewMode}
         >
-          <VehicleForm form={form} initialValues={data?.data} isViewMode={isViewMode} />
+          <VehicleForm form={form} initialValues={data?.data} isViewMode={isViewMode} isEdit={isEdit} />
         </Form>
       </>
     );
@@ -223,7 +211,7 @@ export function VehicleFormDialog({ open, mode, recordId, onClose, onSuccess }: 
         title={title}
         description={description}
         footer={footer}
-        width={896}
+        width="min(56rem, calc(100vw - 2rem))"
       >
         {body}
       </ResourceFormModal>

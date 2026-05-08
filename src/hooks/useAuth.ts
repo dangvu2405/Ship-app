@@ -2,12 +2,11 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes';
+import { userHasRole, userHasPermission } from '@/utils/authPermissions';
 
 export const useAuth = () => {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const navigate = useNavigate();
-
-  const normalizeRole = (role: string): string => role.trim().toLowerCase();
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -23,19 +22,8 @@ export const useAuth = () => {
     return true;
   };
 
-  const hasRole = (role: string): boolean => {
-    const targetRole = normalizeRole(role);
-    const inRolesArray = user?.roles?.some((r) => normalizeRole(r.name) === targetRole) ?? false;
-    const inRoleField = user?.role ? normalizeRole(user.role) === targetRole : false;
-    return inRolesArray || inRoleField;
-  };
-
-  const hasPermission = (permission: string): boolean => {
-    if (hasRole('admin')) return true;
-    return user?.roles?.some((r) =>
-      r.permissions?.some((p) => p.code === permission || p.name === permission)
-    ) ?? false;
-  };
+  const hasRole = (role: string): boolean => userHasRole(user, role);
+  const hasPermission = (permission: string): boolean => userHasPermission(user, permission);
 
   return {
     user,
