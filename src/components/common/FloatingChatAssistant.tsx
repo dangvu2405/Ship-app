@@ -4,16 +4,20 @@ import { Button, Typography, theme } from 'antd';
 
 import { ChatAssistantPanel } from '@/components/common/ChatAssistantPanel';
 import { useTranslation } from '@/hooks/useTranslation';
-import { CHAT_ENABLED } from '@/utils/constants';
+import { hasAuthToken } from '@/lib/auth-session';
+import { useAuthStore } from '@/stores/auth.store';
 
 export const FloatingChatAssistant = () => {
   const { t } = useTranslation();
   const { token } = theme.useToken();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [open, setOpen] = useState(false);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [anchor, setAnchor] = useState({ x: 0, y: 0 });
 
-  if (!CHAT_ENABLED) {
+  const isChatVisible = isAuthenticated && hasAuthToken();
+
+  if (!isChatVisible) {
     return null;
   }
 
@@ -143,14 +147,14 @@ export const FloatingChatAssistant = () => {
             width: 56,
             height: 56,
             borderRadius: '50%',
-            border: 'none',
+            border: `1px solid ${token.colorPrimaryBorder}`,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             background: token.colorPrimary,
             color: token.colorTextLightSolid,
-            boxShadow: token.boxShadowSecondary,
+            boxShadow: '0 10px 28px rgba(0, 0, 0, 0.2)',
           }}
           aria-label={t('notificationCenter.chat.title')}
         >
@@ -165,12 +169,12 @@ export const FloatingChatAssistant = () => {
         <div
           style={{
             position: 'fixed',
-            zIndex: 50,
+            zIndex: 60,
             overflow: 'hidden',
-            borderRadius: 28,
+            borderRadius: 16,
             border: `1px solid ${token.colorBorderSecondary}`,
-            background: `linear-gradient(180deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 100%)`,
-            boxShadow: '0 24px 64px rgba(15, 23, 42, 0.24)',
+            background: token.colorBgContainer,
+            boxShadow: '0 24px 64px rgba(15, 23, 42, 0.2)',
             left: panelPosition.left,
             top: panelPosition.top,
             width: panelPosition.width,
@@ -183,21 +187,21 @@ export const FloatingChatAssistant = () => {
               alignItems: 'center',
               justifyContent: 'space-between',
               borderBottom: `1px solid ${token.colorSplit}`,
-              background: token.colorFillAlter,
-              padding: '8px 12px',
+              background: token.colorPrimaryBg,
+              padding: '10px 12px',
               cursor: 'move',
               touchAction: 'none',
             }}
             onPointerDown={handleDragStart}
           >
-            <Typography.Text strong style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Typography.Text strong style={{ display: 'flex', alignItems: 'center', gap: 8, color: token.colorPrimaryText }}>
               <MessageOutlined />
               {t('notificationCenter.chat.title')}
             </Typography.Text>
             <Button type="text" icon={<CloseOutlined />} onClick={() => setOpen(false)} aria-label="Close" />
           </div>
 
-          <div style={{ overflow: 'auto', padding: '8px 12px', maxHeight: 'calc(100vh - 80px)' }}>
+          <div style={{ overflow: 'auto', padding: 0, maxHeight: 'calc(100vh - 80px)' }}>
             <ChatAssistantPanel compact style={{ boxShadow: 'none', border: 'none' }} />
           </div>
         </div>

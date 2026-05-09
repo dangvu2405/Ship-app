@@ -166,6 +166,11 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [chatMessages, sendingMessage]);
+
   const handleMessagesScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
@@ -426,7 +431,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
   };
 
   const scrollBoxStyle = compact
-    ? { maxHeight: 320, minHeight: 240, overflowY: 'auto' as const, paddingRight: 4 }
+    ? { maxHeight: 360, minHeight: 260, overflowY: 'auto' as const, paddingRight: 4 }
     : { maxHeight: 420, minHeight: 420, overflowY: 'auto' as const, paddingRight: 4 };
 
   return (
@@ -438,35 +443,47 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          gap: 16,
-          padding: compact ? 12 : 24,
+          gap: compact ? 12 : 16,
+          padding: compact ? 10 : 24,
         },
       }}
-      title={
+      title={compact ? null : (
         <Space align="start">
           <MessageOutlined />
           <span>{t('notificationCenter.chat.title')}</span>
         </Space>
-      }
+      )}
+      variant={compact ? 'borderless' : 'outlined'}
     >
-      <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
-        {t('notificationCenter.chat.description')}
-      </Typography.Paragraph>
-      <Space wrap>
-        {responseMeta.cached ? <Tag>{t('notificationCenter.chat.cached')}</Tag> : null}
-        {responseMeta.guarded ? <Tag bordered={false}>{t('notificationCenter.chat.guarded')}</Tag> : null}
-      </Space>
-
-      <Divider />
+      {!compact ? (
+        <>
+          <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+            {t('notificationCenter.chat.description')}
+          </Typography.Paragraph>
+          <Space wrap>
+            {responseMeta.cached ? <Tag>{t('notificationCenter.chat.cached')}</Tag> : null}
+            {responseMeta.guarded ? <Tag bordered={false}>{t('notificationCenter.chat.guarded')}</Tag> : null}
+          </Space>
+          <Divider />
+        </>
+      ) : (
+        <Space wrap size={6}>
+          {responseMeta.cached ? <Tag>{t('notificationCenter.chat.cached')}</Tag> : null}
+          {responseMeta.guarded ? <Tag bordered={false}>{t('notificationCenter.chat.guarded')}</Tag> : null}
+        </Space>
+      )}
 
       <Flex vertical gap={16} style={{ minHeight: 0, flex: 1 }}>
-        <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 24, padding: 16, background: token.colorFillAlter, flex: 1, minHeight: 0 }}>
-          <Typography.Text strong>{t('notificationCenter.chat.newChat')}</Typography.Text>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 4 }}>
-            {t('notificationCenter.chat.composeHint')}
-          </Typography.Paragraph>
-
-          <Divider style={{ margin: '16px 0' }} />
+        <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: compact ? 12 : 24, padding: compact ? 10 : 16, background: token.colorFillAlter, flex: 1, minHeight: 0 }}>
+          {!compact ? (
+            <>
+              <Typography.Text strong>{t('notificationCenter.chat.newChat')}</Typography.Text>
+              <Typography.Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 4 }}>
+                {t('notificationCenter.chat.composeHint')}
+              </Typography.Paragraph>
+              <Divider style={{ margin: '16px 0' }} />
+            </>
+          ) : null}
 
           <div ref={messagesContainerRef} onScroll={handleMessagesScroll} style={scrollBoxStyle}>
             {chatMessages.length === 0 ? (

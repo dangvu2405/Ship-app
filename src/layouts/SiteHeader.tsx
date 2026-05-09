@@ -1,10 +1,11 @@
-import { SearchOutlined, MoonOutlined, SunOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SwapOutlined } from '@ant-design/icons';
-import { Button, Divider, Flex, Input, theme, Tooltip } from 'antd';
+import { MoonOutlined, SunOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SwapOutlined } from '@ant-design/icons';
+import { Button, Divider, Flex, Tooltip } from 'antd';
 import { useAppStore } from '@/stores/app.store';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { NotificationPopup } from '@/components/common/NotificationPopup';
+import { HeaderChatCommand } from '@/components/common/HeaderChatCommand';
 import { useNavigate } from 'react-router-dom';
 
 type SiteHeaderProps = {
@@ -16,7 +17,6 @@ export function SiteHeader({ sidebarCollapsed, onToggleSidebar }: SiteHeaderProp
   const { theme: colorMode, toggleTheme } = useAppStore();
   const { user, switchTenant } = useAuthStore();
   const { t } = useTranslation();
-  const { token } = theme.useToken();
   const navigate = useNavigate();
   const canSwitchTenant = (user?.tenants?.length ?? 0) >= 2;
 
@@ -36,13 +36,7 @@ export function SiteHeader({ sidebarCollapsed, onToggleSidebar }: SiteHeaderProp
       />
       <Divider type="vertical" style={{ height: 20, margin: 0 }} />
       <div style={{ flex: 1, maxWidth: 420 }}>
-        <Input
-          allowClear
-          prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
-          placeholder={t('header.searchPlaceholder')}
-          variant="borderless"
-          style={{ background: token.colorFillTertiary, borderRadius: token.borderRadiusLG }}
-        />
+        <HeaderChatCommand />
       </div>
       <Flex align="center" gap={4} style={{ marginLeft: 'auto' }}>
         {canSwitchTenant && (

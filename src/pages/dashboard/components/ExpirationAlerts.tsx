@@ -38,6 +38,15 @@ function severityColor(days: number): string {
   return 'orange';
 }
 
+function normalizeArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object') {
+    const nested = (value as { data?: unknown }).data;
+    if (Array.isArray(nested)) return nested as T[];
+  }
+  return [];
+}
+
 function DaysTag({ days }: { days: number }) {
   if (days <= 0) return <Tag color="red">Đã hết hạn</Tag>;
   return <Tag color={severityColor(days)}>Còn {days} ngày</Tag>;
@@ -204,8 +213,8 @@ export const ExpirationAlerts = memo(function ExpirationAlerts() {
   const { data: driverDocs, isLoading: driverLoading } = useDriverExpiringDocuments();
   const { data: vehicleDocs, isLoading: vehicleLoading } = useVehicleExpiringDocuments();
 
-  const drivers = driverDocs ?? [];
-  const vehicles = vehicleDocs ?? [];
+  const drivers = normalizeArray<DriverExpiringDocument>(driverDocs);
+  const vehicles = normalizeArray<VehicleExpiringDocument>(vehicleDocs);
 
   const driverCount = drivers.length;
   const vehicleCount = vehicles.length;
