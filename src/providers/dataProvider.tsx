@@ -6,6 +6,14 @@ import { ENDPOINTS } from '@/services/endpoints';
 import { throwIfEnvelopeFailed, unwrapEnvelope } from '@/services/http';
 import costService from '@/services/cost.service';
 
+type ApiErrorLike = { response?: { status?: number } };
+type EnvelopeLike<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T | { data?: T; meta?: { total?: number } };
+  meta?: { total?: number };
+};
+
 
 // === Alias: resource name frontend → resource name backend (api.php) ===
 const RESOURCE_ALIASES: Record<string, string> = {
@@ -64,12 +72,77 @@ const NOT_IMPLEMENTED_RESOURCES = new Set([
 ]);
 
 // === Fallback: nếu resource chính 404 thử resource phụ ===
-const LEGACY_LIST_FALLBACKS: Record<string, string[]> = {};
+const LEGACY_LIST_FALLBACKS: Record<string, string[]> = {
+  companies: ['admin/companies'],
+};
+const RUNTIME_UNAVAILABLE_LIST_RESOURCES = new Set<string>();
+const DISABLED_LIST_RESOURCES = new Set(
+  String(import.meta.env.VITE_DISABLED_LIST_RESOURCES ?? '')
+    .split(',')
+    .map((value: string) => value.trim())
+    .filter(Boolean),
+);
 
 
 const resolveApiResource = (resource: string) => {
   const alias = RESOURCE_ALIASES[resource] ?? resource;
   return alias.replace(/_/g, '-');
+};
+
+const isUnavailableStatus = (status?: number) => status === 403 || status === 404;
+
+const buildListQueryParams = (
+  current: number,
+  perPage: number,
+  filters?: CrudFilter[],
+  sorters?: GetListParams['sorters'],
+) => {
+  const queryParams: Record<string, unknown> = {
+    page: current,
+    per_page: perPage,
+  };
+
+  if (filters && filters.length > 0) {
+    filters.forEach((filter: CrudFilter) => {
+      if ('field' in filter && 'value' in filter && filter.value !== undefined && filter.value !== '') {
+        const field = filter.field as string;
+        const key = field === 'q' || field === 'search' ? 'keyword' : field;
+        queryParams[key] = filter.value;
+      }
+    });
+  }
+
+  if (sorters && sorters.length > 0) {
+    const sorter = sorters[0];
+    if ('field' in sorter) {
+      queryParams.sort_by = sorter.field;
+      queryParams.sort_order = sorter.order === 'desc' ? 'desc' : 'asc';
+    }
+  }
+
+  return queryParams;
+};
+
+const parseEnvelopeList = <TData extends BaseRecord>(resource: string, body: EnvelopeLike<TData[]>): { data: TData[]; total: number } => {
+  throwIfEnvelopeFailed(body);
+  const envelopeData = unwrapEnvelope<unknown>(body);
+
+  if (Array.isArray(envelopeData)) {
+    return {
+      data: envelopeData as TData[],
+      total: body.meta?.total ?? envelopeData.length,
+    };
+  }
+
+  if (envelopeData && typeof envelopeData === 'object' && Array.isArray((envelopeData as { data?: unknown }).data)) {
+    const nested = envelopeData as { data: TData[]; meta?: { total?: number } };
+    return {
+      data: nested.data,
+      total: nested.meta?.total ?? body.meta?.total ?? nested.data.length,
+    };
+  }
+
+  throw new Error(`Invalid list payload for resource "${resource}"`);
 };
 
 // Custom data provider that uses our axios instance
@@ -143,28 +216,7 @@ export const dataProvider: DataProvider = {
       throw new Error('Invalid list payload for resource "leave-requests"');
     }
 
-    const queryParams: Record<string, unknown> = {
-      page: current,
-      per_page: perPage,
-    };
-
-    if (filters && filters.length > 0) {
-      filters.forEach((filter: CrudFilter) => {
-        if ('field' in filter && 'value' in filter && filter.value !== undefined && filter.value !== '') {
-          const field = filter.field as string;
-          const key = field === 'q' || field === 'search' ? 'keyword' : field;
-          queryParams[key] = filter.value;
-        }
-      });
-    }
-
-    if (sorters && sorters.length > 0) {
-      const sorter = sorters[0];
-      if ('field' in sorter) {
-        queryParams.sort_by = sorter.field;
-        queryParams.sort_order = sorter.order === 'desc' ? 'desc' : 'asc';
-      }
-    }
+    const queryParams = buildListQueryParams(current, perPage, filters, sorters);
 
     const apiResource = resolveApiResource(resource);
 
@@ -172,50 +224,48 @@ export const dataProvider: DataProvider = {
     if (NOT_IMPLEMENTED_RESOURCES.has(resource)) {
       return { data: [] as unknown as TData[], total: 0 };
     }
+    // Optional runtime override for environments with partial backend route availability.
+    if (DISABLED_LIST_RESOURCES.has(resource)) {
+      return { data: [] as unknown as TData[], total: 0 };
+    }
+    // Cache unavailable resources at runtime to avoid repeated 404/403 spam on polling/re-render.
+    if (RUNTIME_UNAVAILABLE_LIST_RESOURCES.has(resource)) {
+      return { data: [] as unknown as TData[], total: 0 };
+    }
 
-    let body: any;
+    let body: EnvelopeLike<TData[]> | undefined;
     try {
-      const response = await api.get(`/${apiResource}`, { params: queryParams });
-      body = response.data as any;
+      const response = await api.get<EnvelopeLike<TData[]>>(`/${apiResource}`, { params: queryParams });
+      body = response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status;
-      if (status === 404 || status === 403) {
+      const status = (error as ApiErrorLike)?.response?.status;
+      if (isUnavailableStatus(status)) {
         const candidates = LEGACY_LIST_FALLBACKS[resource] ?? [];
         for (const candidate of candidates) {
           try {
-            const fallbackResponse = await api.get(`/${candidate}`, { params: queryParams });
-            body = fallbackResponse.data as any;
+            const fallbackResponse = await api.get<EnvelopeLike<TData[]>>(`/${candidate}`, { params: queryParams });
+            body = fallbackResponse.data;
             break;
           } catch (fallbackError) {
-            const fallbackStatus = (fallbackError as { response?: { status?: number } })?.response?.status;
+            const fallbackStatus = (fallbackError as ApiErrorLike)?.response?.status;
             if (fallbackStatus !== 404) {
               throw fallbackError;
             }
           }
         }
         if (!body) {
+          RUNTIME_UNAVAILABLE_LIST_RESOURCES.add(resource);
           return { data: [], total: 0 };
         }
       } else {
         throw error;
       }
     }
-    throwIfEnvelopeFailed(body);
-
-    let listData: TData[] = [];
-    let total = 0;
-
-    const envelopeData = unwrapEnvelope<any>(body);
-
-    if (Array.isArray(envelopeData)) {
-      listData = envelopeData;
-      total = body.meta?.total ?? envelopeData.length;
-    } else if (envelopeData && Array.isArray(envelopeData.data)) {
-      listData = envelopeData.data;
-      total = envelopeData.meta?.total ?? body.meta?.total ?? envelopeData.data.length;
-    } else {
-      throw new Error(`Invalid list payload for resource "${resource}"`);
+    if (!body) {
+      throw new Error(`Empty response body for resource "${resource}"`);
     }
+    RUNTIME_UNAVAILABLE_LIST_RESOURCES.delete(resource);
+    const { data: listData, total } = parseEnvelopeList<TData>(resource, body);
 
     return {
       data: listData,
@@ -296,7 +346,7 @@ export const dataProvider: DataProvider = {
       });
       body = response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status;
+      const status = (error as ApiErrorLike)?.response?.status;
       if (status === 403 || status === 404) {
         return { data: {} as TData };
       }

@@ -16,24 +16,32 @@ import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler
 import { mergeVnAddressIntoPayload } from '@/utils/vnAddressForm';
 import { tripCreateMinimalSchema } from '@/pages/trips/trip-form.schema';
 import { recordAuditIntent } from '@/lib/audit-action';
+import { useAuthStore } from '@/stores/auth.store';
+import { normalizeTripStatusKey } from '@/utils/tripStatus';
 
-const normalizeTripStatus = (status?: string): string => {
-  if (!status) return '';
-  return status.toLowerCase() === 'canceled' ? 'cancelled' : status.toLowerCase();
-};
+const normalizeTripStatus = (status?: string): string => normalizeTripStatusKey(status) || '';
 
 const canTransitionTripStatus = (fromStatus: string, toStatus: string): boolean => {
   if (fromStatus === toStatus) return true;
-  if (fromStatus === 'pending') {
-    return toStatus === 'in_progress' || toStatus === 'cancelled';
-  }
-  if (fromStatus === 'in_progress') {
-    return toStatus === 'completed' || toStatus === 'cancelled';
-  }
-  if (fromStatus === 'completed' || fromStatus === 'cancelled') {
+  if (fromStatus === 'completed' || fromStatus === 'cancelled' || fromStatus === 'emergency') {
     return false;
   }
-  return true;
+  if (fromStatus === 'draft') {
+    return toStatus === 'pending' || toStatus === 'cancelled';
+  }
+  if (fromStatus === 'pending') {
+    return toStatus === 'assigned' || toStatus === 'cancelled';
+  }
+  if (fromStatus === 'assigned' || fromStatus === 'driver_accepted') {
+    return toStatus === 'in_transit' || toStatus === 'cancelled';
+  }
+  if (fromStatus === 'in_transit' || fromStatus === 'delayed' || fromStatus === 'en_route_pickup' || fromStatus === 'picked_up') {
+    return toStatus === 'delivered' || toStatus === 'arrived' || toStatus === 'cancelled';
+  }
+  if (fromStatus === 'arrived' || fromStatus === 'delivered') {
+    return toStatus === 'completed' || toStatus === 'cancelled';
+  }
+  return false;
 };
 
 const toNullableNumber = (value: unknown): number | null => {
@@ -59,6 +67,7 @@ function buildTripPayload(values: Partial<Trip> & Record<string, unknown>, nextS
 
   const payload: StoreTripRequest = {
     code: String(values.code ?? '').trim() || undefined,
+    company_id: toOptionalNumber(values.company_id),
     customer_id: Number(values.customer_id),
     contact_name: values.contact_name ? String(values.contact_name) : undefined,
     contact_phone: values.contact_phone ? String(values.contact_phone) : undefined,
@@ -126,6 +135,7 @@ interface TripFormDialogProps {
 export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: TripFormDialogProps = {}) {
   const { t } = useTranslation();
   const feedback = useAppFeedback();
+  const currentTenantId = useAuthStore((s) => s.currentTenantId);
   const { form, resolvedId, hasRecordId, isViewMode, isEdit, dialogOpen, handleClose } = useFormDialogBase({
     open, mode, recordId, resource: 'trips', onClose,
   });
@@ -173,7 +183,7 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
       return;
     }
 
-    if ((nextStatus === 'in_progress' || nextStatus === 'completed') && !values.start_time) {
+    if ((nextStatus === 'in_transit' || nextStatus === 'completed') && !values.start_time) {
       feedback.error(t('validation.required', { field: t('trips.startTime') }));
       return;
     }
@@ -187,12 +197,20 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
     mergeVnAddressIntoPayload(payloadObject, values, 'start_', 'start_point');
     mergeVnAddressIntoPayload(payloadObject, values, 'end_', 'end_point');
 
+    const resolvedCompanyId =
+      toOptionalNumber(payloadObject.company_id) ??
+      toOptionalNumber(data?.data?.company_id) ??
+      (currentTenantId != null ? currentTenantId : undefined);
+    if (resolvedCompanyId != null) {
+      payloadObject.company_id = resolvedCompanyId;
+    }
+
     const tripPayload = buildTripPayload(
       payloadObject as Partial<Trip> & Record<string, unknown>,
       nextStatus || String(values.status ?? 'pending'),
     );
 
-    if (!tripPayload.customer_id || !tripPayload.start_point || !tripPayload.end_point) {
+    if (!tripPayload.company_id || !tripPayload.customer_id || !tripPayload.start_point || !tripPayload.end_point) {
       feedback.error(t('validation.requiredFieldsMissing'));
       return;
     }
@@ -251,11 +269,12 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
   };
 
   useEffect(() => {
-    if (hasRecordId && data?.data) {
+    const row = data?.data;
+    if (hasRecordId && row) {
       form.setFieldsValue({
-        ...data.data,
-        base_price: data.data.base_price ?? data.data.price,
-        total_revenue: data.data.total_revenue ?? (data.data.base_price ?? data.data.price) + (data.data.surcharge_amount ?? 0),
+        ...row,
+        base_price: row.base_price ?? row.price,
+        total_revenue: row.total_revenue ?? (row.base_price ?? row.price ?? 0) + (row.surcharge_amount ?? 0),
       });
     }
   }, [hasRecordId, data?.data, form]);
@@ -312,7 +331,17 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
     ) : (
       <>
         <Alert type="info" message={t('formGuides.title')} description={t('formGuides.trip')} showIcon style={{ marginBottom: 16 }} />
-        <Form name="trip-form" form={form} onFinish={handleSubmit} layout="vertical" validateTrigger={['onBlur', 'onSubmit']} disabled={isViewMode}>
+        <Form
+          name="trip-form"
+          form={form}
+          onFinish={handleSubmit}
+          onFinishFailed={() => {
+            feedback.error(t('validation.requiredFieldsMissing'));
+          }}
+          layout="vertical"
+          validateTrigger={['onBlur', 'onSubmit']}
+          disabled={isViewMode}
+        >
           <TripForm
             form={form}
             initialValues={data?.data}

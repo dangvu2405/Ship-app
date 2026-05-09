@@ -392,7 +392,12 @@ export function PayrollListPage() {
         </Card>
       ) : null}
 
-      <PayrollDetailDrawer open={drawerLine != null} onClose={() => setDrawerLine(null)} line={drawerLine} />
+      <PayrollDetailDrawer
+        open={drawerLine != null}
+        onClose={() => setDrawerLine(null)}
+        line={drawerLine}
+        onPayrollUpdated={() => void tableQuery.refetch()}
+      />
 
       <SalaryAdjustmentModal
         open={adjOpen}

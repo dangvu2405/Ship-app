@@ -171,6 +171,10 @@ export interface Trip {
   scheduled_time_from?: string | null;
   scheduled_time_to?: string | null;
   distance_km: number;
+  origin_lat?: number | null;
+  origin_lng?: number | null;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
   actual_distance_km?: number | null;
   start_time?: string;
   end_time?: string;

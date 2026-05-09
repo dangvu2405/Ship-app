@@ -24,10 +24,12 @@ const customerSchema = z
     phone: z.string().trim().optional(),
     email: z.string().trim().optional(),
     address: z.string().trim().optional(),
-    contact_person: z.string().trim().optional(),
+    extra_contact_name: z.string().trim().optional(),
     group_id: z.number().optional(),
     credit_limit: z.number().optional(),
     payment_terms_days: z.number().optional(),
+    contract_start_date: z.string().trim().optional().nullable(),
+    contract_end_date: z.string().trim().optional().nullable(),
     is_active: z.union([z.number(), z.boolean()]).optional(),
     notes: z.string().trim().optional(),
   })

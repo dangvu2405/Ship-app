@@ -143,7 +143,7 @@ export function CustomerForm(props: CustomerFormProps) {
                 ]}
               />
               <FormItemTextArea name="address" label={t('customers.address')} rows={2} />
-              <FormItemText name="contact_person" label={t('customers.contactPerson')} />
+              <FormItemText name="extra_contact_name" label={t('customers.contactPerson')} />
             </>
           ),
         },
@@ -170,6 +170,9 @@ export function CustomerForm(props: CustomerFormProps) {
                   ({ getFieldValue }) => ({
                     validator(_: unknown, value: string | null) {
                       const start = getFieldValue('contract_start_date');
+                      if (value && !start) {
+                        return Promise.reject(new Error('Vui lòng nhập ngày bắt đầu hợp đồng trước'));
+                      }
                       if (!value || !start) return Promise.resolve();
                       if (dayjs(value).isBefore(dayjs(start), 'day')) {
                         return Promise.reject(new Error('Ngày kết thúc phải sau ngày bắt đầu'));

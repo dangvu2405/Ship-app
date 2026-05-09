@@ -1,4 +1,5 @@
 import api from './api';
+import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import type { DispatchBoardResponse, UnassignedTripsResponse } from '@/types/api/dispatch';
 import type { ApiResponse } from '@/types';
@@ -7,7 +8,7 @@ export interface DispatchDailySummary {
   date: string;
   total_trips?: number;
   pending?: number;
-  in_progress?: number;
+  in_transit?: number;
   completed?: number;
   cancelled?: number;
   unassigned?: number;
@@ -22,6 +23,8 @@ export interface DispatchDailySummary {
 }
 
 const dispatchService = {
+  dailySummaryUnavailable: false,
+
   async getBoard(date?: string) {
     const res = await api.get<DispatchBoardResponse>(ENDPOINTS.dispatch.board, {
       params: date ? { date } : undefined,
@@ -42,13 +45,24 @@ const dispatchService = {
   },
 
   async getDailySummary(date?: string): Promise<ApiResponse<DispatchDailySummary>> {
+    if (this.dailySummaryUnavailable) {
+      return { success: false, data: { date: date ?? '' } as DispatchDailySummary } as ApiResponse<DispatchDailySummary>;
+    }
+
     try {
       const res = await api.get<ApiResponse<DispatchDailySummary>>(ENDPOINTS.dispatch.dailySummary, {
         params: date ? { date } : undefined,
         skipErrorToast: true,
       } as Parameters<typeof api.get>[1]);
+      this.dailySummaryUnavailable = false;
       return res.data;
-    } catch {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 403 || status === 404) {
+          this.dailySummaryUnavailable = true;
+        }
+      }
       return { success: false, data: { date: date ?? '' } as DispatchDailySummary } as ApiResponse<DispatchDailySummary>;
     }
   },

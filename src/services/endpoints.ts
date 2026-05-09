@@ -154,7 +154,7 @@ export const ENDPOINTS = {
     cancel: (id: Id) => `/salary-adjustments/${id}/cancel`,
   },
   reports: {
-    dashboard: '/dashboard/overview',
+    dashboard: '/reports/dashboard',
     payrollSummary: '/reports/payroll-summary',
     revenueSummary: '/reports/revenue-summary',
     revenue: '/reports/revenue',
@@ -284,4 +284,6 @@ export const ENDPOINTS = {
     ...crud('/admin/companies'),
     status: (id: Id) => `/admin/companies/${id}/status`,
   },
+  shippingFeeLookup: '/shipping-fee-lookup',
 } as const;
+

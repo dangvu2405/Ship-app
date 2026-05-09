@@ -60,7 +60,7 @@ export function VehicleAssignments({ vehicleId }: VehicleAssignmentsProps) {
   const multipleCurrentWarning = currentAssignments.length > 1;
 
   const releaseMutation = useMutation({
-    mutationFn: (release_reason: string) => vehicleService.releaseCurrentAssignment(vehicleId, { release_reason }),
+    mutationFn: (release_reason: string) => vehicleService.releaseCurrentAssignment(primaryCurrent!.id, { release_reason }),
     onSuccess: () => {
       message.success(t('vehicles.releaseVehicleSuccess'));
       setReleaseOpen(false);

@@ -1,7 +1,7 @@
 import { Badge, Space, Tag, Tooltip } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { DayInfo } from '@/hooks/use-driver-day-map';
+import type { DayInfo } from '@/hooks/useDriverDayMap';
 
 interface Props {
   date: Dayjs;

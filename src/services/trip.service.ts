@@ -126,11 +126,6 @@ class TripService {
     }
   }
 
-  async updateStatus(id: number, status: 'in_progress' | 'completed' | 'cancelled'): Promise<TripMutationResponse> {
-    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), { status });
-    return response.data;
-  }
-
   async priceLookup(payload: {
     customer_id?: number;
     route_template_id?: number;
@@ -149,6 +144,26 @@ class TripService {
       return { success: false } as { success: boolean; data?: { base_price?: number; suggested_price?: number; price?: number } };
     }
   }
+
+  async shippingFeeLookup(payload: {
+    origin: string;
+    destination: string;
+    origin_lat?: number;
+    origin_lng?: number;
+    destination_lat?: number;
+    destination_lng?: number;
+    vehicle_type_id?: number;
+  }) {
+    try {
+      const response = await api.post(ENDPOINTS.shippingFeeLookup, payload, {
+        skipErrorToast: true,
+      } as Parameters<typeof api.post>[2]);
+      return response.data as { success: boolean; data?: { distance_km: number; shipping_fee: number } };
+    } catch {
+      return { success: false } as { success: boolean; data?: { distance_km: number; shipping_fee: number } };
+    }
+  }
 }
+
 
 export default new TripService();

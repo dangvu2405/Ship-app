@@ -60,7 +60,7 @@ const BOARD_COLUMNS: BoardColumnConfig[] = [
   { key: 'done', title: 'Hoàn thành', dotClassName: 'bg-slate-400', statusTagColor: 'default' },
 ];
 
-const RUNNING_TRIP_STATUSES = ['running', 'in_transit', 'in-progress', 'in_progress'] as const;
+const RUNNING_TRIP_STATUSES = ['in_transit', 'driver_accepted', 'en_route_pickup', 'picked_up', 'delayed'] as const;
 const DONE_TRIP_STATUSES = ['completed', 'delivered', 'done', 'closed'] as const;
 const READY_VEHICLE_STATUSES = ['available', 'ready', 'idle', 'active'] as const;
 const MAINTENANCE_VEHICLE_STATUSES = ['maintenance', 'broken', 'inactive'] as const;
@@ -192,7 +192,7 @@ export default function DispatchBoardPage() {
   }, [refetchAll]);
 
   const summaryNew = dailySummary?.unassigned ?? unassignedTrips.length;
-  const summaryRunning = dailySummary?.in_progress ?? trips.filter((t) => RUNNING_TRIP_STATUSES.includes(normalizeTripStatus(t.status) as (typeof RUNNING_TRIP_STATUSES)[number])).length;
+  const summaryRunning = dailySummary?.in_transit ?? trips.filter((t) => RUNNING_TRIP_STATUSES.includes(normalizeTripStatus(t.status) as (typeof RUNNING_TRIP_STATUSES)[number])).length;
   const summaryCompleted = dailySummary?.completed ?? trips.filter((t) => DONE_TRIP_STATUSES.includes(normalizeTripStatus(t.status) as (typeof DONE_TRIP_STATUSES)[number])).length;
 
   const excludedDriverIds = useMemo(() => {

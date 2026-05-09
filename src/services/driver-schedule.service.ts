@@ -107,7 +107,7 @@ class DriverScheduleService {
   }
 
   async approve(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const res = await api.put(ENDPOINTS.workforce.approveDriverSchedule(id));
+    const res = await api.post(ENDPOINTS.driverSchedules.approve(id));
     return res.data;
   }
 
@@ -117,7 +117,7 @@ class DriverScheduleService {
   }
 
   async lock(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const res = await api.put(ENDPOINTS.workforce.lockDriverSchedule(id));
+    const res = await api.post(ENDPOINTS.driverSchedules.lock(id));
     return res.data;
   }
 

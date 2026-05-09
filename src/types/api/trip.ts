@@ -19,4 +19,6 @@ export type TripListParams = {
 
 export type TripListResponse = ApiResponse<PaginatedResponse<Trip>>;
 export type TripDetailResponse = ApiResponse<Trip>;
-export type TripMutationResponse = ApiResponse<Trip>;
+export type TripMutationResponse = ApiResponse<Trip> & {
+  meta?: { warnings?: string[] };
+};

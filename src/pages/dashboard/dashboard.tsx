@@ -636,7 +636,7 @@ export default function Dashboard() {
                 <Col span={12}>
                   <Card size="small" styles={{ body: { padding: 12 } }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>Đang chạy</Text>
-                    <Title level={4} style={{ margin: '4px 0 0' }}>{dailySummary?.in_progress ?? todayKpis.runningCount}</Title>
+                    <Title level={4} style={{ margin: '4px 0 0' }}>{dailySummary?.in_transit ?? todayKpis.runningCount}</Title>
                   </Card>
                 </Col>
                 <Col span={12}>

@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Flex, Form, Space, Tabs } from 'antd';
-import type { FormInstance } from 'antd';
-import { CalculatorOutlined } from '@ant-design/icons';
+import { Button, Flex, Form, Space, Steps, Spin, Divider, Row, Col, Card } from 'antd';
+import { CalculatorOutlined, CarOutlined, InfoCircleOutlined, EnvironmentOutlined, DollarOutlined, PullRequestOutlined } from '@ant-design/icons';
 import { useList } from '@refinedev/core';
 import {
   FormAccordionSections,
+  FormItemDatePicker,
+  FormItemLocation,
   FormItemNumber,
   FormItemSelect,
   FormItemText,
   FormItemTextArea,
+  FormItemRangePicker,
 } from '@/components/form';
 import { VnAdminAddressFields } from '@/components/form/vn-admin-address-fields';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
-import type { CargoType, Customer, Driver, Location, RouteTemplate, Trip, Vehicle, VehicleTypeCatalog } from '@/types';
+import type { CargoType, Customer, Driver, RouteTemplate, Trip, Vehicle, VehicleTypeCatalog } from '@/types';
 import { TERMINAL_TRIP_STATUSES } from '@/utils/tripStatus';
 import tripService from '@/services/trip.service';
 import { TripStopsList } from './components/TripStopsList';
@@ -30,11 +32,7 @@ interface TripFormProps {
 type TripFormStep = 'info' | 'route' | 'revenue';
 const STEP_ORDER: TripFormStep[] = ['info', 'route', 'revenue'];
 
-const PAYMENT_METHODS = [
-  { label: 'Chuyển khoản', value: 'bank_transfer' },
-  { label: 'Tiền mặt', value: 'cash' },
-  { label: 'Công nợ', value: 'credit' },
-];
+
 
 const normalizeTripStatus = (status?: string) => {
   if (!status) return '';
@@ -66,6 +64,8 @@ export function TripForm({
   const basePrice = Form.useWatch('base_price', form);
   const surcharges: Array<{ label?: string; amount?: number; note?: string }> = Form.useWatch('surcharges', form) ?? [];
   const [pricingLoading, setPricingLoading] = useState(false);
+  const [shippingCalcLoading, setShippingCalcLoading] = useState(false);
+
 
   useEffect(() => {
     setActiveStep('info');
@@ -124,16 +124,16 @@ export function TripForm({
     sorters: [{ field: 'name', order: 'asc' }],
   });
 
-  const { data: locationsData, isLoading: loadingLocations } = useList<Location>({
-    resource: 'locations',
-    pagination: { current: 1, pageSize: 500 },
-    sorters: [{ field: 'name', order: 'asc' }],
-  });
-
   const { data: vehicleTypesData, isLoading: loadingVehicleTypes } = useList<VehicleTypeCatalog>({
     resource: 'vehicle_types',
     pagination: { current: 1, pageSize: 500 },
     sorters: [{ field: 'sort_order', order: 'asc' }, { field: 'name', order: 'asc' }],
+  });
+  
+  const { data: assignmentsData } = useList<any>({
+    resource: 'vehicle_assignments',
+    pagination: { current: 1, pageSize: 500 },
+    filters: [{ field: 'to_date', operator: 'null', value: null }],
   });
 
   const customerOptions = useMemo(
@@ -170,15 +170,24 @@ export function TripForm({
     [routeTemplatesData?.data],
   );
 
-  const locationOptions = useMemo(
-    () => (locationsData?.data ?? []).map((item) => ({ label: `${item.name} — ${item.address}`, value: item.id })),
-    [locationsData?.data],
-  );
-
   const vehicleTypeOptions = useMemo(
     () => (vehicleTypesData?.data ?? []).map((item) => ({ label: item.name, value: item.id })),
     [vehicleTypesData?.data],
   );
+
+  const paymentMethods = useMemo(() => [
+    { label: t('trips.paymentMethodBankTransfer'), value: 'bank_transfer' },
+    { label: t('trips.paymentMethodCash'), value: 'cash' },
+    { label: t('trips.paymentMethodCredit'), value: 'credit' },
+  ], [t]);
+
+  const driverToVehicleMap = useMemo(() => {
+    const map: Record<number, number> = {};
+    (assignmentsData?.data ?? []).forEach((a: any) => {
+      map[a.driver_id] = a.vehicle_id;
+    });
+    return map;
+  }, [assignmentsData?.data]);
 
   const stepFieldNames = getStepFieldNames(hasRecord);
 
@@ -193,7 +202,7 @@ export function TripForm({
       'cargo_weight_ton',
     ]);
     if (!values.customer_id || !values.route_template_id) {
-      feedback.error('Vui lòng chọn khách hàng và tuyến đường để tính giá');
+      feedback.error(t('trips.errSelectCustomerAndRoute'));
       return;
     }
     setPricingLoading(true);
@@ -210,16 +219,88 @@ export function TripForm({
       const suggested = res?.data?.base_price ?? res?.data?.suggested_price ?? res?.data?.price;
       if (res?.success && typeof suggested === 'number') {
         form.setFieldValue('base_price', suggested);
-        feedback.success('Đã tính giá theo bảng giá khách hàng');
+        feedback.success(t('trips.calcPriceSuccess'));
       } else {
-        feedback.info('Không tìm thấy giá phù hợp, vui lòng nhập tay');
+        feedback.info(t('trips.calcPriceNotFound'));
       }
     } catch {
-      feedback.error('Không tính được giá. Hãy nhập tay.');
+      feedback.error(t('trips.calcPriceError'));
     } finally {
       setPricingLoading(false);
     }
   };
+
+  // Smart Logic: Auto-calculate distance when addresses change
+  const watchAddresses = Form.useWatch(['start_addr_street_detail', 'end_addr_street_detail', 'vehicle_type_id'], form);
+  
+  useEffect(() => {
+    if (!watchAddresses) return;
+    const [start, end] = watchAddresses;
+    if (start && end) {
+      const timer = setTimeout(() => {
+        handleShippingFeeLookup();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [watchAddresses]);
+
+  const handleShippingFeeLookup = async () => {
+    const values = form.getFieldsValue([
+      'start_addr_street_detail',
+      'start_addr_ward_code',
+      'start_addr_district_code',
+      'start_addr_province_code',
+      'end_addr_street_detail',
+      'end_addr_ward_code',
+      'end_addr_district_code',
+      'end_addr_province_code',
+      'vehicle_type_id',
+    ]);
+
+    const getAddr = (prefix: string) => {
+      const street = values[`${prefix}addr_street_detail`];
+      const ward = form.getFieldValue(`${prefix}addr_ward_name`);
+      const district = form.getFieldValue(`${prefix}addr_district_name`);
+      const province = form.getFieldValue(`${prefix}addr_province_name`);
+      
+      const parts = [street, ward, district, province].filter(Boolean);
+      return parts.join(', ');
+    };
+
+    const origin = getAddr('start_');
+    const destination = getAddr('end_');
+
+    if (!origin || !destination) {
+      feedback.error(t('trips.errEnterOriginAndDestination'));
+      return;
+    }
+
+    setShippingCalcLoading(true);
+    try {
+      const res = await tripService.shippingFeeLookup({
+        origin,
+        destination,
+        origin_lat: form.getFieldValue('origin_lat'),
+        origin_lng: form.getFieldValue('origin_lng'),
+        destination_lat: form.getFieldValue('destination_lat'),
+        destination_lng: form.getFieldValue('destination_lng'),
+        vehicle_type_id: values.vehicle_type_id,
+      });
+
+      if (res?.success && res.data) {
+        form.setFieldValue('distance_km', res.data.distance_km);
+        form.setFieldValue('base_price', res.data.shipping_fee);
+        feedback.success(t('trips.calcShippingSuccess'));
+      } else {
+        feedback.error(t('trips.calcShippingError'));
+      }
+    } catch {
+      feedback.error(t('trips.calcShippingError'));
+    } finally {
+      setShippingCalcLoading(false);
+    }
+  };
+
 
   const validateStepAndAdvance = async (currentStep: TripFormStep, nextStep: TripFormStep) => {
     if (readOnly) {
@@ -235,30 +316,29 @@ export function TripForm({
     }
   };
 
-  const handleStepChange = async (targetStep: TripFormStep) => {
-    if (readOnly) {
-      setActiveStep(targetStep);
-      return;
+  // Watch all fields to trigger re-renders and update error indicators
+  Form.useWatch([], form);
+
+  const handleStepChange = (targetStep: TripFormStep) => {
+    setActiveStep(targetStep);
+  };
+
+  // Check which steps have errors based on field names
+  const getStepStatus = (stepKey: TripFormStep) => {
+    const fieldNames = stepFieldNames[stepKey];
+    const errors = form.getFieldsError();
+    const hasError = errors.some(f => fieldNames.includes(f.name[0] as string) && f.errors.length > 0);
+    if (hasError) return 'error';
+
+    // In edit mode or after filling, if a step has no errors and has some data, mark as finish
+    const values = form.getFieldsValue(fieldNames);
+    const isFilled = Object.values(values).some((v) => v !== undefined && v !== null && v !== '');
+    
+    if (isFilled && stepKey !== activeStep) {
+      return 'finish';
     }
 
-    if (targetStep === activeStep) {
-      return;
-    }
-
-    const currentIndex = STEP_ORDER.indexOf(activeStep);
-    const targetIndex = STEP_ORDER.indexOf(targetStep);
-
-    if (targetIndex <= currentIndex) {
-      setActiveStep(targetStep);
-      return;
-    }
-
-    try {
-      await form.validateFields(stepFieldNames[activeStep]);
-      setActiveStep(targetStep);
-    } catch {
-      return;
-    }
+    return undefined;
   };
 
   const stepItems = [
@@ -268,81 +348,79 @@ export function TripForm({
       forceRender: true,
       children: (
         <div className="flex flex-col gap-4">
-          <FormAccordionSections
-            defaultOpen="basic"
-            sections={[
-              {
-                value: 'basic',
-                titleKey: 'basic',
-                children: (
-                  <>
-                    <FormItemText
-                      name="code"
-                      label={t('trips.code')}
-                      required={false}
-                      placeholder={t('trips.codePlaceholder')}
-                      disabled
-                    />
+          <Card variant="borderless" className="shadow-sm">
+            <Divider orientation="left" style={{ marginTop: 0 }}>
+              <Space><InfoCircleOutlined /> {t('trips.sectionGeneral')}</Space>
+            </Divider>
+            <Row gutter={16}>
+              <Col span={24}>
+                <FormItemSelect
+                  name="customer_id"
+                  label={t('invoices.customer')}
+                  required
+                  options={customerOptions}
+                  loading={loadingCustomers}
+                  showSearch
+                  selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
+                  rules={[{ required: true, message: t('validation.required', { field: t('invoices.customer') }) }]}
+                />
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemText name="contact_name" label={t('common.contactName')} placeholder={t('common.contactName')} disabled={isTerminal} />
+              </Col>
+              <Col span={12}>
+                <FormItemText name="contact_phone" label={t('common.phone')} placeholder={t('common.phone')} disabled={isTerminal} />
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemDatePicker name="received_date" label={t('trips.receivedDate')} disabled={isTerminal} />
+              </Col>
+              <Col span={12}>
+                <FormItemDatePicker
+                  name="scheduled_date"
+                  label={t('trips.scheduledDate')}
+                  disabled={isTerminal}
+                  rules={
+                    mode === 'create'
+                      ? [{ required: true, message: t('validation.required', { field: t('trips.scheduledDate') }) }]
+                      : undefined
+                  }
+                />
+              </Col>
+            </Row>
 
-                    <FormItemSelect
-                      name="customer_id"
-                      label={t('invoices.customer')}
-                      required
-                      options={customerOptions}
-                      loading={loadingCustomers}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                      rules={[{ required: true, message: t('validation.required', { field: t('invoices.customer') }) }]}
-                    />
-
-                    <FormItemText name="contact_name" label={t('common.contactName')} placeholder={t('common.contactName')} disabled={isTerminal} />
-                    <FormItemText name="contact_phone" label={t('common.phone')} placeholder={t('common.phone')} disabled={isTerminal} />
-                    <FormItemText name="received_date" label={t('trips.receivedDate')} type="date" disabled={isTerminal} />
-                    <FormItemText
-                      name="scheduled_date"
-                      label={t('trips.scheduledDate')}
-                      type="date"
-                      disabled={isTerminal}
-                      rules={
-                        mode === 'create'
-                          ? [{ required: true, message: t('validation.required', { field: t('trips.scheduledDate') }) }]
-                          : undefined
-                      }
-                    />
-                  </>
-                ),
-              },
-              {
-                value: 'cargo',
-                titleKey: 'cargo',
-                children: (
-                  <>
-                    <FormItemSelect
-                      name="cargo_type_id"
-                      label={t('trips.cargoType')}
-                      options={cargoTypeOptions}
-                      loading={loadingCargoTypes}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                    />
-                    <FormItemTextArea name="cargo_description" label={t('trips.cargoDescription')} autoSize={{ minRows: 2, maxRows: 4 }} disabled={isTerminal} />
-                    <FormItemNumber name="cargo_quantity" label={t('trips.cargoQuantity')} min={0} disabled={isTerminal} />
-                    <FormItemText name="cargo_unit" label={t('trips.cargoUnit')} placeholder={t('trips.cargoUnit')} disabled={isTerminal} />
-                    <FormItemNumber name="cargo_weight_ton" label={t('trips.cargoWeightTon')} min={0} step={0.01} disabled={isTerminal} />
-                    <FormItemTextArea name="cargo_notes" label={t('trips.cargoNotes')} autoSize={{ minRows: 2, maxRows: 4 }} disabled={isTerminal} />
-                  </>
-                ),
-              },
-            ]}
-          />
-
-          {!readOnly ? (
-            <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
-              <Button type="primary" onClick={() => void validateStepAndAdvance('info', 'route')}>
-                {t('common.next')}
-              </Button>
-            </Space>
-          ) : null}
+            <Divider orientation="left">
+              <Space><PullRequestOutlined /> {t('trips.sectionCargo')}</Space>
+            </Divider>
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemSelect
+                  name="cargo_type_id"
+                  label={t('trips.cargoType')}
+                  options={cargoTypeOptions}
+                  loading={loadingCargoTypes}
+                  showSearch
+                  selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
+                />
+              </Col>
+              <Col span={12}>
+                <FormItemText name="cargo_unit" label={t('trips.cargoUnit')} placeholder={t('trips.cargoUnit')} disabled={isTerminal} />
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemNumber name="cargo_quantity" label={t('trips.cargoQuantity')} min={0} disabled={isTerminal} />
+              </Col>
+              <Col span={12}>
+                <FormItemNumber name="cargo_weight_ton" label={t('trips.cargoWeightTon')} min={0} step={0.01} disabled={isTerminal} />
+              </Col>
+            </Row>
+            <FormItemTextArea name="cargo_description" label={t('trips.cargoDescription')} autoSize={{ minRows: 2, maxRows: 4 }} disabled={isTerminal} />
+            <FormItemTextArea name="cargo_notes" label={t('trips.cargoNotes')} autoSize={{ minRows: 2, maxRows: 4 }} disabled={isTerminal} />
+          </Card>
         </div>
       ),
     },
@@ -352,84 +430,106 @@ export function TripForm({
       forceRender: true,
       children: (
         <div className="flex flex-col gap-4">
-          <FormAccordionSections
-            defaultOpen="route"
-            sections={[
-              {
-                value: 'route',
-                titleKey: 'route',
-                children: (
-                  <>
-                    <FormItemSelect
-                      name="route_template_id"
-                      label={t('trips.routeTemplate')}
-                      options={routeTemplateOptions}
-                      loading={loadingRoutes}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                      rules={
-                        mode === 'create'
-                          ? [{ required: true, message: t('validation.required', { field: t('trips.routeTemplate') }) }]
-                          : undefined
-                      }
-                    />
+          <Card variant="borderless" className="shadow-sm">
+            <Divider orientation="left" style={{ marginTop: 0 }}>
+              <Space><EnvironmentOutlined /> {t('trips.sectionRoute')}</Space>
+            </Divider>
+            <FormItemSelect
+              name="route_template_id"
+              label={t('trips.routeTemplate')}
+              options={routeTemplateOptions}
+              loading={loadingRoutes}
+              showSearch
+              selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
+              rules={
+                mode === 'create'
+                  ? [{ required: true, message: t('validation.required', { field: t('trips.routeTemplate') }) }]
+                  : undefined
+              }
+            />
 
-                    <FormItemSelect
-                      name="origin_location_id"
-                      label={t('trips.originLocation')}
-                      options={locationOptions}
-                      loading={loadingLocations}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                    />
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemLocation
+                  name="origin_location_id"
+                  label={t('trips.origin')}
+                  selectProps={{ disabled: isTerminal }}
+                />
+              </Col>
+              <Col span={12}>
+                <FormItemLocation
+                  name="destination_location_id"
+                  label={t('trips.destination')}
+                  selectProps={{ disabled: isTerminal }}
+                />
+              </Col>
+            </Row>
 
-                    <FormItemSelect
-                      name="destination_location_id"
-                      label={t('trips.destinationLocation')}
-                      options={locationOptions}
-                      loading={loadingLocations}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                    />
+            <Form.Item name="origin_lat" hidden />
+            <Form.Item name="origin_lng" hidden />
+            <Form.Item name="destination_lat" hidden />
+            <Form.Item name="destination_lng" hidden />
 
-                    <VnAdminAddressFields
-                      form={form}
-                      fieldPrefix="start_"
-                      cascadeRequired
-                      relaxCascadeRequired={Boolean(initialValues?.id && initialValues?.start_point?.trim())}
-                      legacySavedAddress={initialValues?.start_point?.trim()}
-                      heading={t('trips.addressStartHeading')}
-                      disabled={isTerminal}
-                    />
+            <Row gutter={24}>
+              <Col span={12}>
+                <VnAdminAddressFields
+                  form={form}
+                  fieldPrefix="start_"
+                  cascadeRequired
+                  relaxCascadeRequired={Boolean(initialValues?.id && initialValues?.start_point?.trim())}
+                  legacySavedAddress={initialValues?.start_point?.trim()}
+                  heading={t('trips.addressStartHeading')}
+                  disabled={isTerminal}
+                  onAddressSelected={(lat, lng) => {
+                    form.setFieldsValue({
+                      origin_lat: lat,
+                      origin_lng: lng,
+                    });
+                  }}
+                />
+              </Col>
+              <Col span={12}>
+                <VnAdminAddressFields
+                  form={form}
+                  fieldPrefix="end_"
+                  cascadeRequired
+                  relaxCascadeRequired={Boolean(initialValues?.id && initialValues?.end_point?.trim())}
+                  legacySavedAddress={initialValues?.end_point?.trim()}
+                  heading={t('trips.addressEndHeading')}
+                  disabled={isTerminal}
+                  onAddressSelected={(lat, lng) => {
+                    form.setFieldsValue({
+                      destination_lat: lat,
+                      destination_lng: lng,
+                    });
+                  }}
+                />
+              </Col>
+            </Row>
 
-                    <VnAdminAddressFields
-                      form={form}
-                      fieldPrefix="end_"
-                      cascadeRequired
-                      relaxCascadeRequired={Boolean(initialValues?.id && initialValues?.end_point?.trim())}
-                      legacySavedAddress={initialValues?.end_point?.trim()}
-                      heading={t('trips.addressEndHeading')}
-                      disabled={isTerminal}
-                    />
-
-                    <FormItemText name="scheduled_time_from" label={t('trips.scheduledTimeFrom')} type="time" disabled={isTerminal} />
-                    <FormItemText
-                      name="scheduled_time_to"
-                      label={t('trips.scheduledTimeTo')}
-                      type="time"
-                      disabled={isTerminal}
-                      rules={[
-                        ({ getFieldValue }) => ({
-                          validator(_, value) {
-                            const from = getFieldValue('scheduled_time_from') as string | undefined;
-                            if (!value || !from || String(value) >= String(from)) {
-                              return Promise.resolve();
-                            }
-                            return Promise.reject(new Error(t('validation.checkOutAfterCheckIn')));
-                          },
-                        }),
-                      ]}
-                    />
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemRangePicker 
+                  name="scheduled_time_range" 
+                  label={t('trips.scheduledTime')} 
+                  picker="time" 
+                  disabled={isTerminal}
+                  getValueProps={(value) => ({
+                    value: Array.isArray(value) ? value : [form.getFieldValue('scheduled_time_from'), form.getFieldValue('scheduled_time_to')]
+                  })}
+                  onChange={(dates) => {
+                    if (Array.isArray(dates)) {
+                      form.setFieldsValue({
+                        scheduled_time_from: dates[0],
+                        scheduled_time_to: dates[1]
+                      });
+                    }
+                  }}
+                />
+              </Col>
+              <Col span={12}>
+                <Flex gap={8} align="flex-end">
+                  <div style={{ flex: 1 }}>
                     <FormItemNumber
                       name="distance_km"
                       label={t('trips.distance')}
@@ -438,69 +538,84 @@ export function TripForm({
                       rules={[{ required: true, message: t('validation.required', { field: t('trips.distance') }) }]}
                       placeholder={t('trips.distancePlaceholder')}
                       disabled={isTerminal}
+                      suffix={shippingCalcLoading ? <Spin size="small" /> : 'km'}
                     />
-                  </>
-                ),
-              },
-              {
-                value: 'assignment',
-                titleKey: 'assignment',
-                children: (
-                  <>
-                    <FormItemSelect
-                      name="driver_id"
-                      label={t('drivers.title')}
-                      required
-                      options={driverOptions}
-                      loading={loadingDrivers}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                      rules={[{ required: true, message: t('validation.required', { field: t('drivers.title') }) }]}
-                    />
+                  </div>
+                  {!shippingCalcLoading && (
+                    <Button
+                      icon={<CalculatorOutlined />}
+                      onClick={handleShippingFeeLookup}
+                      disabled={isTerminal || readOnly}
+                    >
+                      {t('trips.calcDistanceAndFee')}
+                    </Button>
+                  )}
+                </Flex>
+              </Col>
+            </Row>
 
-                    <FormItemSelect
-                      name="vehicle_id"
-                      label={t('vehicles.title')}
-                      required
-                      options={vehicleOptions}
-                      loading={loadingVehicles}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                      rules={[{ required: true, message: t('validation.required', { field: t('vehicles.title') }) }]}
-                    />
+            <Divider orientation="left">
+              <Space><CarOutlined /> {t('trips.sectionAssignment')}</Space>
+            </Divider>
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemSelect
+                  name="driver_id"
+                  label={t('drivers.title')}
+                  required
+                  options={driverOptions}
+                  loading={loadingDrivers}
+                  showSearch
+                  selectProps={{ 
+                    optionFilterProp: 'label', 
+                    disabled: isTerminal,
+                    onChange: (value) => {
+                      const vehicleId = driverToVehicleMap[value as number];
+                      if (vehicleId) {
+                        form.setFieldValue('vehicle_id', vehicleId);
+                      }
+                    }
+                  }}
+                  rules={[{ required: true, message: t('validation.required', { field: t('drivers.title') }) }]}
+                />
+              </Col>
+              <Col span={12}>
+                <FormItemSelect
+                  name="vehicle_id"
+                  label={t('vehicles.title')}
+                  required
+                  options={vehicleOptions}
+                  loading={loadingVehicles}
+                  showSearch
+                  selectProps={{ 
+                    optionFilterProp: 'label', 
+                    disabled: isTerminal || (!!form.getFieldValue('driver_id') && !!driverToVehicleMap[form.getFieldValue('driver_id')]) 
+                  }}
+                  rules={[{ required: true, message: t('validation.required', { field: t('vehicles.title') }) }]}
+                />
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemSelect
+                  name="vehicle_type_id"
+                  label={t('vehicles.type')}
+                  options={vehicleTypeOptions}
+                  loading={loadingVehicleTypes}
+                  showSearch
+                  selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
+                />
+              </Col>
+              <Col span={12}>
+                <FormItemDatePicker name="assigned_at" label={t('trips.assignedAt')} showTime disabled={isTerminal} />
+              </Col>
+            </Row>
 
-                    <FormItemSelect
-                      name="vehicle_type_id"
-                      label={t('vehicles.type')}
-                      options={vehicleTypeOptions}
-                      loading={loadingVehicleTypes}
-                      showSearch
-                      selectProps={{ optionFilterProp: 'label', disabled: isTerminal }}
-                    />
-
-                    <FormItemText name="dispatcher_id" label={t('trips.dispatcherId')} placeholder={t('trips.dispatcherId')} disabled={isTerminal} />
-                    <FormItemText name="assigned_at" label={t('trips.assignedAt')} type="datetime-local" disabled={isTerminal} />
-                  </>
-                ),
-              },
-              {
-                value: 'stops',
-                titleKey: 'stops',
-                children: <TripStopsList isTerminal={isTerminal} />,
-              },
-            ]}
-          />
-
-          {!readOnly ? (
-            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-              <Button onClick={() => setActiveStep('info')}>
-                {t('common.back')}
-              </Button>
-              <Button type="primary" onClick={() => void validateStepAndAdvance('route', 'revenue')}>
-                {t('common.next')}
-              </Button>
-            </Space>
-          ) : null}
+            <Divider orientation="left">
+              <Space><EnvironmentOutlined /> {t('trips.sectionStops')}</Space>
+            </Divider>
+            <TripStopsList isTerminal={isTerminal} />
+          </Card>
         </div>
       ),
     },
@@ -510,113 +625,121 @@ export function TripForm({
       forceRender: true,
       children: (
         <div className="flex flex-col gap-4">
-          <FormAccordionSections
-            defaultOpen="revenue"
-            sections={[
-              {
-                value: 'revenue',
-                titleKey: 'revenue',
-                children: (
-                  <>
-                    <Flex gap={8} align="flex-end" style={{ marginBottom: 8 }}>
-                      <div style={{ flex: 1 }}>
-                        <FormItemNumber
-                          name="base_price"
-                          label={t('trips.basePrice')}
-                          required
-                          min={0}
-                          rules={[{ required: true, message: t('validation.required', { field: t('trips.basePrice') }) }]}
-                          placeholder={t('trips.basePricePlaceholder')}
-                          disabled={isTerminal}
-                        />
-                      </div>
-                      <Button
-                        icon={<CalculatorOutlined />}
-                        loading={pricingLoading}
-                        onClick={handlePriceLookup}
-                        disabled={isTerminal || readOnly}
-                      >
-                        Tính giá
-                      </Button>
-                    </Flex>
-
-                    <TripSurchargesList isTerminal={isTerminal} total={surchargeTotal} />
-
-                    <FormItemNumber name="surcharge_amount" label={t('trips.surchargeAmount')} min={0} placeholder={t('trips.surchargeAmountPlaceholder')} disabled />
-                    <FormItemNumber name="total_revenue" label={t('trips.totalRevenue')} min={0} placeholder={t('trips.totalRevenuePlaceholder')} disabled />
-                    <FormItemSelect name="payment_method" label={t('trips.paymentMethod')} options={PAYMENT_METHODS} selectProps={{ disabled: isTerminal }} />
-                    <FormItemSelect
-                      name="payment_status"
-                      label={t('trips.paymentStatus')}
-                      options={[
-                        { label: t('trips.statusUnpaid'), value: 'unpaid' },
-                        { label: t('trips.statusInvoiced'), value: 'invoiced' },
-                        { label: t('trips.statusPaid'), value: 'paid' },
-                      ]}
-                      selectProps={{ disabled: isTerminal }}
+          <Card variant="borderless" className="shadow-sm">
+            <Divider orientation="left" style={{ marginTop: 0 }}>
+              <Space><DollarOutlined /> {t('trips.sectionRevenue')}</Space>
+            </Divider>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Flex gap={8} align="flex-end" style={{ marginBottom: 24 }}>
+                  <div style={{ flex: 1 }}>
+                    <FormItemNumber
+                      name="base_price"
+                      label={t('trips.basePrice')}
+                      required
+                      min={0}
+                      rules={[{ required: true, message: t('validation.required', { field: t('trips.basePrice') }) }]}
+                      placeholder={t('trips.basePricePlaceholder')}
+                      disabled={isTerminal}
+                      thousandSeparator
+                      suffix={t('common.vnd')}
                     />
-                    <FormItemTextArea name="internal_notes" label={t('trips.internalNotes')} autoSize={{ minRows: 2, maxRows: 4 }} disabled={isTerminal} />
-                    {showStatusField ? (
-                      <>
-                        <FormItemSelect
-                          name="status"
-                          label={t('common.status')}
-                          required
-                          options={[{ label: t('trips.statusPending'), value: 'pending' }]}
-                          rules={[{ required: true, message: t('validation.required', { field: t('common.status') }) }]}
-                          selectProps={{ disabled: mode === 'edit' || isTerminal }}
-                        />
+                  </div>
+                  {!pricingLoading && (
+                    <Button
+                      icon={<CalculatorOutlined />}
+                      onClick={handlePriceLookup}
+                      disabled={isTerminal || readOnly}
+                    >
+                      {t('trips.calcPrice')}
+                    </Button>
+                  )}
+                  {pricingLoading && <Spin size="small" />}
+                </Flex>
+              </Col>
+              <Col span={12}>
+                <FormItemNumber name="surcharge_amount" label={t('trips.surchargeAmount')} min={0} disabled={isTerminal} thousandSeparator suffix={t('common.vnd')} />
+              </Col>
+            </Row>
 
-                        <FormItemText name="start_time" label={t('trips.startTime')} type="datetime-local" disabled={isTerminal} />
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormItemSelect
+                  name="payment_method"
+                  label={t('trips.paymentMethod')}
+                  options={paymentMethods}
+                  disabled={isTerminal}
+                />
+              </Col>
+              <Col span={12}>
+                <FormItemSelect
+                  name="payment_status"
+                  label={t('trips.paymentStatus')}
+                  options={[
+                    { label: t('trips.statusUnpaid'), value: 'unpaid' },
+                    { label: t('trips.statusInvoiced'), value: 'invoiced' },
+                    { label: t('trips.statusPaid'), value: 'paid' },
+                  ]}
+                  disabled={isTerminal}
+                />
+              </Col>
+            </Row>
 
-                        <FormItemText
-                          name="end_time"
-                          label={t('trips.endTime')}
-                          type="datetime-local"
-                          disabled={isTerminal}
-                          rules={[
-                            {
-                              validator: async (_: unknown, value: unknown) => {
-                                const start = form.getFieldValue('start_time') as string | undefined;
-                                if (!start || !value || String(value) >= String(start)) {
-                                  return;
-                                }
-                                throw new Error(t('validation.checkOutAfterCheckIn'));
-                              },
-                            },
-                          ]}
-                        />
-                      </>
-                    ) : null}
-                  </>
-                ),
-              },
-            ]}
-          />
+            {hasRecord && (
+              <>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <FormItemDatePicker name="start_time" label={t('trips.startTime')} showTime disabled={isTerminal} />
+                  </Col>
+                  <Col span={12}>
+                    <FormItemDatePicker name="end_time" label={t('trips.endTime')} showTime disabled={isTerminal} />
+                  </Col>
+                </Row>
+                <FormItemSelect
+                  name="status"
+                  label={t('trips.status')}
+                  options={Object.values(TERMINAL_TRIP_STATUSES).map(s => ({ label: t(`trips.status.${s}`), value: s }))}
+                  disabled={isTerminal}
+                />
+              </>
+            )}
 
-          {!readOnly ? (
-            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-              <Button onClick={() => setActiveStep('route')}>
-                {t('common.back')}
-              </Button>
-              <span />
-            </Space>
-          ) : null}
+            <FormItemTextArea name="internal_notes" label={t('trips.internalNotes')} autoSize={{ minRows: 2, maxRows: 4 }} disabled={isTerminal} />
+
+            <Divider orientation="left">
+              <Space><DollarOutlined /> {t('trips.sectionSurcharges')}</Space>
+            </Divider>
+            <TripSurchargesList isTerminal={isTerminal} />
+          </Card>
         </div>
       ),
     },
   ];
 
+  const currentStepIndex = STEP_ORDER.indexOf(activeStep);
+
   return (
-    <Tabs
-      activeKey={activeStep}
-      onChange={(key) => {
-        void handleStepChange(key as TripFormStep);
-      }}
-      items={stepItems}
-      className="trip-form-tabs"
-      tabBarStyle={{ marginBottom: 16 }}
-      destroyInactiveTabPane={false}
-    />
+    <div className="trip-form-steps">
+      <Steps
+        current={currentStepIndex}
+        onChange={(index) => {
+          void handleStepChange(STEP_ORDER[index]);
+        }}
+        items={stepItems.map((item) => ({ 
+          title: item.label,
+          status: getStepStatus(item.key as TripFormStep)
+        }))}
+        style={{ marginBottom: 24 }}
+      />
+      
+      <div className="step-content" style={{ marginBottom: 24 }}>
+        {stepItems.map((item, index) => (
+          <div key={item.key} style={{ display: index === currentStepIndex ? 'block' : 'none' }}>
+            {item.children}
+          </div>
+        ))}
+      </div>
+
+    </div>
   );
 }

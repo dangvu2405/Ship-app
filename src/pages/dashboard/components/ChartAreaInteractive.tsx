@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts"
 
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/hooks/useMobile"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useAppStore } from "@/stores/app.store"
 import { Card, Col, Flex, Row, Segmented, Select, Spin, Typography, theme } from "antd"

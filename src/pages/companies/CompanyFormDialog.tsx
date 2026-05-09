@@ -45,10 +45,35 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
     onClose: handleClose,
   });
 
-  const handleSubmit = (values: Partial<Company>) => {
+  const handleSubmit = (values: any) => {
+    const payload = { ...values };
+    
+    // Gộp các trường địa chỉ từ VnAdminAddressFields thành chuỗi address
+    if (payload.addr_province_name) {
+      const parts = [
+        payload.addr_street_detail,
+        payload.addr_ward_name,
+        payload.addr_district_name,
+        payload.addr_province_name,
+      ].filter(Boolean).map((p: string) => p.trim());
+      
+      if (parts.length > 0) {
+        payload.address = parts.join(', ');
+      }
+    }
+
+    // Xoá các trường tạm thời để payload sạch sẽ
+    delete payload.addr_province_code;
+    delete payload.addr_district_code;
+    delete payload.addr_ward_code;
+    delete payload.addr_province_name;
+    delete payload.addr_district_name;
+    delete payload.addr_ward_name;
+    delete payload.addr_street_detail;
+
     if (isEdit && resolvedId) {
       updateItem(
-        { resource: 'companies', id: resolvedId, values },
+        { resource: 'companies', id: resolvedId, values: payload },
         {
           onSuccess: () => {
             toast.success(t('notifications.updateSuccess', { item: t('companies.title') }));
@@ -63,7 +88,7 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
       );
     } else {
       createItem(
-        { resource: 'companies', values },
+        { resource: 'companies', values: payload },
         {
           onSuccess: () => {
             toast.success(t('notifications.createSuccess', { item: t('companies.title') }));

@@ -140,10 +140,10 @@ const vehicleService = {
   },
 
   async releaseCurrentAssignment(
-    vehicleId: number,
+    assignmentId: number,
     payload: ReleaseVehicleAssignmentRequest,
   ): Promise<{ success: true; data: unknown }> {
-    const response = await api.patch(ENDPOINTS.vehicles.assignmentsRelease(vehicleId), payload);
+    const response = await api.patch(ENDPOINTS.vehicles.assignmentsRelease(assignmentId), payload);
     throwIfEnvelopeFailed(response.data);
     return { success: true, data: unwrapEnvelope(response.data) };
   },

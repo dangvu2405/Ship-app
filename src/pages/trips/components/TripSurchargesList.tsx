@@ -1,5 +1,6 @@
 import { Button, Card, Empty, Flex, Form, Input, InputNumber, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const { Text } = Typography;
 
@@ -9,37 +10,39 @@ export interface TripSurchargesListProps {
 }
 
 export function TripSurchargesList({ isTerminal = false, total }: TripSurchargesListProps) {
+  const { t, locale } = useTranslation();
+
   return (
     <Form.List name="surcharges">
       {(fields, { add, remove }) => (
         <Card
           size="small"
-          title="Phụ phí (line items)"
+          title={t('trips.surcharges.title')}
           style={{ marginBottom: 12 }}
           extra={
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Tổng: {Number(total || 0).toLocaleString('vi-VN')} đ
+              {t('trips.surcharges.total')}: {Number(total || 0).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US')} {locale === 'vi' ? 'đ' : '$'}
             </Text>
           }
         >
           <Flex vertical gap={8}>
             {fields.length === 0 ? (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có phụ phí" />
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('trips.surcharges.emptyDescription')} />
             ) : (
               fields.map((field, idx) => (
                 <Flex key={field.key} gap={8} align="flex-start">
                   <Form.Item
-                    label={idx === 0 ? 'Diễn giải' : null}
+                    label={idx === 0 ? t('trips.surcharges.label') : null}
                     name={[field.name, 'label']}
-                    rules={[{ required: true, message: 'Nhập diễn giải' }]}
+                    rules={[{ required: true, message: t('trips.surcharges.labelRequired') }]}
                     style={{ flex: 1, minWidth: 160 }}
                   >
-                    <Input disabled={isTerminal} placeholder="VD: Phí cầu đường" />
+                    <Input disabled={isTerminal} placeholder={t('trips.surcharges.labelPlaceholder')} />
                   </Form.Item>
                   <Form.Item
-                    label={idx === 0 ? 'Số tiền' : null}
+                    label={idx === 0 ? t('trips.surcharges.amount') : null}
                     name={[field.name, 'amount']}
-                    rules={[{ required: true, message: 'Nhập số tiền' }]}
+                    rules={[{ required: true, message: t('trips.surcharges.amountRequired') }]}
                     style={{ width: 160 }}
                   >
                     <InputNumber
@@ -51,11 +54,11 @@ export function TripSurchargesList({ isTerminal = false, total }: TripSurcharges
                     />
                   </Form.Item>
                   <Form.Item
-                    label={idx === 0 ? 'Ghi chú' : null}
+                    label={idx === 0 ? t('trips.surcharges.note') : null}
                     name={[field.name, 'note']}
                     style={{ flex: 1, minWidth: 120 }}
                   >
-                    <Input disabled={isTerminal} placeholder="Ghi chú" />
+                    <Input disabled={isTerminal} placeholder={t('trips.surcharges.notePlaceholder')} />
                   </Form.Item>
                   {!isTerminal && (
                     <Button
@@ -71,7 +74,7 @@ export function TripSurchargesList({ isTerminal = false, total }: TripSurcharges
             )}
             {!isTerminal && (
               <Button icon={<PlusOutlined />} type="dashed" onClick={() => add({ label: '', amount: 0 })}>
-                Thêm phụ phí
+                {t('trips.surcharges.addSurcharge')}
               </Button>
             )}
           </Flex>

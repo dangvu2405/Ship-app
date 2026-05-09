@@ -36,6 +36,8 @@ export interface Location {
   address: string;
   province?: string;
   district?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   contact_name?: string;
   contact_phone?: string;
   is_active?: boolean;

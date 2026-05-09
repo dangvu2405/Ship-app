@@ -34,15 +34,31 @@ const { Text } = Typography;
 
 const TRIP_STATUS_COLOR: Record<string, string> = {
   pending: 'default',
-  in_progress: 'blue',
+  assigned: 'blue',
+  driver_accepted: 'blue',
+  en_route_pickup: 'gold',
+  picked_up: 'gold',
+  in_transit: 'gold',
+  delayed: 'gold',
+  arrived: 'purple',
+  delivered: 'purple',
   completed: 'green',
   cancelled: 'red',
+  emergency: 'red',
 };
 const TRIP_STATUS_LABEL: Record<string, string> = {
   pending: 'Mới',
-  in_progress: 'Đang vận chuyển',
+  assigned: 'Đã phân công',
+  driver_accepted: 'Tài xế nhận đơn',
+  en_route_pickup: 'Đang đến lấy hàng',
+  picked_up: 'Đã lấy hàng',
+  in_transit: 'Đang vận chuyển',
+  delayed: 'Chậm trễ',
+  arrived: 'Đã đến điểm giao',
+  delivered: 'Đã giao hàng',
   completed: 'Hoàn thành',
   cancelled: 'Đã hủy',
+  emergency: 'Sự cố',
 };
 
 const RECONCILIATION_STATUS_COLOR: Record<string, string> = {

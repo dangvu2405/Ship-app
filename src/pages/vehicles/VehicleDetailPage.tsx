@@ -34,9 +34,17 @@ const STATUS_COLOR: Record<string, string> = {
 
 const TRIP_STATUS_COLOR: Record<string, string> = {
   pending: 'default',
-  in_progress: 'blue',
+  assigned: 'blue',
+  driver_accepted: 'blue',
+  en_route_pickup: 'gold',
+  picked_up: 'gold',
+  in_transit: 'gold',
+  delayed: 'gold',
+  arrived: 'purple',
+  delivered: 'purple',
   completed: 'green',
   cancelled: 'red',
+  emergency: 'red',
 };
 
 export function VehicleDetailPage() {
@@ -72,10 +80,18 @@ export function VehicleDetailPage() {
 
   const tripStatusLabel = useMemo(
     () => ({
-      pending: t('trips.statusPending'),
-      in_progress: t('trips.statusInProgress'),
-      completed: t('trips.statusCompleted'),
-      cancelled: t('trips.statusCancelled'),
+      pending:         t('trips.statusPending'),
+      assigned:        t('trips.statusAssigned'),
+      driver_accepted: t('trips.statusDriverAccepted'),
+      en_route_pickup: t('trips.statusEnRoutePickup'),
+      picked_up:       t('trips.statusPickedUp'),
+      in_transit:      t('trips.statusInTransit'),
+      delayed:         t('trips.statusDelayed'),
+      arrived:         t('trips.statusArrived'),
+      delivered:       t('trips.statusDelivered'),
+      completed:       t('trips.statusCompleted'),
+      cancelled:       t('trips.statusCancelled'),
+      emergency:       t('trips.statusEmergency'),
     }),
     [t],
   );

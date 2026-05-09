@@ -1,4 +1,4 @@
-import { useRequest } from '@/hooks/use-request';
+import { useRequest } from '@/hooks/useRequest';
 import { ENDPOINTS } from '@/services/endpoints';
 import type { DriverExpiringDocument, VehicleExpiringDocument } from '@/types';
 

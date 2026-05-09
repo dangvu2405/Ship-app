@@ -103,10 +103,18 @@ export function QuickAssignModal({
     try {
       const values = await form.validateFields();
       setSubmitting(true);
-      await tripService.assign(trip.id, { driver_id: values.driver_id, vehicle_id: values.vehicle_id });
+      const assignRes = await tripService.assign(trip.id, { driver_id: values.driver_id, vehicle_id: values.vehicle_id });
+      if (!assignRes.success) {
+        feedback.error(assignRes.message || 'Phân công thất bại');
+        return;
+      }
+      const metaWarnings = assignRes.meta?.warnings ?? [];
       const d = driversRaw.find((x) => x.id === values.driver_id);
       if (d?.expired_date && dayjs(d.expired_date).isBefore(dayjs(), 'day')) {
         console.warn('[dispatch] Assigned trip with expired license', { tripId: trip.id, driverId: d.id, expired_date: d.expired_date });
+      }
+      if (metaWarnings.length > 0) {
+        feedback.warning(metaWarnings.join('\n'));
       }
       feedback.success('Đã phân công chuyến');
       onSuccess();

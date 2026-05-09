@@ -1,9 +1,8 @@
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Form, Input } from 'antd';
+import { Alert, Form, Input, Space, Row, Col } from 'antd';
 import type { FormInstance } from 'antd/es/form';
-
-import { FormItemSelect, FormItemText } from '@/components/form';
+import { FormItemSelect, AddressAutocomplete } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   fetchVnDistrictWithWards,
@@ -25,6 +24,8 @@ export interface VnAdminAddressFieldsProps {
   heading?: ReactNode;
   /** Disables all fields (e.g. terminal trip status). */
   disabled?: boolean;
+  /** Callback when an address is selected from autocomplete, providing lat/lng and full label. */
+  onAddressSelected?: (lat: number, lng: number, label: string) => void;
 }
 
 export function VnAdminAddressFields(props: VnAdminAddressFieldsProps) {
@@ -36,6 +37,7 @@ export function VnAdminAddressFields(props: VnAdminAddressFieldsProps) {
     legacySavedAddress,
     heading,
     disabled = false,
+    onAddressSelected,
   } = props;
   const { t } = useTranslation();
   const key = useMemo(() => (name: string) => `${fieldPrefix}${name}`, [fieldPrefix]);
@@ -151,56 +153,79 @@ export function VnAdminAddressFields(props: VnAdminAddressFieldsProps) {
       <Form.Item name={key('addr_ward_name')} hidden>
         <Input type="hidden" />
       </Form.Item>
-      <FormItemSelect
-        name={key('addr_province_code')}
-        label={t('vnAddress.province')}
-        required={addrRequired}
-        disabled={disabled}
-        options={provinceOptions}
-        showSearch
-        loading={provinceListQuery.isPending}
-        help={provinceListQuery.isError ? t('vnAddress.catalogLoadError') : undefined}
-        validateStatus={provinceListQuery.isError ? 'warning' : undefined}
-        selectProps={{ optionFilterProp: 'label', listHeight: 280 }}
-        rules={reqRule('province')}
-        onChange={onProvinceChange}
-      />
-      <FormItemSelect
-        name={key('addr_district_code')}
-        label={t('vnAddress.district')}
-        required={addrRequired}
-        disabled={disabled || !provinceCodeWatch}
-        options={districtOptions}
-        showSearch
-        loading={provinceDetailQuery.isPending && !!provinceCodeWatch}
-        help={provinceDetailQuery.isError ? t('vnAddress.districtLoadError') : undefined}
-        validateStatus={provinceDetailQuery.isError ? 'warning' : undefined}
-        selectProps={{ optionFilterProp: 'label', listHeight: 280 }}
-        rules={reqRule('district')}
-        onChange={onDistrictChange}
-      />
-      <FormItemSelect
-        name={key('addr_ward_code')}
-        label={t('vnAddress.ward')}
-        required={addrRequired}
-        disabled={disabled || !districtCodeWatch}
-        options={wardOptions}
-        showSearch
-        loading={districtDetailQuery.isPending && !!districtCodeWatch}
-        help={districtDetailQuery.isError ? t('vnAddress.wardLoadError') : undefined}
-        validateStatus={districtDetailQuery.isError ? 'warning' : undefined}
-        selectProps={{ optionFilterProp: 'label', listHeight: 280 }}
-        rules={reqRule('ward')}
-        onChange={onWardChange}
-      />
-      <FormItemText
-        name={key('addr_street_detail')}
-        label={t('vnAddress.street')}
-        required={addrRequired}
-        disabled={disabled}
-        rules={reqRule('street')}
-        placeholder={t('vnAddress.streetPlaceholder')}
-      />
+      
+      <Row gutter={16}>
+        <Col span={12}>
+          <FormItemSelect
+            name={key('addr_province_code')}
+            label={t('vnAddress.province')}
+            required={addrRequired}
+            disabled={disabled}
+            options={provinceOptions}
+            showSearch
+            loading={provinceListQuery.isPending}
+            help={provinceListQuery.isError ? t('vnAddress.catalogLoadError') : undefined}
+            validateStatus={provinceListQuery.isError ? 'warning' : undefined}
+            selectProps={{ optionFilterProp: 'label', listHeight: 280 }}
+            rules={reqRule('province')}
+            onChange={onProvinceChange}
+          />
+        </Col>
+        <Col span={12}>
+          <FormItemSelect
+            name={key('addr_district_code')}
+            label={t('vnAddress.district')}
+            required={addrRequired}
+            disabled={disabled || !provinceCodeWatch}
+            options={districtOptions}
+            showSearch
+            loading={provinceDetailQuery.isPending && !!provinceCodeWatch}
+            help={provinceDetailQuery.isError ? t('vnAddress.districtLoadError') : undefined}
+            validateStatus={provinceDetailQuery.isError ? 'warning' : undefined}
+            selectProps={{ optionFilterProp: 'label', listHeight: 280 }}
+            rules={reqRule('district')}
+            onChange={onDistrictChange}
+          />
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col span={12}>
+          <FormItemSelect
+            name={key('addr_ward_code')}
+            label={t('vnAddress.ward')}
+            required={addrRequired}
+            disabled={disabled || !districtCodeWatch}
+            options={wardOptions}
+            showSearch
+            loading={districtDetailQuery.isPending && !!districtCodeWatch}
+            help={districtDetailQuery.isError ? t('vnAddress.wardLoadError') : undefined}
+            validateStatus={districtDetailQuery.isError ? 'warning' : undefined}
+            selectProps={{ optionFilterProp: 'label', listHeight: 280 }}
+            rules={reqRule('ward')}
+            onChange={onWardChange}
+          />
+        </Col>
+        <Col span={12}>
+          <Form.Item
+            name={key('addr_street_detail')}
+            label={t('vnAddress.street')}
+            required={addrRequired}
+            rules={reqRule('street')}
+          >
+            <AddressAutocomplete
+              disabled={disabled}
+              placeholder={t('vnAddress.streetPlaceholder')}
+              onSelect={(lat, lng, label) => {
+                form.setFieldValue(key('addr_street_detail'), label);
+                if (onAddressSelected) {
+                  onAddressSelected(lat, lng, label);
+                }
+              }}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
     </div>
   );
 }

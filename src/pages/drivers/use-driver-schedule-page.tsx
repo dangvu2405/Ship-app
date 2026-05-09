@@ -19,7 +19,7 @@ import type {
 import driverScheduleService from '@/services/driver-schedule.service';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
-import { useDriverDayMap } from '@/hooks/use-driver-day-map';
+import { useDriverDayMap } from '@/hooks/useDriverDayMap';
 import { ScheduleDayCell } from '@/pages/drivers/components/ScheduleDayCell';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { useTranslation } from '@/hooks/useTranslation';

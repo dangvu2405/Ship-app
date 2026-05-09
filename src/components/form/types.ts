@@ -201,3 +201,43 @@ export interface FormItemUploadDraggerProps extends Omit<BaseFormItemProps, 'nam
   uploadProps?: UploadProps;
   children: ReactNode;
 }
+
+/**
+ * Props for FormItemDatePicker component
+ */
+export interface FormItemDatePickerProps extends BaseFormItemProps {
+  /** Picker type: date, week, month, quarter, year, time */
+  picker?: 'date' | 'week' | 'month' | 'quarter' | 'year' | 'time';
+  /** Whether to show time picker */
+  showTime?: boolean | object;
+  /** Display format */
+  format?: string;
+  /** Value format for string storage (default: YYYY-MM-DD for date, YYYY-MM-DD HH:mm:ss for datetime) */
+  valueFormat?: string;
+  /** Placeholder text */
+  placeholder?: string;
+  /** Size of picker */
+  size?: 'small' | 'middle' | 'large';
+  /** Props passed to DatePicker/TimePicker component */
+  pickerProps?: any;
+}
+
+/**
+ * Props for FormItemRangePicker component
+ */
+export interface FormItemRangePickerProps extends BaseFormItemProps {
+  /** Picker type: date, week, month, quarter, year, time */
+  picker?: 'date' | 'week' | 'month' | 'quarter' | 'year' | 'time';
+  /** Whether to show time picker */
+  showTime?: boolean | object;
+  /** Display format */
+  format?: string;
+  /** Value format for string storage */
+  valueFormat?: string;
+  /** Placeholder texts [start, end] */
+  placeholder?: [string, string];
+  /** Size of picker */
+  size?: 'small' | 'middle' | 'large';
+  /** Props passed to RangePicker component */
+  pickerProps?: any;
+}

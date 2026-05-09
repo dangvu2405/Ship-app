@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Descriptions, Drawer, Table, Typography } from 'antd';
-import { useQuery } from '@tanstack/react-query';
+import { App, Button, Descriptions, Drawer, Space, Table, Tag, Typography } from 'antd';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnsType } from 'antd/es/table';
 import type { PayrollDriverLine, PayrollTripAttribution } from '@/types/domain/payroll';
 import { useTranslation } from '@/hooks/useTranslation';
+import { usePayrollPermission } from '@/hooks/usePayrollPermission';
 import { formatCurrencyVND } from '@/utils/format';
 import payrollService from '@/services/payroll.service';
 
@@ -11,6 +12,7 @@ export interface PayrollDetailDrawerProps {
   open: boolean;
   onClose: () => void;
   line: PayrollDriverLine | null;
+  onPayrollUpdated?: () => void;
 }
 
 function sumFinesAndDeductions(row: PayrollDriverLine): number {
@@ -22,8 +24,11 @@ function sumFinesAndDeductions(row: PayrollDriverLine): number {
   );
 }
 
-export function PayrollDetailDrawer({ open, onClose, line }: PayrollDetailDrawerProps) {
+export function PayrollDetailDrawer({ open, onClose, line, onPayrollUpdated }: PayrollDetailDrawerProps) {
   const { t } = useTranslation();
+  const { message } = App.useApp();
+  const { canManagePayroll } = usePayrollPermission();
+  const queryClient = useQueryClient();
   const payrollId = line?.payroll_id;
 
   const payrollQuery = useQuery({
@@ -36,6 +41,50 @@ export function PayrollDetailDrawer({ open, onClose, line }: PayrollDetailDrawer
     enabled: open && payrollId != null,
   });
 
+  const invalidatePayrollQueries = () => {
+    void queryClient.invalidateQueries({ queryKey: ['payroll-detail-drawer', payrollId] });
+    onPayrollUpdated?.();
+  };
+
+  const approveMutation = useMutation({
+    mutationFn: () => payrollService.approve(payrollId!),
+    onSuccess: (res) => {
+      if (res.success) {
+        message.success(t('notifications.updateSuccess', { item: t('payrolls.title') }));
+        invalidatePayrollQueries();
+      } else {
+        message.error(res.message || t('notifications.updateError', { item: t('payrolls.title') }));
+      }
+    },
+    onError: () => message.error(t('notifications.updateError', { item: t('payrolls.title') })),
+  });
+
+  const lockMutation = useMutation({
+    mutationFn: () => payrollService.lock(payrollId!),
+    onSuccess: (res) => {
+      if (res.success) {
+        message.success(t('notifications.updateSuccess', { item: t('payrolls.title') }));
+        invalidatePayrollQueries();
+      } else {
+        message.error(res.message || t('notifications.updateError', { item: t('payrolls.title') }));
+      }
+    },
+    onError: () => message.error(t('notifications.updateError', { item: t('payrolls.title') })),
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: () => payrollService.markPaid(payrollId!),
+    onSuccess: (res) => {
+      if (res.success) {
+        message.success(t('notifications.updateSuccess', { item: t('payrolls.title') }));
+        invalidatePayrollQueries();
+      } else {
+        message.error(res.message || t('notifications.updateError', { item: t('payrolls.title') }));
+      }
+    },
+    onError: () => message.error(t('notifications.updateError', { item: t('payrolls.title') })),
+  });
+
   const mergedLine = useMemo(() => {
     if (!line) return null;
     const full = payrollQuery.data?.details?.find((d) => d.id === line.id);
@@ -46,6 +95,30 @@ export function PayrollDetailDrawer({ open, onClose, line }: PayrollDetailDrawer
     mergedLine?.payroll_trips ??
     (mergedLine?.meta_json?.trips as PayrollTripAttribution[] | undefined) ??
     [];
+
+  const payrollRecord = payrollQuery.data;
+  const payrollStatusKey = String(payrollRecord?.status ?? '').toLowerCase();
+
+  const payrollStatusLabel = useMemo(() => {
+    switch (payrollStatusKey) {
+      case 'draft':
+        return t('payrolls.statusDraft');
+      case 'approved':
+        return t('payrolls.statusApproved');
+      case 'locked':
+        return t('payrolls.statusLocked');
+      case 'paid':
+        return t('payrolls.statusPaid');
+      default:
+        return payrollRecord?.status ? String(payrollRecord.status) : '—';
+    }
+  }, [payrollRecord?.status, payrollStatusKey, t]);
+
+  const showApprove = canManagePayroll && payrollStatusKey === 'draft';
+  const showLock = canManagePayroll && payrollStatusKey === 'approved';
+  const showMarkPaid = canManagePayroll && payrollStatusKey === 'locked';
+
+  const workflowBusy = approveMutation.isPending || lockMutation.isPending || markPaidMutation.isPending;
 
   const tripColumns: ColumnsType<PayrollTripAttribution> = [
     { title: t('trips.code'), dataIndex: 'code', key: 'code' },
@@ -73,6 +146,27 @@ export function PayrollDetailDrawer({ open, onClose, line }: PayrollDetailDrawer
       open={open}
       onClose={onClose}
       destroyOnHidden
+      extra={
+        payrollId != null && (showApprove || showLock || showMarkPaid) ? (
+          <Space wrap>
+            {showApprove ? (
+              <Button type="primary" loading={workflowBusy} onClick={() => approveMutation.mutate()}>
+                {t('payrolls.approve')}
+              </Button>
+            ) : null}
+            {showLock ? (
+              <Button type="primary" loading={workflowBusy} onClick={() => lockMutation.mutate()}>
+                {t('payrolls.lock')}
+              </Button>
+            ) : null}
+            {showMarkPaid ? (
+              <Button type="primary" className="!bg-green-600 hover:!bg-green-700" loading={workflowBusy} onClick={() => markPaidMutation.mutate()}>
+                {t('payrolls.markPaid')}
+              </Button>
+            ) : null}
+          </Space>
+        ) : null
+      }
     >
       {!mergedLine ? null : (
         <>
@@ -80,6 +174,13 @@ export function PayrollDetailDrawer({ open, onClose, line }: PayrollDetailDrawer
             {t('payrolls.systemDocHint')}
           </Typography.Paragraph>
           <Descriptions bordered size="small" column={1} className="mb-4">
+            <Descriptions.Item label={t('common.status')}>
+              {payrollQuery.isLoading ? (
+                <Typography.Text type="secondary">{t('common.loading')}</Typography.Text>
+              ) : (
+                <Tag>{payrollStatusLabel}</Tag>
+              )}
+            </Descriptions.Item>
             <Descriptions.Item label={t('payrolls.batchPayrollId')}>
               <Typography.Text copyable>{String(mergedLine.payroll_id)}</Typography.Text>
             </Descriptions.Item>

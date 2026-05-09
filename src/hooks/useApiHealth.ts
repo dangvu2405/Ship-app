@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useCustomRequest } from '@/hooks/use-request';
+import { useCustomRequest } from '@/hooks/useRequest';
 import systemService from '@/services/system.service';
 
 export type ApiHealthState = 'idle' | 'loading' | 'ok' | 'error';

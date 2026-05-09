@@ -12,6 +12,7 @@ export function leaveStatusColor(status: string): string {
     case 'approved': return 'success';
     case 'rejected': return 'error';
     case 'cancelled': return 'default';
+    case 'submitted': return 'processing';
     default: return 'processing';
   }
 }
@@ -19,6 +20,7 @@ export function leaveStatusColor(status: string): string {
 export function leaveStatusLabel(status: string): string {
   const map: Record<string, string> = {
     pending: 'Chờ duyệt',
+    submitted: 'Đã nộp',
     approved: 'Đã duyệt',
     rejected: 'Từ chối',
     cancelled: 'Đã hủy',

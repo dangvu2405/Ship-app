@@ -65,7 +65,7 @@ export interface DispatchDailySummaryTrips {
   created?: number;
   new?: number;
   pending?: number;
-  in_progress?: number;
+  in_transit?: number;
   running?: number;
   completed?: number;
   cancelled?: number;
@@ -75,7 +75,7 @@ export interface DispatchDailySummaryPayload {
   date?: string;
   trips?: DispatchDailySummaryTrips;
   new_trips?: number;
-  in_progress_trips?: number;
+  in_transit_trips?: number;
   completed_trips?: number;
 }
 

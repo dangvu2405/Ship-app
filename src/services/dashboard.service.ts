@@ -1,4 +1,5 @@
 import api from './api';
+import axios from 'axios';
 import { ApiResponse } from '@/types';
 import type { DashboardStats } from '@/types';
 import { ENDPOINTS } from './endpoints';
@@ -50,25 +51,48 @@ function mapLegacyDashboardPayload(raw: Record<string, unknown>): DashboardStats
 }
 
 class DashboardService {
+  private overviewUnavailable = false;
+
   async getStats(month?: number, year?: number, companyId?: number): Promise<ApiResponse<DashboardStats>> {
-    const m = month ?? new Date().getMonth() + 1;
-    const y = year ?? new Date().getFullYear();
-    const response = await api.get(ENDPOINTS.reports.dashboard, {
-      params: {
-        month: m,
-        year: y,
-        ...(companyId != null ? { company_id: companyId } : {}),
-      },
-    });
-    const body = response.data as ApiResponse<Record<string, unknown>>;
-    if (body.success && body.data && typeof body.data === 'object') {
+    if (this.overviewUnavailable) {
       return {
         success: true,
-        message: body.message,
-        data: mapLegacyDashboardPayload(body.data as Record<string, unknown>),
-      };
+        data: mapLegacyDashboardPayload({}),
+      } as ApiResponse<DashboardStats>;
     }
-    return body as unknown as ApiResponse<DashboardStats>;
+
+    const m = month ?? new Date().getMonth() + 1;
+    const y = year ?? new Date().getFullYear();
+    try {
+      const response = await api.get(ENDPOINTS.reports.dashboard, {
+        params: {
+          month: m,
+          year: y,
+          ...(companyId != null ? { company_id: companyId } : {}),
+        },
+      });
+      const body = response.data as ApiResponse<Record<string, unknown>>;
+      if (body.success && body.data && typeof body.data === 'object') {
+        return {
+          success: true,
+          message: body.message,
+          data: mapLegacyDashboardPayload(body.data as Record<string, unknown>),
+        };
+      }
+      return body as unknown as ApiResponse<DashboardStats>;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 403 || status === 404) {
+          this.overviewUnavailable = true;
+          return {
+            success: true,
+            data: mapLegacyDashboardPayload({}),
+          } as ApiResponse<DashboardStats>;
+        }
+      }
+      throw error;
+    }
   }
 }
 
