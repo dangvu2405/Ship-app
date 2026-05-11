@@ -240,4 +240,6 @@ export interface FormItemRangePickerProps extends BaseFormItemProps {
   size?: 'small' | 'middle' | 'large';
   /** Props passed to RangePicker component */
   pickerProps?: any;
+  /** Change handler for the underlying range picker */
+  onChange?: (...args: unknown[]) => void;
 }

@@ -102,27 +102,27 @@ class DriverScheduleService {
   }
 
   async submit(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const res = await api.post(ENDPOINTS.driverSchedules.submit(id));
+    const res = await api.patch(ENDPOINTS.driverSchedules.submit(id));
     return res.data;
   }
 
   async approve(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const res = await api.post(ENDPOINTS.driverSchedules.approve(id));
+    const res = await api.patch(ENDPOINTS.driverSchedules.approve(id));
     return res.data;
   }
 
   async reject(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const res = await api.post(ENDPOINTS.driverSchedules.reject(id));
+    const res = await api.patch(ENDPOINTS.driverSchedules.reject(id));
     return res.data;
   }
 
   async lock(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const res = await api.post(ENDPOINTS.driverSchedules.lock(id));
+    const res = await api.patch(ENDPOINTS.driverSchedules.lock(id));
     return res.data;
   }
 
   async override(id: number, override_reason: string): Promise<ApiResponse<DriverSchedule>> {
-    const res = await api.post(ENDPOINTS.driverSchedules.override(id), { override_reason });
+    const res = await api.patch(ENDPOINTS.driverSchedules.override(id), { override_reason });
     return res.data;
   }
 

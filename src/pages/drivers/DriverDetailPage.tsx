@@ -16,6 +16,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import type { Driver, VehicleAssignment, Trip } from '@/types';
 import { ROUTES } from '@/routes';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
+import { normalizeTripStatusKey } from '@/utils/tripStatus';
 
 interface WorkScheduleRow {
   id?: number;
@@ -41,13 +42,11 @@ const AVAILABLE_LABEL: Record<string, string> = {
 const TRIP_STATUS_COLOR: Record<string, string> = {
   pending: 'default',
   assigned: 'blue',
-  driver_accepted: 'blue',
   en_route_pickup: 'gold',
   picked_up: 'gold',
   in_transit: 'gold',
   delayed: 'gold',
   arrived: 'purple',
-  delivered: 'purple',
   completed: 'green',
   cancelled: 'red',
   emergency: 'red',
@@ -55,13 +54,11 @@ const TRIP_STATUS_COLOR: Record<string, string> = {
 const TRIP_STATUS_LABEL: Record<string, string> = {
   pending: 'Mới',
   assigned: 'Đã phân công',
-  driver_accepted: 'Tài xế nhận đơn',
   en_route_pickup: 'Đang đến lấy hàng',
   picked_up: 'Đã lấy hàng',
   in_transit: 'Đang vận chuyển',
   delayed: 'Chậm trễ',
   arrived: 'Đã đến điểm giao',
-  delivered: 'Đã giao hàng',
   completed: 'Hoàn thành',
   cancelled: 'Đã hủy',
   emergency: 'Sự cố',
@@ -80,7 +77,7 @@ export function DriverDetailPage() {
   });
 
   const { data: assignmentsData, isLoading: assignmentsLoading } = useList<VehicleAssignment>({
-    resource: 'vehicle_assignments',
+    resource: 'vehicle-assignments',
     filters: [{ field: 'driver_id', operator: 'eq', value: resolvedId }],
     queryOptions: { enabled: !!resolvedId },
   });
@@ -107,6 +104,8 @@ export function DriverDetailPage() {
   const trips = tripsData?.data ?? [];
 
   const currentAssignment = assignments.find((a) => !a.to_date);
+  const normalizedTripStatusLabel = (status?: string) => TRIP_STATUS_LABEL[normalizeTripStatusKey(status) || 'pending'] ?? status ?? '-';
+  const normalizedTripStatusColor = (status?: string) => TRIP_STATUS_COLOR[normalizeTripStatusKey(status) || 'pending'] ?? 'default';
 
   if (isLoading) {
     return (
@@ -337,8 +336,8 @@ export function DriverDetailPage() {
                 dataIndex: 'status',
                 key: 'status',
                 render: (v: string) => (
-                  <Tag color={TRIP_STATUS_COLOR[v] ?? 'default'}>
-                    {TRIP_STATUS_LABEL[v] ?? v}
+                  <Tag color={normalizedTripStatusColor(v)}>
+                    {normalizedTripStatusLabel(v)}
                   </Tag>
                 ),
               },

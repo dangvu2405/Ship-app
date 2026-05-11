@@ -124,7 +124,7 @@ const attemptRefresh = async (): Promise<string | null> => {
     // Use raw axios to avoid interceptor loop
     const response: AxiosResponse<{
       success?: boolean;
-      data?: { access_token?: string; token?: string; refresh_token?: string };
+      data?: { access_token?: string; token?: string; refresh_token?: string; refreshToken?: string };
     }> = await axios.post(
       `${API_BASE_URL}${ENDPOINTS.auth.refresh}`,
       { refresh_token: refreshToken },
@@ -135,7 +135,7 @@ const attemptRefresh = async (): Promise<string | null> => {
     );
 
     const newAccessToken = response.data?.data?.access_token || response.data?.data?.token;
-    const newRefreshToken = response.data?.data?.refresh_token;
+  const newRefreshToken = response.data?.data?.refresh_token || response.data?.data?.refreshToken;
 
     if (newAccessToken) {
       setAuthToken(newAccessToken);

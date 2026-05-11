@@ -31,7 +31,7 @@ export function VehicleCostsPage() {
   });
 
   const { data: expensesData, isLoading } = useList<VehicleExpense>({
-    resource: 'vehicle_expenses',
+    resource: 'vehicle-expenses',
     filters: [
       ...(vehicleIdFilter != null ? [{ field: 'vehicle_id', operator: 'eq' as const, value: vehicleIdFilter }] : []),
       ...(expenseTypeFilter ? [{ field: 'type', operator: 'eq' as const, value: expenseTypeFilter }] : []),

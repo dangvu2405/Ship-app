@@ -58,6 +58,7 @@ interface WorkforceOpsProps {
 export function WorkforceOps({ embedded = false }: WorkforceOpsProps = {}) {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const showLegacyScheduleAliasActions = false;
   const [attendanceForm] = Form.useForm();
   const [leaveForm] = Form.useForm();
   const [overtimeForm] = Form.useForm();
@@ -486,61 +487,66 @@ export function WorkforceOps({ embedded = false }: WorkforceOpsProps = {}) {
         const s = row.status;
         return (
           <Space wrap>
-            {/* Submit: draft only */}
-            <Button size="small" disabled={s !== 'draft'} onClick={() => void runAction(() => workforceOpsService.submitDriverSchedule(row.id), 'schedule', t('workforce.scheduleSubmitted' as never))}>
-              {t('workforce.submit' as never)}
-            </Button>
+            {showLegacyScheduleAliasActions ? (
+              <Button size="small" disabled={s !== 'draft'} onClick={() => void runAction(() => workforceOpsService.submitDriverSchedule(row.id), 'schedule', t('workforce.scheduleSubmitted' as never))}>
+                {t('workforce.submit' as never)}
+              </Button>
+            ) : null}
 
-            {/* Approve: submitted only with HOS check */}
+            {/* Approve: canonical workforce endpoint */}
             <Button
               size="small"
               disabled={s !== 'submitted'}
               onClick={async () => {
                 await runAction(async () => {
-                  const hos = await workforceOpsService.checkDriverScheduleHos(row.id);
-                  if (!(hos.data?.allowed ?? true)) throw new Error(hos.data?.reason || t('workforce.hosCheckFailed' as never));
-            await workforceOpsService.approveDriverSchedule(row.id);
+                  if (showLegacyScheduleAliasActions) {
+                    const hos = await workforceOpsService.checkDriverScheduleHos(row.id);
+                    if (!(hos.data?.allowed ?? true)) throw new Error(hos.data?.reason || t('workforce.hosCheckFailed' as never));
+                  }
+                  await workforceOpsService.approveDriverSchedule(row.id);
                 }, 'schedule', t('workforce.scheduleApproved' as never));
               }}
             >
               {t('common.approve' as never)}
             </Button>
 
-            {/* Reject: submitted only */}
-            <Button
-              size="small"
-              danger
-              disabled={s !== 'submitted'}
-              onClick={() =>
-                confirmThenRun(t('workforce.rejectSchedule' as never), () => workforceOpsService.rejectDriverSchedule(row.id), 'schedule', t('workforce.scheduleRejected' as never), {
-                  requireReason: true,
-                  placeholder: t('workforce.rejectReasonPlaceholder' as never),
-                  actionWithReason: () => workforceOpsService.rejectDriverSchedule(row.id),
-                })
-              }
-            >
-              {t('common.reject' as never)}
-            </Button>
+            {showLegacyScheduleAliasActions ? (
+              <Button
+                size="small"
+                danger
+                disabled={s !== 'submitted'}
+                onClick={() =>
+                  confirmThenRun(t('workforce.rejectSchedule' as never), () => workforceOpsService.rejectDriverSchedule(row.id), 'schedule', t('workforce.scheduleRejected' as never), {
+                    requireReason: true,
+                    placeholder: t('workforce.rejectReasonPlaceholder' as never),
+                    actionWithReason: () => workforceOpsService.rejectDriverSchedule(row.id),
+                  })
+                }
+              >
+                {t('common.reject' as never)}
+              </Button>
+            ) : null}
 
             {/* Lock: approved only */}
             <Button size="small" disabled={s !== 'approved'} onClick={() => void runAction(() => workforceOpsService.lockDriverSchedule(row.id), 'schedule', t('workforce.scheduleLocked' as never))}>
               {t('common.lock' as never)}
             </Button>
 
-            {/* Override: locked only, reason required */}
-            <Button
-              size="small"
-              disabled={s !== 'locked'}
-              onClick={() =>
-                confirmThenRun(t('workforce.overrideLockedSchedule' as never), () => workforceOpsService.overrideDriverSchedule(row.id, ''), 'schedule', t('workforce.scheduleOverridden' as never), {
-                  requireReason: true,
-                  placeholder: t('workforce.overrideReasonPlaceholder' as never),
-                  actionWithReason: (r) => workforceOpsService.overrideDriverSchedule(row.id, r || t('workforce.manualOverride' as never)),
-                })
-              }
-            >
-              Override
-            </Button>
+            {showLegacyScheduleAliasActions ? (
+              <Button
+                size="small"
+                disabled={s !== 'locked'}
+                onClick={() =>
+                  confirmThenRun(t('workforce.overrideLockedSchedule' as never), () => workforceOpsService.overrideDriverSchedule(row.id, ''), 'schedule', t('workforce.scheduleOverridden' as never), {
+                    requireReason: true,
+                    placeholder: t('workforce.overrideReasonPlaceholder' as never),
+                    actionWithReason: (r) => workforceOpsService.overrideDriverSchedule(row.id, r || t('workforce.manualOverride' as never)),
+                  })
+                }
+              >
+                Override
+              </Button>
+            ) : null}
 
             {/* Edit: disabled when locked */}
             <Button

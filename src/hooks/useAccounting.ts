@@ -29,7 +29,7 @@ export function useTripReportList({ enabled = true, pageSize = 100, filters = []
 
 export function useVehicleExpenseReportList({ enabled = true, pageSize = 100, filters = [], sorters = [] }: ReportListParams = {}) {
   const query = useResourceListQuery<VehicleExpense>({
-    resource: 'vehicle_expenses',
+    resource: 'vehicle-expenses',
     current: 1,
     pageSize,
     filters,

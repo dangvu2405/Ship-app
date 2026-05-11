@@ -26,7 +26,7 @@ class WorkScheduleService {
     officeId: number,
     payload: ApplyOfficeSchedulePayload,
   ): Promise<ApiResponse<ApplyOfficeScheduleResult>> {
-    const response = await api.post<ApiResponse<ApplyOfficeScheduleResult>>(
+    const response = await api.patch<ApiResponse<ApplyOfficeScheduleResult>>(
       ENDPOINTS.offices.applySchedule(officeId),
       payload,
     );

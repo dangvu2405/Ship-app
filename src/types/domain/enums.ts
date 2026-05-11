@@ -8,4 +8,4 @@ export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type UserStatus = 'active' | 'inactive';
 export type ChatTask = 'chat' | 'classify' | 'extract' | 'advice';
 export type NotificationType = 'create' | 'update' | 'delete' | 'system' | 'user';
-export type DispatchTripStatus = 'pending' | 'assigned' | 'in_transit' | 'delivered' | 'completed' | 'cancelled';
+export type DispatchTripStatus = 'pending' | 'assigned' | 'in_transit' | 'arrived' | 'completed' | 'cancelled';

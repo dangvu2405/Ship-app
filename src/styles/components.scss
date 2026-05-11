@@ -5,6 +5,32 @@
 // LAYOUT COMPONENTS
 // ============================================================
 
+// Ant Design Form Spacing
+.ant-form-item {
+  margin-bottom: $spacing-lg; // 24px spacing between form fields
+}
+
+// Custom Standardized Components
+.ship-app-card {
+  padding: $spacing-lg; // 24px
+  background: hsl(var(--card));
+  border-radius: $radius-lg;
+  border: 1px solid hsl(var(--border));
+  
+  .card-header {
+    margin-bottom: $spacing-md; // 16px
+  }
+}
+
+.list-item-custom {
+  padding: $spacing-md 0; // 16px vertical padding
+  border-bottom: 1px solid hsl(var(--border));
+  
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
 // Main Layout Container
 .layout-container {
   display: flex;

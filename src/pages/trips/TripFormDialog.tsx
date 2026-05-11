@@ -17,31 +17,30 @@ import { mergeVnAddressIntoPayload } from '@/utils/vnAddressForm';
 import { tripCreateMinimalSchema } from '@/pages/trips/trip-form.schema';
 import { recordAuditIntent } from '@/lib/audit-action';
 import { useAuthStore } from '@/stores/auth.store';
-import { normalizeTripStatusKey } from '@/utils/tripStatus';
+import { normalizeTripStatusKey, type TripStatus } from '@/utils/tripStatus';
 
 const normalizeTripStatus = (status?: string): string => normalizeTripStatusKey(status) || '';
 
+const CANONICAL_TRANSITIONS: Partial<Record<TripStatus, TripStatus[]>> = {
+  pending: ['assigned', 'cancelled'],
+  assigned: ['en_route_pickup', 'cancelled'],
+  en_route_pickup: ['picked_up', 'cancelled'],
+  picked_up: ['in_transit', 'cancelled'],
+  in_transit: ['arrived', 'cancelled', 'delayed'],
+  delayed: ['in_transit', 'cancelled'],
+  arrived: ['completed', 'cancelled'],
+};
+
 const canTransitionTripStatus = (fromStatus: string, toStatus: string): boolean => {
-  if (fromStatus === toStatus) return true;
-  if (fromStatus === 'completed' || fromStatus === 'cancelled' || fromStatus === 'emergency') {
-    return false;
-  }
-  if (fromStatus === 'draft') {
-    return toStatus === 'pending' || toStatus === 'cancelled';
-  }
-  if (fromStatus === 'pending') {
-    return toStatus === 'assigned' || toStatus === 'cancelled';
-  }
-  if (fromStatus === 'assigned' || fromStatus === 'driver_accepted') {
-    return toStatus === 'in_transit' || toStatus === 'cancelled';
-  }
-  if (fromStatus === 'in_transit' || fromStatus === 'delayed' || fromStatus === 'en_route_pickup' || fromStatus === 'picked_up') {
-    return toStatus === 'delivered' || toStatus === 'arrived' || toStatus === 'cancelled';
-  }
-  if (fromStatus === 'arrived' || fromStatus === 'delivered') {
-    return toStatus === 'completed' || toStatus === 'cancelled';
-  }
-  return false;
+  const from = normalizeTripStatusKey(fromStatus);
+  const to = normalizeTripStatusKey(toStatus);
+
+  if (!from || !to) return false;
+  if (from === to) return true;
+  if (from === 'completed' || from === 'cancelled' || from === 'emergency') return false;
+  if (from === 'draft') return to === 'pending' || to === 'cancelled';
+
+  return CANONICAL_TRANSITIONS[from]?.includes(to) ?? false;
 };
 
 const toNullableNumber = (value: unknown): number | null => {

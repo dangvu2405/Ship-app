@@ -71,6 +71,8 @@ export const ENDPOINTS = {
     debt: (id: Id) => `/customers/${id}/debt`,
     payments: (id: Id) => `/customers/${id}/payments`,
     priceLists: (id: Id) => `/customers/${id}/price-lists`,
+    reconciliations: (id: Id) => `/customers/${id}/reconciliations`,
+    groups: '/customer-groups',
   },
   customerGroups: crud('/customer-groups'),
   priceLists: {
@@ -123,7 +125,7 @@ export const ENDPOINTS = {
     sendEmail:  (id: Id) => `/invoices/${id}/send-email`,
     statusHistories: (id: Id) => `/invoices/${id}/status-histories`,
   },
-  debtOverview: '/invoices/debt-overview',
+  debtOverview: '/debt-overview',
   attendances: crud('/attendances'),
   payrolls: {
     ...crud('/payrolls'),

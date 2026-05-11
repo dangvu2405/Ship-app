@@ -4,12 +4,12 @@ import { ApiResponse, PayrollAdjustment } from '@/types';
 
 class PayrollAdjustmentService {
   async approve(id: number | string): Promise<ApiResponse<PayrollAdjustment>> {
-    const response = await api.post(ENDPOINTS.payrollAdjustments.approve(id));
+    const response = await api.patch(ENDPOINTS.payrollAdjustments.approve(id));
     return response.data;
   }
 
   async reject(id: number | string, reason: string): Promise<ApiResponse<PayrollAdjustment>> {
-    const response = await api.post(ENDPOINTS.payrollAdjustments.reject(id), { rejection_reason: reason });
+    const response = await api.patch(ENDPOINTS.payrollAdjustments.reject(id), { rejection_reason: reason });
     return response.data;
   }
 }

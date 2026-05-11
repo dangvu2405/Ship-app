@@ -1,3 +1,18 @@
+/**
+ * LeaveService — Leave request CRUD operations.
+ * 
+ * **Public API:** This service is directly imported by:
+ * - dedicated leave management components
+ * - time-off tracking pages
+ * 
+ * **Also wrapped by:** WorkforceOpsService (convenience facade for dashboard/orchestration)
+ * 
+ * **Import from:** 
+ * - `leave.service` for leave-focused components (recommended)
+ * - `workforce-ops.service` for multi-resource orchestration (approveLeave, rejectLeave, etc.)
+ * 
+ * See: src/services/workforce-ops.service.ts for facade pattern explanation.
+ */
 import api from './api';
 import { ENDPOINTS } from './endpoints';
 import type { ApiResponse, LeaveRequest } from '@/types';

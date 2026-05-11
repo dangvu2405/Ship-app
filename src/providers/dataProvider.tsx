@@ -5,6 +5,7 @@ import api from '@/services/api';
 import { ENDPOINTS } from '@/services/endpoints';
 import { throwIfEnvelopeFailed, unwrapEnvelope } from '@/services/http';
 import costService from '@/services/cost.service';
+import { RESOURCE_ALIASES, NOT_IMPLEMENTED_RESOURCES, LEGACY_LIST_FALLBACKS } from '@/constants/resourceAliases';
 
 type ApiErrorLike = { response?: { status?: number } };
 type EnvelopeLike<T> = {
@@ -14,67 +15,7 @@ type EnvelopeLike<T> = {
   meta?: { total?: number };
 };
 
-
-// === Alias: resource name frontend → resource name backend (api.php) ===
-const RESOURCE_ALIASES: Record<string, string> = {
-  'admin-companies': 'admin/companies',
-  // Kế toán
-  'reconciliations': 'reconciliation-sessions',
-  'payments': 'payment-records',
-  // Điều vận / Lịch làm việc
-  'work-schedules': 'driver-work-schedules',
-  'driver-schedules': 'driver-work-schedules',
-  // Đơn hàng
-  'trip-stops': 'trip-routes',
-  'trip-surcharges': 'trip-costs',
-  // Nghỉ phép
-  'leave': 'leave-requests',
-  // Underscore variants → hyphen (backend dùng hyphen nhất quán)
-  'cargo_types': 'cargo-types',
-  'vehicle_types': 'vehicle-types',
-  'route_templates': 'route-templates',
-  'vehicle_type_catalogs': 'vehicle-types',
-  'price_lists': 'price-lists',
-  'price_list_items': 'price-list-items',
-  'driver_teams': 'driver-teams',
-  'driver_documents': 'driver-documents',
-  'vehicle_documents': 'vehicle-documents',
-  'vehicle_assignments': 'vehicle-assignments',
-  'trip_costs': 'trip-costs',
-  'trip_routes': 'trip-routes',
-  'trip_documents': 'trip-documents',
-  'trip_status_histories': 'trip-status-histories',
-  'leave_requests': 'leave-requests',
-  'leave_types': 'leave-types',
-  'driver_work_schedules': 'driver-work-schedules',
-  'maintenance_schedules': 'maintenance-schedules',
-  'maintenance_records': 'maintenance-records',
-  'reconciliation_sessions': 'reconciliation-sessions',
-  'reconciliation_items': 'reconciliation-items',
-  'payment_records': 'payment-records',
-  'customer_groups': 'customer-groups',
-  'order_status_configs': 'order-status-configs',
-  'cost_categories': 'cost-categories',
-  // vehicle_expenses → trip-costs (table vehicle_expenses chưa có dữ liệu, dùng trip-costs thay thế)
-  'vehicle_expenses': 'trip-costs',
-};
-
-// === Resources hoàn toàn CHƯA có trong Backend (spec chưa implement) → trả rỗng ===
-const NOT_IMPLEMENTED_RESOURCES = new Set([
-  'trip-bonus-rules',
-  'attendance',
-  'attendances',
-  'public-holidays',
-  'cost-approvals',
-  'chat-messages',
-  'knowledge-articles',
-  'debt-overview',
-]);
-
-// === Fallback: nếu resource chính 404 thử resource phụ ===
-const LEGACY_LIST_FALLBACKS: Record<string, string[]> = {
-  companies: ['admin/companies'],
-};
+// Runtime tracking: resources that were unavailable at 404 to avoid repeated spam requests
 const RUNTIME_UNAVAILABLE_LIST_RESOURCES = new Set<string>();
 const DISABLED_LIST_RESOURCES = new Set(
   String(import.meta.env.VITE_DISABLED_LIST_RESOURCES ?? '')
@@ -85,7 +26,7 @@ const DISABLED_LIST_RESOURCES = new Set(
 
 
 const resolveApiResource = (resource: string) => {
-  const alias = RESOURCE_ALIASES[resource] ?? resource;
+  const alias = (RESOURCE_ALIASES as Record<string, string>)[resource] ?? resource;
   return alias.replace(/_/g, '-');
 };
 
@@ -220,8 +161,10 @@ export const dataProvider: DataProvider = {
 
     const apiResource = resolveApiResource(resource);
 
-    // Silently return empty for resources not yet implemented in backend
+// Silently return empty for resources not yet implemented in backend.
+    // Logs when a resource is returned as unavailable for better debugging.
     if (NOT_IMPLEMENTED_RESOURCES.has(resource)) {
+      console.debug(`[DataProvider] Resource "${resource}" not implemented - returning empty list`);
       return { data: [] as unknown as TData[], total: 0 };
     }
     // Optional runtime override for environments with partial backend route availability.

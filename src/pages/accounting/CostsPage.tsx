@@ -1,15 +1,12 @@
 import { useMemo, useState } from 'react';
 import { App, Button, Card, Col, DatePicker, Row, Select, Space, Statistic, Table, Tag, theme } from 'antd';
-import { AuditOutlined, ExportOutlined, WalletOutlined } from '@ant-design/icons';
+import { ExportOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { Link } from 'react-router-dom';
-import { ROUTES } from '@/routes';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation, type Translate } from '@/hooks/useTranslation';
 import type { VehicleExpense } from '@/types';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
 import { useVehicleExpenseReportList } from '@/hooks/useAccounting';
-import { useReport, useExportReport } from '@/hooks/useReports';
 
 const { RangePicker } = DatePicker;
 
@@ -43,51 +40,21 @@ export function CostsPage() {
   ]);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
 
-  const dateFrom = dateRange[0].format('YYYY-MM-DD');
-  const dateTo = dateRange[1].format('YYYY-MM-DD');
-
   const { expenses, loading: isLoading } = useVehicleExpenseReportList({
     pageSize: 100,
     filters: [
-      { field: 'expense_date', operator: 'gte', value: dateFrom },
-      { field: 'expense_date', operator: 'lte', value: dateTo },
+      { field: 'expense_date', operator: 'gte', value: dateRange[0].format('YYYY-MM-DD') },
+      { field: 'expense_date', operator: 'lte', value: dateRange[1].format('YYYY-MM-DD') },
       ...(typeFilter ? [{ field: 'type', operator: 'eq' as const, value: typeFilter }] : []),
     ],
     sorters: [{ field: 'expense_date', order: 'desc' }],
   });
+  const totalCost = expenses.reduce((sum, e) => sum + (e.amount ?? 0), 0);
 
-  const { data: aggregate } = useReport<{
-    total_cost?: number;
-    by_type?: Record<string, number>;
-  }>('costs', { date_from: dateFrom, date_to: dateTo });
-
-  const totalCost =
-    aggregate?.total_cost ?? expenses.reduce((sum, e) => sum + (e.amount ?? 0), 0);
-
-  const costByType =
-    aggregate?.by_type ??
-    expenses.reduce<Record<string, number>>((acc, e) => {
-      acc[e.type] = (acc[e.type] ?? 0) + (e.amount ?? 0);
-      return acc;
-    }, {});
-
-  const { exportReport } = useExportReport();
-  const handleExport = async () => {
-    try {
-      const result = await exportReport(
-        'costs',
-        { date_from: dateFrom, date_to: dateTo, status: typeFilter },
-        'xlsx',
-      );
-      if (result?.url || result?.file) {
-        window.open(result.url ?? result.file ?? '', '_blank');
-      } else {
-        message.info(t('accountingPages.exportSoon'));
-      }
-    } catch {
-      message.error('Xuất báo cáo thất bại');
-    }
-  };
+  const costByType = expenses.reduce<Record<string, number>>((acc, e) => {
+    acc[e.type] = (acc[e.type] ?? 0) + (e.amount ?? 0);
+    return acc;
+  }, {});
 
   const typeOptions = useMemo(
     () =>
@@ -99,7 +66,7 @@ export function CostsPage() {
   );
 
   return (
-    <div className="enterprise-page space-y-4">
+    <div>
       <PageHeader
         title={t('accountingPages.costsTitle')}
         breadcrumb={[
@@ -107,18 +74,16 @@ export function CostsPage() {
           { label: t('accountingPages.costsTitle') },
         ]}
         actions={
-          <Space>
-            <Link to={ROUTES.admin.accounting.approvals}>
-              <Button icon={<AuditOutlined />}>Phê duyệt chi phí</Button>
-            </Link>
-            <Button icon={<ExportOutlined />} onClick={handleExport}>
-              {t('accountingPages.exportExcel')}
-            </Button>
-          </Space>
+          <Button
+            icon={<ExportOutlined />}
+            onClick={() => message.info(t('accountingPages.exportSoon'))}
+          >
+            {t('accountingPages.exportExcel')}
+          </Button>
         }
       />
 
-      <Card size="small" className="enterprise-section-card">
+      <Card size="small" style={{ marginBottom: token.marginMD }}>
         <Space wrap>
           <RangePicker
             value={dateRange}
@@ -136,9 +101,9 @@ export function CostsPage() {
         </Space>
       </Card>
 
-      <Row gutter={[12, 12]}>
+      <Row gutter={16} style={{ marginBottom: token.marginMD }}>
         <Col xs={12} sm={6}>
-          <Card className="enterprise-kpi-card">
+          <Card>
             <Statistic
               title={t('accountingPages.costsStatTotal')}
               value={totalCost}
@@ -152,7 +117,7 @@ export function CostsPage() {
           .slice(0, 3)
           .map(([type, amount]) => (
             <Col xs={12} sm={6} key={type}>
-              <Card className="enterprise-kpi-card">
+              <Card>
                 <Statistic
                   title={expenseTypeLabel(type, t)}
                   value={amount}
@@ -163,13 +128,12 @@ export function CostsPage() {
           ))}
       </Row>
 
-      <Card className="enterprise-section-card">
+      <Card>
         <Table<VehicleExpense>
           dataSource={expenses}
           loading={isLoading}
           rowKey="id"
           size="small"
-          scroll={{ x: 'max-content' }}
           pagination={{
             pageSize: 20,
             size: 'small',
@@ -225,7 +189,6 @@ export function CostsPage() {
               render: (v) => v ?? '—',
             },
           ]}
-          className="enterprise-table"
         />
       </Card>
     </div>

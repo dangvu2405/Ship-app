@@ -89,7 +89,7 @@ class InvoiceService {
   }
 
   async sendCqt(id: number): Promise<Invoice> {
-    const response = await api.post(ENDPOINTS.invoices.sendCqt(id));
+    const response = await api.patch(ENDPOINTS.invoices.sendCqt(id));
     throwIfEnvelopeFailed(response.data);
     return unwrapEnvelope<Invoice>(response.data);
   }

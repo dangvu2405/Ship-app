@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Customer, Trip } from '@/types';
 import customerService from '@/services/customer.service';
-import type { CustomerListParams, CustomerPayment, PriceList, ReconciliationSessionSummary } from '@/types/api/customer';
+import type { CustomerListParams, CustomerPayment, ReconciliationSessionSummary } from '@/types/api/customer';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { customerKeys, normalizeList } from './_customersInternal';
 
@@ -111,11 +111,10 @@ export function useCustomerPriceLists(customerId?: number | null, enabled = true
     queryFn: async () => customerService.getPriceLists(customerId as number),
     enabled: enabled && customerId != null,
   });
-  const normalized = normalizeList<PriceList>(query.data ?? {});
   return {
     ...query,
-    priceLists: normalized.items,
-    total: normalized.total,
+    priceLists: query.data?.data ?? [],
+    total: query.data?.data?.length ?? 0,
     loading: query.isLoading,
   } as const;
 }
@@ -124,7 +123,7 @@ export function useCustomerReconciliations(customerId?: number | null, params: {
   const { current = 1, pageSize = 20, enabled = true } = params;
   const query = useQuery({
     queryKey: customerId == null ? ['customers', 'reconciliations', 'missing-id'] as const : ['customers', customerId, 'reconciliations', { current, pageSize }] as const,
-    queryFn: async () => customerService.getReconciliations({ customer_id: customerId as number, current, pageSize }),
+    queryFn: async () => customerService.getReconciliations(customerId as number, { current, pageSize }),
     enabled: enabled && customerId != null,
   });
   const normalized = normalizeList<ReconciliationSessionSummary>(query.data ?? {});

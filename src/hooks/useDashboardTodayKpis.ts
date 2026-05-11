@@ -6,12 +6,9 @@ import { normalizeTripStatusKey } from '@/utils/tripStatus';
 
 const RUNNING_KEYS = new Set([
   'assigned',
-  'driver_accepted',
   'en_route_pickup',
   'picked_up',
   'in_transit',
-  'arrived',
-  'delivered',
   'delayed',
 ]);
 

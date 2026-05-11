@@ -21,6 +21,7 @@ export const FormItemRangePicker = ({
   style,
   size,
   pickerProps,
+  onChange,
   ...formItemProps
 }: FormItemRangePickerProps) => {
   const normalizedRules = rules?.map((rule) => {
@@ -72,6 +73,7 @@ export const FormItemRangePicker = ({
         format={currentFormat}
         size={size}
         disabled={disabled}
+        onChange={onChange as never}
         style={{ width: '100%', ...pickerProps?.style }}
         {...pickerProps}
       />

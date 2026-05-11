@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
+import { Button, Card, Flex, Input, Layout, Menu, Modal, Space, Spin, Tag, Typography, theme } from 'antd';
 import {
+  AudioOutlined,
+  BarChartOutlined,
+  CarOutlined,
+  FileSearchOutlined,
+  HistoryOutlined,
   LoadingOutlined,
   MessageOutlined,
+  PaperClipOutlined,
   ReloadOutlined,
   RobotOutlined,
   SendOutlined,
+  SettingOutlined,
+  TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Divider, Flex, Input, Modal, Space, Spin, Tag, Typography, theme } from 'antd';
 import { MessageRenderer } from '@/components/common/chat/MessageRenderer';
 import { useTranslation } from '@/hooks/useTranslation';
 import { hasAuthToken } from '@/lib/auth-session';
@@ -77,7 +85,6 @@ const toStringId = (value: unknown): string => {
 
 const stripHtmlTags = (text: string): string => {
   if (!text) return '';
-
   return text
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
@@ -86,7 +93,6 @@ const stripHtmlTags = (text: string): string => {
 
 const normalizeText = (text: string): string => {
   if (!text) return '';
-
   return text
     .normalize('NFKC')
     .replace(/\r\n?/g, '\n')
@@ -100,22 +106,17 @@ const sanitizeUserText = (text: string): string => normalizeText(stripHtmlTags(t
 
 const isObviousSpam = (text: string): boolean => {
   if (!text) return false;
-
   if (/(.)\1{11,}/u.test(text)) return true;
-
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length >= 8) {
     const repeatedWordCount = words.reduce<Record<string, number>>((acc, word) => {
       acc[word] = (acc[word] ?? 0) + 1;
       return acc;
     }, {});
-
     const maxRepeat = Math.max(...Object.values(repeatedWordCount));
     if (maxRepeat >= Math.ceil(words.length * 0.7)) return true;
   }
-
   if (text.length >= 80 && /^(.{1,20})\1{4,}$/u.test(text.replace(/\s+/g, ''))) return true;
-
   return false;
 };
 
@@ -125,6 +126,22 @@ const shouldRetryChatRequest = (error: unknown): boolean => {
   const status = getErrorStatus(error);
   return status === 429 || isNetworkError(error) || isTimeoutError(error);
 };
+
+const { Content, Sider } = Layout;
+
+const QUICK_COMMANDS = [
+  'Doanh thu hôm nay',
+  'Tài xế rảnh hiện tại',
+  'Cảnh báo giấy tờ',
+  'Đơn hàng chưa phân công',
+] as const;
+
+const QUICK_START_CARDS = [
+  { key: 'revenue', title: 'Phân tích doanh thu', icon: <BarChartOutlined />, query: 'Phân tích doanh thu hôm nay' },
+  { key: 'drivers', title: 'Tìm tài xế tối ưu', icon: <CarOutlined />, query: 'Tìm tài xế rảnh hiện tại' },
+  { key: 'papers', title: 'Cảnh báo giấy tờ', icon: <FileSearchOutlined />, query: 'Cảnh báo giấy tờ sắp hết hạn' },
+  { key: 'orders', title: 'Đơn hàng chưa phân công', icon: <TeamOutlined />, query: 'Danh sách đơn hàng chưa có tài xế' },
+];
 
 type ChatAssistantPanelProps = {
   className?: string;
@@ -143,11 +160,12 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
   const [sendingMessage, setSendingMessage] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatSessionId, setChatSessionId] = useState<string>('');
-  const model = DEFAULT_MODEL; // Fixed model
-  const task: ChatTask = 'chat'; // Fixed task
-  const contextJson = ''; // No context needed
-  const [responseMeta, setResponseMeta] = useState<{ cached?: boolean; guarded?: boolean }>({});
+  const [history, setHistory] = useState<string[]>([]);
+  const model = DEFAULT_MODEL;
+  const task: ChatTask = 'chat';
+  const contextJson = '';
   const [sourceDetail, setSourceDetail] = useState<ChatSource | null>(null);
+  const [showHistory, setShowHistory] = useState(!compact);
   const { token } = theme.useToken();
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -174,7 +192,6 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
   const handleMessagesScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
-
     const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     shouldAutoScrollRef.current = distanceToBottom <= 120;
   };
@@ -262,7 +279,6 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
             onMeta: (meta) => {
               streamSessionId = toStringId(meta.session_id) || streamSessionId;
               streamMeta = { cached: meta.cached, guarded: meta.guarded };
-              setResponseMeta({ cached: meta.cached, guarded: meta.guarded });
             },
             onChunk: (chunk) => {
               if (!chunk.text) return;
@@ -278,7 +294,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
                             ? chunk.text ?? ''
                             : `${item.content}${chunk.text ?? ''}`,
                         isPending: true,
-                          isError: false,
+                        isError: false,
                       }
                     : item
                 )
@@ -287,17 +303,10 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
             onDone: (done) => {
               streamSessionId = toStringId(done.session_id ?? done.session?.session_id ?? done.session?.id) || streamSessionId;
               streamMeta = { cached: done.cached, guarded: done.guarded };
-              setResponseMeta({ cached: done.cached, guarded: done.guarded });
-
               const resolvedText = normalizeText(done.response_text ?? done.message?.response ?? '');
-              if (resolvedText) {
-                finalAssistantText = resolvedText;
-              }
-
+              if (resolvedText) finalAssistantText = resolvedText;
               const resolvedModel = getFirstString(done.message, ['model']) || getFirstString(done, ['model']);
-              if (resolvedModel) {
-                finalAssistantModel = resolvedModel;
-              }
+              if (resolvedModel) finalAssistantModel = resolvedModel;
               const src = extractChatSources(done);
               if (src?.length) finalSources = src;
             },
@@ -313,25 +322,16 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
               context,
               model: model.trim() || DEFAULT_MODEL,
             });
-
             if (!fallbackResponse.success) {
               throw new Error(fallbackResponse.message || tRef.current('notificationCenter.chat.sendError'));
             }
-
             donePayload = fallbackResponse.data;
             streamSessionId = toStringId(donePayload?.session_id ?? donePayload?.session?.session_id ?? donePayload?.session?.id) || streamSessionId;
             streamMeta = { cached: donePayload?.cached, guarded: donePayload?.guarded };
-            setResponseMeta({ cached: donePayload?.cached, guarded: donePayload?.guarded });
-
             const resolvedText = normalizeText(donePayload?.response_text ?? donePayload?.message?.response ?? '');
-            if (resolvedText) {
-              finalAssistantText = resolvedText;
-            }
-
+            if (resolvedText) finalAssistantText = resolvedText;
             const resolvedModel = getFirstString(donePayload?.message, ['model']) || getFirstString(donePayload, ['model']);
-            if (resolvedModel) {
-              finalAssistantModel = resolvedModel;
-            }
+            if (resolvedModel) finalAssistantModel = resolvedModel;
             const srcFb = extractChatSources(donePayload);
             if (srcFb?.length) finalSources = srcFb;
           }
@@ -343,7 +343,6 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
               guarded: streamMeta.guarded,
             };
           }
-
           lastError = undefined;
           break;
         } catch (error) {
@@ -357,18 +356,11 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
         }
       }
 
-      if (!donePayload && lastError) {
-        throw lastError;
-      }
-
-      if (!donePayload && !hadAnyStreamChunk) {
-        throw new Error(t('notificationCenter.chat.sendError'));
-      }
+      if (!donePayload && lastError) throw lastError;
+      if (!donePayload && !hadAnyStreamChunk) throw new Error(t('notificationCenter.chat.sendError'));
 
       setChatMessage('');
-      if (streamSessionId) {
-        setChatSessionId(streamSessionId);
-      }
+      if (streamSessionId) setChatSessionId(streamSessionId);
       setChatMessages((prev) =>
         prev.map((item) =>
           item.id === optimisticAssistantId
@@ -386,6 +378,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
         )
       );
 
+      setHistory((prev) => [sanitizedMessage, ...prev.filter((h) => h !== sanitizedMessage)].slice(0, 20));
       toast.success(t('notificationCenter.chat.sendSuccess'));
     } catch (error) {
       const status = getErrorStatus(error);
@@ -423,88 +416,129 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
     return '';
   };
 
-  const formatDateTime = (value?: string) => {
-    if (!value) return '';
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleString();
-  };
-
-  const scrollBoxStyle = compact
-    ? { maxHeight: 360, minHeight: 260, overflowY: 'auto' as const, paddingRight: 4 }
-    : { maxHeight: 420, minHeight: 420, overflowY: 'auto' as const, paddingRight: 4 };
-
   return (
     <Card
       className={className}
-      style={{ minHeight: compact ? undefined : 760, height: compact ? '100%' : undefined, ...style }}
+      style={{
+        minHeight: compact ? undefined : 760,
+        height: compact ? '100%' : '80vh',
+        overflow: 'hidden',
+        ...style,
+      }}
       styles={{
         body: {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          gap: compact ? 12 : 16,
-          padding: compact ? 10 : 24,
+          padding: 0,
         },
       }}
       title={compact ? null : (
-        <Space align="start">
-          <MessageOutlined />
-          <span>{t('notificationCenter.chat.title')}</span>
-        </Space>
+        <Flex justify="space-between" align="center">
+          <Space>
+            <MessageOutlined />
+            <span>{t('notificationCenter.chat.title')}</span>
+          </Space>
+          <Button
+            type="text"
+            icon={<HistoryOutlined />}
+            onClick={() => setShowHistory(!showHistory)}
+            style={{ color: showHistory ? token.colorPrimary : undefined }}
+          />
+        </Flex>
       )}
       variant={compact ? 'borderless' : 'outlined'}
     >
-      {!compact ? (
-        <>
-          <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
-            {t('notificationCenter.chat.description')}
-          </Typography.Paragraph>
-          <Space wrap>
-            {responseMeta.cached ? <Tag>{t('notificationCenter.chat.cached')}</Tag> : null}
-            {responseMeta.guarded ? <Tag bordered={false}>{t('notificationCenter.chat.guarded')}</Tag> : null}
-          </Space>
-          <Divider />
-        </>
-      ) : (
-        <Space wrap size={6}>
-          {responseMeta.cached ? <Tag>{t('notificationCenter.chat.cached')}</Tag> : null}
-          {responseMeta.guarded ? <Tag bordered={false}>{t('notificationCenter.chat.guarded')}</Tag> : null}
-        </Space>
-      )}
+      <Layout style={{ height: '100%', background: token.colorBgContainer }}>
+        {!compact && showHistory && (
+          <Sider
+            width={260}
+            theme="light"
+            style={{
+              borderRight: `1px solid ${token.colorBorderSecondary}`,
+              background: token.colorFillAlter,
+            }}
+          >
+            <Flex vertical style={{ height: '100%' }}>
+              <div style={{ padding: '16px 12px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
+                <Typography.Text strong>{t('notificationCenter.chat.history') || 'Lịch sử truy vấn'}</Typography.Text>
+              </div>
+              <Menu
+                mode="inline"
+                style={{ background: 'transparent', border: 'none', flex: 1, overflowY: 'auto' }}
+                items={history.map((item, idx) => ({
+                  key: `history-${idx}`,
+                  icon: <HistoryOutlined style={{ fontSize: 12 }} />,
+                  label: (
+                    <Typography.Text ellipsis style={{ fontSize: 13 }}>
+                      {item}
+                    </Typography.Text>
+                  ),
+                  onClick: () => setChatMessage(item),
+                }))}
+              />
+              {history.length > 0 && (
+                <div style={{ padding: 12, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
+                  <Button type="text" danger block size="small" onClick={() => setHistory([])}>
+                    {t('common.clearAll') || 'Xóa tất cả'}
+                  </Button>
+                </div>
+              )}
+            </Flex>
+          </Sider>
+        )}
 
-      <Flex vertical gap={16} style={{ minHeight: 0, flex: 1 }}>
-        <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: compact ? 12 : 24, padding: compact ? 10 : 16, background: token.colorFillAlter, flex: 1, minHeight: 0 }}>
-          {!compact ? (
-            <>
-              <Typography.Text strong>{t('notificationCenter.chat.newChat')}</Typography.Text>
-              <Typography.Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 4 }}>
-                {t('notificationCenter.chat.composeHint')}
-              </Typography.Paragraph>
-              <Divider style={{ margin: '16px 0' }} />
-            </>
-          ) : null}
-
-          <div ref={messagesContainerRef} onScroll={handleMessagesScroll} style={scrollBoxStyle}>
+        <Content style={{ display: 'flex', flexDirection: 'column', padding: compact ? 12 : 24, minHeight: 0 }}>
+          <div
+            ref={messagesContainerRef}
+            onScroll={handleMessagesScroll}
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              paddingRight: 8,
+              marginBottom: 16,
+            }}
+          >
             {chatMessages.length === 0 ? (
-              <Flex
-                vertical
-                align="center"
-                justify="center"
-                gap={8}
-                style={{
-                  minHeight: 160,
-                  border: `1px dashed ${token.colorBorder}`,
-                  borderRadius: token.borderRadiusLG,
-                  padding: 24,
-                  background: token.colorFillAlter,
-                }}
-              >
-                <RobotOutlined style={{ fontSize: 32, color: token.colorTextTertiary }} />
-                <Typography.Text type="secondary">{t('notificationCenter.chat.emptyMessages')}</Typography.Text>
+              <Flex vertical align="center" justify="center" style={{ height: '100%', minHeight: 300 }}>
+                <div style={{ textAlign: 'center', marginBottom: 32 }}>
+                  <RobotOutlined style={{ fontSize: 48, color: token.colorPrimary, marginBottom: 16 }} />
+                  <Typography.Title level={4} style={{ margin: 0 }}>
+                    Tôi có thể giúp gì cho bạn?
+                  </Typography.Title>
+                  <Typography.Text type="secondary">
+                    Hệ thống AI hỗ trợ quản lý vận tải thông minh
+                  </Typography.Text>
+                </div>
+
+                <div style={{ width: '100%', maxWidth: 600 }}>
+                  <Flex wrap="wrap" gap={12} justify="center">
+                    {QUICK_START_CARDS.map((card) => (
+                      <Card
+                        key={card.key}
+                        hoverable
+                        size="small"
+                        style={{
+                          width: 'calc(50% - 6px)',
+                          borderRadius: 12,
+                          border: `1px solid ${token.colorBorderSecondary}`,
+                        }}
+                        onClick={() => {
+                          setChatMessage(card.query);
+                          void handleSendChat(card.query);
+                        }}
+                      >
+                        <Flex vertical gap={8}>
+                          <span style={{ fontSize: 20, color: token.colorPrimary }}>{card.icon}</span>
+                          <Typography.Text strong>{card.title}</Typography.Text>
+                        </Flex>
+                      </Card>
+                    ))}
+                  </Flex>
+                </div>
               </Flex>
             ) : (
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {chatMessages.map((message, index) => {
                   const isUser = message.role === 'user';
                   const isAssistantError = !isUser && message.isError === true;
@@ -526,36 +560,43 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
                           background: bubbleBg,
                           color: bubbleFg,
                           border: isAssistantError ? `1px solid ${token.colorErrorBorder}` : undefined,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                         }}
                       >
-                        <Flex align="center" gap={8} style={{ marginBottom: 4, fontSize: 12, opacity: 0.85 }}>
+                        <Flex align="center" gap={8} style={{ marginBottom: 6, fontSize: 12, opacity: 0.8 }}>
                           {isUser ? <UserOutlined /> : <RobotOutlined />}
-                          <span>{isUser ? t('notificationCenter.chat.you') : t('notificationCenter.chat.assistant')}</span>
+                          <Typography.Text strong style={{ color: 'inherit', fontSize: 12 }}>
+                            {isUser ? t('notificationCenter.chat.you') : t('notificationCenter.chat.assistant')}
+                          </Typography.Text>
                           {message.model ? <span>• {message.model}</span> : null}
                           {isAssistantError ? <Tag color="error">{t('notificationCenter.chat.failed')}</Tag> : null}
                         </Flex>
-                        {message.isPending ? (
-                          <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                            <Spin indicator={<LoadingOutlined spin />} size="small" /> {message.content}
-                          </Typography.Paragraph>
-                        ) : isUser ? (
-                          <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: bubbleFg }}>
-                            {message.content}
-                          </Typography.Paragraph>
-                        ) : (
-                          <MessageRenderer content={message.content} />
-                        )}
+                        
+                        <div style={{ color: 'inherit' }}>
+                          {message.isPending ? (
+                            <Flex gap={8} align="center">
+                              <Spin indicator={<LoadingOutlined spin />} size="small" />
+                              <Typography.Text style={{ color: 'inherit' }}>{message.content}</Typography.Text>
+                            </Flex>
+                          ) : isUser ? (
+                            <Typography.Text style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit' }}>
+                              {message.content}
+                            </Typography.Text>
+                          ) : (
+                            <MessageRenderer content={message.content} />
+                          )}
+                        </div>
+
                         {!isUser && message.sources?.length ? (
-                          <>
-                            <Divider style={{ margin: '10px 0' }} />
-                            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${token.colorSplit}` }}>
+                            <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
                               {t('notificationCenter.chat.sources')}
                             </Typography.Text>
-                            <Space wrap size={6} style={{ marginTop: 6 }}>
+                            <Space wrap size={4}>
                               {message.sources.map((s) => (
                                 <Tag
                                   key={s.id}
-                                  style={{ cursor: 'pointer' }}
+                                  style={{ cursor: 'pointer', borderRadius: 4, margin: 0 }}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSourceDetail(s);
@@ -565,20 +606,28 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
                                 </Tag>
                               ))}
                             </Space>
-                          </>
+                          </div>
                         ) : null}
-                        {message.createdAt ? (
-                          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 11 }}>
-                            {formatDateTime(message.createdAt)}
-                          </Typography.Text>
-                        ) : null}
+
+                        {!isUser && !message.isPending && !message.isError && (
+                          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                            <Button size="small" type="text" style={{ fontSize: 11, padding: '0 4px', color: 'inherit', opacity: 0.7 }}>
+                              Hữu ích
+                            </Button>
+                            <Button size="small" type="text" style={{ fontSize: 11, padding: '0 4px', color: 'inherit', opacity: 0.7 }}>
+                              Xem chi tiết
+                            </Button>
+                          </div>
+                        )}
+
                         {isAssistantError && retrySource ? (
-                          <div style={{ marginTop: 8 }}>
+                          <div style={{ marginTop: 12 }}>
                             <Button
                               size="small"
                               icon={<ReloadOutlined />}
                               onClick={() => void handleSendChat(retrySource)}
                               disabled={sendingMessage}
+                              danger
                             >
                               {t('notificationCenter.chat.retrySend')}
                             </Button>
@@ -592,42 +641,74 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
             )}
             <div ref={messagesEndRef} />
           </div>
-        </div>
 
-        <div
-          style={{
-            border: `1px solid ${token.colorBorderSecondary}`,
-            borderRadius: token.borderRadiusLG,
-            padding: 16,
-            background: token.colorFillAlter,
-          }}
-        >
-          <Typography.Text>{t('notificationCenter.chat.message')}</Typography.Text>
-          <Input.TextArea
-            id="chat-message"
-            name="chat_message"
-            autoComplete="off"
-            value={chatMessage}
-            onChange={(e) => setChatMessage(e.target.value)}
-            onPressEnter={(e) => {
-              if (e.shiftKey) return;
-              e.preventDefault();
-              if (!sendingMessage) void handleSendChat();
-            }}
-            placeholder={t('notificationCenter.chat.messagePlaceholder')}
-            rows={4}
-            style={{ marginTop: 8 }}
-          />
-          <Flex justify="space-between" align="center" gap={12} style={{ marginTop: 12 }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {t('notificationCenter.chat.contextHint')}
+          <div style={{ marginTop: 'auto' }}>
+            <Space wrap style={{ marginBottom: 12 }}>
+              {QUICK_COMMANDS.map((cmd) => (
+                <Button
+                  key={cmd}
+                  size="small"
+                  shape="round"
+                  onClick={() => {
+                    setChatMessage(cmd);
+                    void handleSendChat(cmd);
+                  }}
+                  disabled={sendingMessage}
+                >
+                  {cmd}
+                </Button>
+              ))}
+            </Space>
+
+            <div
+              style={{
+                background: token.colorFillAlter,
+                borderRadius: 16,
+                padding: '8px 12px',
+                border: `1px solid ${token.colorBorderSecondary}`,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+              }}
+            >
+              <Input.TextArea
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onPressEnter={(e) => {
+                  if (e.shiftKey) return;
+                  e.preventDefault();
+                  if (!sendingMessage && chatMessage.trim()) void handleSendChat();
+                }}
+                placeholder="Hỏi trợ lý về doanh thu, tài xế hoặc đơn hàng..."
+                autoSize={{ minRows: 1, maxRows: 6 }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  boxShadow: 'none',
+                  padding: '4px 0',
+                  fontSize: 14,
+                }}
+              />
+              <Flex justify="space-between" align="center" style={{ marginTop: 4 }}>
+                <Space size={4}>
+                  <Button type="text" size="small" icon={<PaperClipOutlined />} />
+                  <Button type="text" size="small" icon={<AudioOutlined />} />
+                  <Button type="text" size="small" icon={<SettingOutlined />} />
+                </Space>
+                <Button
+                  type="primary"
+                  shape="circle"
+                  icon={sendingMessage ? <LoadingOutlined /> : <SendOutlined />}
+                  onClick={() => void handleSendChat()}
+                  disabled={sendingMessage || !chatMessage.trim()}
+                  size="middle"
+                />
+              </Flex>
+            </div>
+            <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block', textAlign: 'center', marginTop: 8 }}>
+              AI có thể nhầm lẫn. Hãy kiểm tra lại thông tin quan trọng.
             </Typography.Text>
-            <Button type="primary" onClick={() => void handleSendChat()} disabled={sendingMessage} icon={sendingMessage ? <LoadingOutlined /> : <SendOutlined />}>
-              {t('notificationCenter.chat.send')}
-            </Button>
-          </Flex>
-        </div>
-      </Flex>
+          </div>
+        </Content>
+      </Layout>
 
       <Modal
         title={t('notificationCenter.chat.sourceDetail')}

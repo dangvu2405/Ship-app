@@ -53,7 +53,7 @@ export function VehicleForm(props: VehicleFormProps) {
   const brandWatch = Form.useWatch('brand', form);
 
   const { data: vehicleTypesData } = useList<VehicleTypeCatalog>({
-    resource: 'vehicle_types',
+    resource: 'vehicle-types',
     pagination: { pageSize: 200 },
     queryOptions: { enabled: !isViewMode },
   });

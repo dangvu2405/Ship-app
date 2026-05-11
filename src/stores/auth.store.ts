@@ -81,7 +81,11 @@ export const useAuthStore = create<AuthState>()(
             const accessToken = response.data.access_token || response.data.token;
             const refreshToken = response.data.refresh_token;
             if (accessToken) setAuthToken(accessToken, rememberMe);
-            if (refreshToken) setRefreshToken(refreshToken, rememberMe);
+            if (refreshToken) {
+              setRefreshToken(refreshToken, rememberMe);
+            } else {
+              console.warn('[Auth] Login response missing refresh_token - token refresh may fail on next request');
+            }
 
             const user: User = { ...response.data.user, tenants: response.data.tenants ?? response.data.user.tenants ?? [] };
             const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
@@ -103,7 +107,11 @@ export const useAuthStore = create<AuthState>()(
             const accessToken = response.data.access_token || response.data.token;
             const refreshToken = response.data.refresh_token;
             if (accessToken) setAuthToken(accessToken);
-            if (refreshToken) setRefreshToken(refreshToken);
+            if (refreshToken) {
+              setRefreshToken(refreshToken);
+            } else {
+              console.warn('[Auth] Social login response missing refresh_token - token refresh may fail on next request');
+            }
 
             const user: User = { ...response.data.user, tenants: response.data.tenants ?? response.data.user.tenants ?? [] };
             const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);

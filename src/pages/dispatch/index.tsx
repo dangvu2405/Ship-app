@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDispatchDailySummary } from '@/hooks/useDispatchDailySummary';
 import { ENDPOINTS } from '@/services/endpoints';
+import { normalizeTripStatusKey } from '@/utils/tripStatus';
 import type {
   DispatchBoardDriver,
   DispatchBoardPayload,
@@ -60,13 +61,13 @@ const BOARD_COLUMNS: BoardColumnConfig[] = [
   { key: 'done', title: 'Hoàn thành', dotClassName: 'bg-slate-400', statusTagColor: 'default' },
 ];
 
-const RUNNING_TRIP_STATUSES = ['in_transit', 'driver_accepted', 'en_route_pickup', 'picked_up', 'delayed'] as const;
-const DONE_TRIP_STATUSES = ['completed', 'delivered', 'done', 'closed'] as const;
+const RUNNING_TRIP_STATUSES = ['assigned', 'en_route_pickup', 'picked_up', 'in_transit', 'delayed'] as const;
+const DONE_TRIP_STATUSES = ['arrived', 'completed'] as const;
 const READY_VEHICLE_STATUSES = ['available', 'ready', 'idle', 'active'] as const;
 const MAINTENANCE_VEHICLE_STATUSES = ['maintenance', 'broken', 'inactive'] as const;
 
 function normalizeTripStatus(status?: string): string {
-  return String(status ?? '').toLowerCase();
+  return normalizeTripStatusKey(status) || '';
 }
 
 function normalizeVehicleStatus(status?: string): string {

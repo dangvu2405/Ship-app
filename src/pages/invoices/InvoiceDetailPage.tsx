@@ -67,6 +67,7 @@ export function InvoiceDetailPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
+  const showCqtAction = false;
 
   const resolvedId = id ? Number(id) : undefined;
 
@@ -260,7 +261,7 @@ export function InvoiceDetailPage() {
                 {t('invoices.actionIssue')}
               </Button>
             )}
-            {einvoiceStatus === 'issued' && (
+            {showCqtAction && einvoiceStatus === 'issued' && (
               <Button
                 icon={<SendOutlined />}
                 loading={busy === 'send_cqt'}

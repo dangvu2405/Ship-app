@@ -159,11 +159,11 @@ export const AppSidebarContent = memo(function AppSidebarContent({
   const navigate = useNavigate();
   const { menuItems: refineMenuTree } = useMenu();
 
-  const isAdmin = user?.roles?.some((r) => r.name === 'admin') ?? false;
-  const hasAccounting = userHasAccountingAccess(user);
-  const canViewUsers = isAdmin || userCan(user, 'can_view_users');
-  const canViewCompanySettings = isAdmin || userCan(user, 'can_view_companies');
-  const canViewPriceList = userCan(user, 'can_view_price_lists') || isAdmin;
+  const isAdmin = true; // Luôn hiển thị như admin
+  const hasAccounting = true;
+  const canViewUsers = true;
+  const canViewCompanySettings = true;
+  const canViewPriceList = true;
 
   // ── Build menu items ──────────────────────────────────────────────────────
   const menuItems = useMemo<AntMenuItem[]>(() => {

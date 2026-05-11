@@ -33,19 +33,19 @@ export interface ApiResourceResponseByName {
   employees: Employee;
   invoices: Invoice;
   payrolls: Payroll;
-  payroll_adjustments: PayrollAdjustment;
+  'payroll-adjustments': PayrollAdjustment;
   positions: Position;
   roles: Role;
-  trip_bonus_rules: TripBonusRule;
+  'trip-bonus-rules': TripBonusRule;
   trips: Trip;
   users: User;
-  vehicle_assignments: VehicleAssignment;
-  vehicle_expenses: VehicleExpense;
+  'vehicle-assignments': VehicleAssignment;
+  'vehicle-expenses': VehicleExpense;
   vehicles: Vehicle;
-  cargo_types: CargoType;
-  route_templates: RouteTemplate;
+  'cargo-types': CargoType;
+  'route-templates': RouteTemplate;
   locations: Location;
-  vehicle_types: VehicleTypeCatalog;
+  'vehicle-types': VehicleTypeCatalog;
 }
 
 export type ApiCrudResourceName = keyof ApiResourceResponseByName;

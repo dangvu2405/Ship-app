@@ -1,4 +1,5 @@
 import type { VehicleStatus } from './enums';
+import type { TripStatus } from './enums';
 import type { Customer, Employee } from './employee';
 import type { VehicleTypeCatalog } from './catalog';
 
@@ -14,7 +15,7 @@ export interface TripStop {
   contact_phone?: string | null;
   scheduled_time?: string | null;
   actual_time?: string | null;
-  status: string;
+  status: TripStatus | 'draft';
   notes?: string | null;
   created_at?: string;
   updated_at?: string;

@@ -14,22 +14,22 @@ class ViolationService {
   }
 
   async confirm(id: number): Promise<ApiResponse<ViolationRecord>> {
-    const res = await api.post(ENDPOINTS.violationOps.confirm(id));
+    const res = await api.patch(ENDPOINTS.violationOps.confirm(id));
     return res.data;
   }
 
   async dispute(id: number, payload: { reason: string; evidence_urls?: string[] }): Promise<ApiResponse<ViolationRecord>> {
-    const res = await api.post(ENDPOINTS.violationOps.dispute(id), payload);
+    const res = await api.patch(ENDPOINTS.violationOps.dispute(id), payload);
     return res.data;
   }
 
   async resolveDispute(id: number, payload: { resolution: 'upheld' | 'overturned'; resolution_note?: string }): Promise<ApiResponse<ViolationRecord>> {
-    const res = await api.post(ENDPOINTS.violationOps.resolveDispute(id), payload);
+    const res = await api.patch(ENDPOINTS.violationOps.resolveDispute(id), payload);
     return res.data;
   }
 
   async waive(id: number, waive_reason: string): Promise<ApiResponse<ViolationRecord>> {
-    const res = await api.post(ENDPOINTS.violationOps.waive(id), { waive_reason });
+    const res = await api.patch(ENDPOINTS.violationOps.waive(id), { waive_reason });
     return res.data;
   }
 }

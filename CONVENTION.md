@@ -1,6 +1,8 @@
 # CETA — WEB QUẢN LÝ VẬN TẢI
-#đoc# SPEC ĐẦY ĐỦ: DATABASE + LUỒNG NGHIỆP VỤ + THIẾT KẾ MÀN HÌNH
 **Version:** 1.0 | **Stack:** Laravel + MySQL 8.0 | **Ngày:** 2026-04-30
+
+> Tài liệu gốc đang được dùng trong workspace nằm ở [CONTEXT.md](CONTEXT.md), [context.md](context.md), [plan.md](plan.md), [task.md](task.md), [type.md](type.md), và [task-screens.md](task-screens.md).
+> File này là bản convention/spec mirror để tham chiếu nhanh; khi có xung đột, ưu tiên các file gốc ở root.
 
 ---
 

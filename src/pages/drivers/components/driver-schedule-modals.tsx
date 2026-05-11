@@ -108,6 +108,7 @@ export interface DriverScheduleDetailModalProps {
   onOpenReject: () => void;
   onLock: () => void;
   onOpenOverride: () => void;
+  showActions?: boolean;
 }
 
 export function DriverScheduleDetailModal({
@@ -125,6 +126,7 @@ export function DriverScheduleDetailModal({
   onOpenReject,
   onLock,
   onOpenOverride,
+  showActions = true,
 }: DriverScheduleDetailModalProps) {
   return (
     <Modal
@@ -148,7 +150,7 @@ export function DriverScheduleDetailModal({
     >
       {detailSchedule ? (
         <Flex vertical gap={16}>
-          {hosWarning ? (
+          {showActions && hosWarning ? (
             <Alert
               type="warning"
               message="Vi phạm HOS"
@@ -190,7 +192,7 @@ export function DriverScheduleDetailModal({
           <Typography.Text type="secondary" className="text-xs">
             Luồng: <strong>Nháp</strong> → <strong>Đã nộp</strong> → <strong>Đã duyệt</strong> → <strong>Đã khóa</strong>
           </Typography.Text>
-          {canManage && !hosWarning ? (
+          {showActions && canManage && !hosWarning ? (
             <Flex gap={8} wrap="wrap">
               {detailSchedule.status === 'draft' || !detailSchedule.status ? (
                 <Button type="primary" loading={actionLoading === 'submit'} onClick={onSubmitDraft}>

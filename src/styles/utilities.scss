@@ -8,12 +8,37 @@
 }
 
 // Spacing utilities
-.mt-section {
-  margin-top: $spacing-xl;
+$spacings: (
+  "none": 0,
+  "xs": $spacing-xs,
+  "sm": $spacing-sm,
+  "md": $spacing-md,
+  "lg": $spacing-lg,
+  "xl": $spacing-xl,
+  "xxl": $spacing-xxl
+);
+
+@each $name, $value in $spacings {
+  // Margin
+  .m-#{$name} { margin: $value !important; }
+  .mt-#{$name} { margin-top: $value !important; }
+  .mb-#{$name} { margin-bottom: $value !important; }
+  .ml-#{$name} { margin-left: $value !important; }
+  .mr-#{$name} { margin-right: $value !important; }
+
+  // Padding
+  .p-#{$name} { padding: $value !important; }
+  .pt-#{$name} { padding-top: $value !important; }
+  .pb-#{$name} { padding-bottom: $value !important; }
+  .pl-#{$name} { padding-left: $value !important; }
+  .pr-#{$name} { padding-right: $value !important; }
 }
 
-.mb-section {
-  margin-bottom: $spacing-xl;
+// Chống chồng chéo cho các phần tử xếp dọc (Stacking)
+.stack-space {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md; // Mặc định 16px giữa các item
 }
 
 // Flex utilities

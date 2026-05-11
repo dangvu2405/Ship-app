@@ -18,6 +18,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import type { Vehicle, Trip } from '@/types';
 import { ROUTES } from '@/routes';
 import { formatDate, formatDateTime, formatMoney } from '@/utils/displayFormat';
+import { normalizeTripStatusKey } from '@/utils/tripStatus';
 import { VehicleDocuments } from './VehicleDocuments';
 import { VehicleAssignments } from './VehicleAssignments';
 import { VehicleMaintenanceTab } from './VehicleMaintenanceTab';
@@ -35,13 +36,11 @@ const STATUS_COLOR: Record<string, string> = {
 const TRIP_STATUS_COLOR: Record<string, string> = {
   pending: 'default',
   assigned: 'blue',
-  driver_accepted: 'blue',
   en_route_pickup: 'gold',
   picked_up: 'gold',
   in_transit: 'gold',
   delayed: 'gold',
   arrived: 'purple',
-  delivered: 'purple',
   completed: 'green',
   cancelled: 'red',
   emergency: 'red',
@@ -82,16 +81,15 @@ export function VehicleDetailPage() {
     () => ({
       pending:         t('trips.statusPending'),
       assigned:        t('trips.statusAssigned'),
-      driver_accepted: t('trips.statusDriverAccepted'),
       en_route_pickup: t('trips.statusEnRoutePickup'),
       picked_up:       t('trips.statusPickedUp'),
       in_transit:      t('trips.statusInTransit'),
       delayed:         t('trips.statusDelayed'),
       arrived:         t('trips.statusArrived'),
-      delivered:       t('trips.statusDelivered'),
       completed:       t('trips.statusCompleted'),
       cancelled:       t('trips.statusCancelled'),
       emergency:       t('trips.statusEmergency'),
+      draft:           t('trips.statusDraft'),
     }),
     [t],
   );
@@ -264,7 +262,9 @@ export function VehicleDetailPage() {
                 dataIndex: 'status',
                 key: 'status',
                 render: (v: string) => (
-                  <Tag color={TRIP_STATUS_COLOR[v] ?? 'default'}>{tripStatusLabel[v as keyof typeof tripStatusLabel] ?? v}</Tag>
+                  <Tag color={TRIP_STATUS_COLOR[normalizeTripStatusKey(v) || 'pending'] ?? 'default'}>
+                    {tripStatusLabel[normalizeTripStatusKey(v) || 'pending' as keyof typeof tripStatusLabel] ?? v}
+                  </Tag>
                 ),
               },
               { title: t('common.createdAt'), dataIndex: 'created_at', key: 'created_at', render: (v: string) => formatDate(v) },

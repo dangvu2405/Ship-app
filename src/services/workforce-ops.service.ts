@@ -1,3 +1,40 @@
+/**
+ * WorkforceOpsService — Facade for workforce-related operations.
+ * 
+ * **Architecture Pattern: Convenience Wrapper**
+ * This service intentionally duplicates and wraps methods from specialized services:
+ * - LeaveService (leave requests, approvals)
+ * - OvertimeService (overtime requests, approvals)
+ * - DriverScheduleService (driver schedules, approvals)
+ * - Plus additional workforce-specific endpoints
+ * 
+ * **Why Duplication?**
+ * Many UI components (workforce dashboard, dashboards) need to orchestrate multiple
+ * resource types (leaves, overtimes, schedules) from a single facade.
+ * This prevents verbose multi-service imports in component files.
+ * 
+ * **Trade-off:**
+ * - Pros: Simpler component imports, single entry point
+ * - Cons: Logic duplication if individual service changes
+ * 
+ * **Migration Path (Future):**
+ * If service consolidation needed, could refactor to use composition:
+ * ```typescript
+ * class WorkforceOpsService {
+ *   constructor(
+ *     private leaveService: LeaveService,
+ *     private overtimeService: OvertimeService,
+ *   ) {}
+ *   
+ *   async approveLeave(id: number) {
+ *     return this.leaveService.approve(id);
+ *   }
+ * }
+ * ```
+ * 
+ * Keep duplication as-is for now (simpler, no DI needed), revisit in Q3 2026.
+ */
+
 import api from './api';
 import { ENDPOINTS } from './endpoints';
 import { unwrapEnvelope } from './http';
@@ -94,27 +131,27 @@ class WorkforceOpsService {
   }
 
   async submitDriverSchedule(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const response = await api.post(ENDPOINTS.driverSchedules.submit(id));
+    const response = await api.patch(ENDPOINTS.driverSchedules.submit(id));
     return response.data;
   }
 
   async approveDriverSchedule(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const response = await api.put(ENDPOINTS.workforce.approveDriverSchedule(id));
+    const response = await api.patch(ENDPOINTS.workforce.approveDriverSchedule(id));
     return response.data;
   }
 
   async rejectDriverSchedule(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const response = await api.post(ENDPOINTS.driverSchedules.reject(id));
+    const response = await api.patch(ENDPOINTS.driverSchedules.reject(id));
     return response.data;
   }
 
   async lockDriverSchedule(id: number): Promise<ApiResponse<DriverSchedule>> {
-    const response = await api.put(ENDPOINTS.workforce.lockDriverSchedule(id));
+    const response = await api.patch(ENDPOINTS.workforce.lockDriverSchedule(id));
     return response.data;
   }
 
   async overrideDriverSchedule(id: number, override_reason: string): Promise<ApiResponse<DriverSchedule>> {
-    const response = await api.post(ENDPOINTS.driverSchedules.override(id), { override_reason });
+    const response = await api.patch(ENDPOINTS.driverSchedules.override(id), { override_reason });
     return response.data;
   }
 
@@ -253,12 +290,12 @@ class WorkforceOpsService {
   }
 
   async approveOvertime(id: number): Promise<ApiResponse<OvertimeRequest>> {
-    const response = await api.post(ENDPOINTS.overtimeOps.approve(id));
+    const response = await api.patch(ENDPOINTS.overtimeOps.approve(id));
     return response.data;
   }
 
   async rejectOvertime(id: number, rejection_reason: string): Promise<ApiResponse<OvertimeRequest>> {
-    const response = await api.post(ENDPOINTS.overtimeOps.reject(id), { rejection_reason });
+    const response = await api.patch(ENDPOINTS.overtimeOps.reject(id), { rejection_reason });
     return response.data;
   }
 
@@ -278,12 +315,12 @@ class WorkforceOpsService {
   }
 
   async confirmViolation(id: number): Promise<ApiResponse<ViolationRecord>> {
-    const response = await api.post(ENDPOINTS.violationOps.confirm(id));
+    const response = await api.patch(ENDPOINTS.violationOps.confirm(id));
     return response.data;
   }
 
   async disputeViolation(id: number, payload: { reason: string; evidence_urls?: string[] }): Promise<ApiResponse<ViolationRecord>> {
-    const response = await api.post(ENDPOINTS.violationOps.dispute(id), payload);
+    const response = await api.patch(ENDPOINTS.violationOps.dispute(id), payload);
     return response.data;
   }
 
@@ -291,12 +328,12 @@ class WorkforceOpsService {
     id: number,
     payload: { resolution: 'upheld' | 'overturned'; resolution_note?: string },
   ): Promise<ApiResponse<ViolationRecord>> {
-    const response = await api.post(ENDPOINTS.violationOps.resolveDispute(id), payload);
+    const response = await api.patch(ENDPOINTS.violationOps.resolveDispute(id), payload);
     return response.data;
   }
 
   async waiveViolation(id: number, waive_reason: string): Promise<ApiResponse<ViolationRecord>> {
-    const response = await api.post(ENDPOINTS.violationOps.waive(id), { waive_reason });
+    const response = await api.patch(ENDPOINTS.violationOps.waive(id), { waive_reason });
     return response.data;
   }
 }

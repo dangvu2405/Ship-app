@@ -462,6 +462,7 @@ export function DriverSchedulePage() {
         onOpenReject={() => p.setRejectOpen(true)}
         onLock={p.onLock}
         onOpenOverride={() => p.setOverrideOpen(true)}
+        showActions={false}
       />
 
       <DriverScheduleRejectModal

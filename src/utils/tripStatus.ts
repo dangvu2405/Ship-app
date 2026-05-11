@@ -4,16 +4,15 @@ import type { Translate } from '@/hooks/useTranslation';
 export type TripStatus =
   | 'pending'
   | 'assigned'
-  | 'driver_accepted'
   | 'en_route_pickup'
   | 'picked_up'
   | 'in_transit'
   | 'arrived'
-  | 'delivered'
   | 'completed'
   | 'cancelled'
   | 'delayed'
-  | 'emergency';
+  | 'emergency'
+  | 'draft';
 
 interface TripStatusConfig {
   labelKey: string;
@@ -25,26 +24,32 @@ interface TripStatusConfig {
 const STATUS_CONFIG: Record<TripStatus, TripStatusConfig> = {
   pending:         { labelKey: 'trips.statusPending',        color: '#8c8c8c', tagColor: 'default' },
   assigned:        { labelKey: 'trips.statusAssigned',       color: '#3B82F6', tagColor: 'blue' },
-  driver_accepted: { labelKey: 'trips.statusDriverAccepted', color: '#3B82F6', tagColor: 'blue' },
   en_route_pickup: { labelKey: 'trips.statusEnRoutePickup',  color: '#d4b106', tagColor: 'gold' },
   picked_up:       { labelKey: 'trips.statusPickedUp',       color: '#d4b106', tagColor: 'gold' },
   in_transit:      { labelKey: 'trips.statusInTransit',      color: '#d4b106', tagColor: 'gold' },
   delayed:         { labelKey: 'trips.statusDelayed',        color: '#d4b106', tagColor: 'gold' },
   arrived:         { labelKey: 'trips.statusArrived',        color: '#722ed1', tagColor: 'purple' },
-  delivered:       { labelKey: 'trips.statusDelivered',      color: '#722ed1', tagColor: 'purple' },
   completed:       { labelKey: 'trips.statusCompleted',      color: '#52c41a', tagColor: 'success' },
   cancelled:       { labelKey: 'trips.statusCancelled',      color: '#ff4d4f', tagColor: 'error' },
   emergency:       { labelKey: 'trips.statusEmergency',      color: '#ff4d4f', tagColor: 'error' },
+  draft:           { labelKey: 'trips.statusDraft',          color: '#bfbfbf', tagColor: 'default' },
 };
 
 const UPPERCASE_ALIAS: Record<string, TripStatus> = {
   PENDING: 'pending',
   ASSIGNED: 'assigned',
+  DRIVER_ACCEPTED: 'assigned',
   IN_TRANSIT: 'in_transit',
-  DELIVERED: 'delivered',
+  DELIVERED: 'arrived',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
   CANCELED: 'cancelled',
+};
+
+const LOWERCASE_ALIAS: Record<string, TripStatus> = {
+  driver_accepted: 'assigned',
+  delivered: 'arrived',
+  canceled: 'cancelled',
 };
 
 export function normalizeTripStatusKey(status?: string): TripStatus | '' {
@@ -52,7 +57,7 @@ export function normalizeTripStatusKey(status?: string): TripStatus | '' {
   const u = status.toUpperCase();
   if (u in UPPERCASE_ALIAS) return UPPERCASE_ALIAS[u];
   const lower = status.toLowerCase();
-  if (lower === 'canceled') return 'cancelled';
+  if (lower in LOWERCASE_ALIAS) return LOWERCASE_ALIAS[lower];
   return lower as TripStatus;
 }
 
@@ -73,12 +78,10 @@ export function getTripStatusTagColor(status: string): string {
 
 export const ACTIVE_TRIP_STATUSES: TripStatus[] = [
   'assigned',
-  'driver_accepted',
   'en_route_pickup',
   'picked_up',
   'in_transit',
   'arrived',
-  'delivered',
   'delayed',
 ];
 
@@ -116,31 +119,23 @@ export const TRIP_TRANSITIONS: Partial<Record<TripStatus, TripActionConfig[]>> =
     { action: 'start', labelKey: 'trips.actionStart', nextStatus: 'en_route_pickup' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
-  driver_accepted: [
-    { action: 'start', labelKey: 'trips.actionStart', nextStatus: 'en_route_pickup' },
-    { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
-  ],
   en_route_pickup: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
+    { action: 'pickup', labelKey: 'trips.actionPickup', nextStatus: 'picked_up' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   picked_up: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
+    { action: 'transit', labelKey: 'trips.actionTransit', nextStatus: 'in_transit' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   in_transit: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
+    { action: 'arrive', labelKey: 'trips.actionArrive', nextStatus: 'arrived' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   delayed: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
+    { action: 'resume', labelKey: 'trips.actionResume', nextStatus: 'in_transit' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   arrived: [
-    { action: 'complete', labelKey: 'trips.actionComplete', nextStatus: 'completed' },
-    { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
-  ],
-  delivered: [
     { action: 'complete', labelKey: 'trips.actionComplete', nextStatus: 'completed' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
@@ -168,10 +163,10 @@ export type ConventionOrderListBucket =
 export function getConventionOrderListBucket(status: string): ConventionOrderListBucket {
   const key = normalizeTripStatusKey(status);
   if (!key || key === 'pending') return 'new';
-  if (key === 'assigned' || key === 'driver_accepted') return 'assigned';
+  if (key === 'assigned') return 'assigned';
   if (key === 'completed') return 'completed';
   if (key === 'cancelled' || key === 'emergency') return 'cancelled';
-  if (key === 'arrived' || key === 'delivered') return 'delivered';
+  if (key === 'arrived') return 'delivered';
   return 'in_transit';
 }
 

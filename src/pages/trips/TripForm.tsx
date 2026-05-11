@@ -3,7 +3,6 @@ import { Button, Flex, Form, Space, Steps, Spin, Divider, Row, Col, Card } from 
 import { CalculatorOutlined, CarOutlined, InfoCircleOutlined, EnvironmentOutlined, DollarOutlined, PullRequestOutlined } from '@ant-design/icons';
 import { useList } from '@refinedev/core';
 import {
-  FormAccordionSections,
   FormItemDatePicker,
   FormItemLocation,
   FormItemNumber,
@@ -16,10 +15,11 @@ import { VnAdminAddressFields } from '@/components/form/vn-admin-address-fields'
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
 import type { CargoType, Customer, Driver, RouteTemplate, Trip, Vehicle, VehicleTypeCatalog } from '@/types';
-import { TERMINAL_TRIP_STATUSES } from '@/utils/tripStatus';
+import { TERMINAL_TRIP_STATUSES, normalizeTripStatusKey } from '@/utils/tripStatus';
 import tripService from '@/services/trip.service';
 import { TripStopsList } from './components/TripStopsList';
 import { TripSurchargesList } from './components/TripSurchargesList';
+import { FormInstance } from 'antd/lib';
 
 interface TripFormProps {
   form: FormInstance;
@@ -34,10 +34,7 @@ const STEP_ORDER: TripFormStep[] = ['info', 'route', 'revenue'];
 
 
 
-const normalizeTripStatus = (status?: string) => {
-  if (!status) return '';
-  return status.toLowerCase() === 'canceled' ? 'cancelled' : status.toLowerCase();
-};
+const normalizeTripStatus = (status?: string) => normalizeTripStatusKey(status) || '';
 
 const getStepFieldNames = (hasRecord: boolean) => ({
   info: ['code', 'customer_id', 'contact_name', 'contact_phone', 'received_date', 'scheduled_date', 'cargo_type_id', 'cargo_description', 'cargo_quantity', 'cargo_unit', 'cargo_weight_ton', 'cargo_notes'],
@@ -59,7 +56,6 @@ export function TripForm({
   const normalizedCurrentStatus = normalizeTripStatus(currentStatus);
   const isTerminal = TERMINAL_TRIP_STATUSES.includes(normalizedCurrentStatus as never);
   const hasRecord = Boolean(initialValues?.id);
-  const showStatusField = hasRecord;
   const [activeStep, setActiveStep] = useState<TripFormStep>('info');
   const basePrice = Form.useWatch('base_price', form);
   const surcharges: Array<{ label?: string; amount?: number; note?: string }> = Form.useWatch('surcharges', form) ?? [];
@@ -113,25 +109,25 @@ export function TripForm({
   });
 
   const { data: cargoTypesData, isLoading: loadingCargoTypes } = useList<CargoType>({
-    resource: 'cargo_types',
+    resource: 'cargo-types',
     pagination: { current: 1, pageSize: 500 },
     sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const { data: routeTemplatesData, isLoading: loadingRoutes } = useList<RouteTemplate>({
-    resource: 'route_templates',
+    resource: 'route-templates',
     pagination: { current: 1, pageSize: 500 },
     sorters: [{ field: 'name', order: 'asc' }],
   });
 
   const { data: vehicleTypesData, isLoading: loadingVehicleTypes } = useList<VehicleTypeCatalog>({
-    resource: 'vehicle_types',
+    resource: 'vehicle-types',
     pagination: { current: 1, pageSize: 500 },
     sorters: [{ field: 'sort_order', order: 'asc' }, { field: 'name', order: 'asc' }],
   });
   
   const { data: assignmentsData } = useList<any>({
-    resource: 'vehicle_assignments',
+    resource: 'vehicle-assignments',
     pagination: { current: 1, pageSize: 500 },
     filters: [{ field: 'to_date', operator: 'null', value: null }],
   });
@@ -300,22 +296,6 @@ export function TripForm({
       setShippingCalcLoading(false);
     }
   };
-
-
-  const validateStepAndAdvance = async (currentStep: TripFormStep, nextStep: TripFormStep) => {
-    if (readOnly) {
-      setActiveStep(nextStep);
-      return;
-    }
-
-    try {
-      await form.validateFields(stepFieldNames[currentStep]);
-      setActiveStep(nextStep);
-    } catch {
-      // Keep the current step open until the required fields pass validation.
-    }
-  };
-
   // Watch all fields to trigger re-renders and update error indicators
   Form.useWatch([], form);
 
@@ -709,7 +689,7 @@ export function TripForm({
             <Divider orientation="left">
               <Space><DollarOutlined /> {t('trips.sectionSurcharges')}</Space>
             </Divider>
-            <TripSurchargesList isTerminal={isTerminal} />
+            <TripSurchargesList isTerminal={isTerminal} total={surchargeTotal} />
           </Card>
         </div>
       ),
