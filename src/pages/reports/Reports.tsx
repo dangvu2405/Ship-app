@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCustom, useList } from '@refinedev/core';
 import { DownloadOutlined } from '@ant-design/icons';
-import { Avatar, Button, Card, Col, Drawer, Flex, Progress, Row, Segmented, Select, Space, Statistic, Table, Tag, Typography, theme } from 'antd';
+import { Avatar, Button, Card, Col, Flex, Progress, Row, Segmented, Select, Space, Statistic, Table, Tag, Typography, theme } from 'antd';
 import {
   AreaChart,
   Area,
@@ -25,7 +25,7 @@ import { downloadCsvRows } from '@/utils/csvDownload';
 import { formatMoney } from '@/utils/displayFormat';
 import { useReport, useExportReport } from '@/hooks/useReports';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
-import BuildingIcon from 'lucide-react/dist/esm/icons/building-2';
+
 import WalletIcon from 'lucide-react/dist/esm/icons/wallet';
 import UsersIcon from 'lucide-react/dist/esm/icons/users';
 import TruckIcon from 'lucide-react/dist/esm/icons/truck';
@@ -157,7 +157,7 @@ export function Reports() {
   const [companyId, setCompanyId] = useState(readCompanyFromSearch);
   const [dateRange, setDateRange] = useState<'month' | 'quarter' | 'year'>('month');
   const [activeTab, setActiveTab] = useState<'overview' | ServerReportType>('overview');
-  const [drillDownReport, setDrillDownReport] = useState<ServerReportType | null>(null);
+
   const { exportReport } = useExportReport();
 
 
@@ -203,9 +203,6 @@ export function Reports() {
 
   const {
     data: snapshotResult,
-    isLoading: snapshotLoading,
-    isError: snapshotIsError,
-    refetch: refetchSnapshot,
   } = useCustom<Record<string, unknown>>({
     url: ENDPOINTS.reports.dashboard,
     method: 'get',
@@ -222,9 +219,6 @@ export function Reports() {
 
   const {
     data: summaryResult,
-    isLoading: summaryLoading,
-    isError: summaryIsError,
-    refetch: refetchSummary,
   } = useCustom<PayrollSummaryData>({
     url: ENDPOINTS.reports.payrollSummary,
     method: 'get',
@@ -600,7 +594,7 @@ export function Reports() {
                 <Card
                   hoverable
                   size="small"
-                  onClick={() => setDrillDownReport(report.id as ServerReportType)}
+                  onClick={() => setActiveTab(report.id as ServerReportType)}
                   style={{ cursor: 'pointer', height: '100%' }}
                 >
                   <Space direction="vertical" size={6}>

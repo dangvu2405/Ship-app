@@ -52,23 +52,6 @@ function section(key: string, label: string, children: AntMenuItem[]): AntMenuIt
   return { key, type: 'group', label, children } as AntMenuItem;
 }
 
-function userHasAccountingAccess(user: { roles?: { name: string }[] } | null | undefined) {
-  if (!user?.roles?.length) return false;
-  const names = user.roles.map((r) => r.name.trim().toLowerCase());
-  return names.some((n) => ['admin', 'admin_company', 'accountant'].includes(n));
-}
-
-function userCan(user: { roles?: { name: string; permissions?: { code?: string; name?: string }[] }[] } | null | undefined, permission: string) {
-  if (!user?.roles?.length) return false;
-  const normalized = permission.trim().toLowerCase();
-  return user.roles.some((role) =>
-    role.permissions?.some((perm) => {
-      const code = perm.code?.trim().toLowerCase();
-      const name = perm.name?.trim().toLowerCase();
-      return code === normalized || name === normalized;
-    }),
-  );
-}
 
 /**
  * Walk all items (including group children) and return the key of the first

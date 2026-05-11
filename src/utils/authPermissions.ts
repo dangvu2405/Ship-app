@@ -72,14 +72,24 @@ const hasUserPermissions = (user: User | null, permission: string): boolean => {
   return Boolean(v);
 };
 
-export const userHasRole = (user: User | null, _role: string): boolean => {
-  // Bỏ giới hạn: Nếu đã đăng nhập, người dùng được coi là có mọi role.
-  return user != null;
+export const userHasRole = (user: User | null, role: string): boolean => {
+  if (!user || !user.roles) return false;
+  const target = normalize(role);
+  return user.roles.some((r) => {
+    const code = (r as { code?: string }).code ?? r.name;
+    return normalize(code) === target;
+  });
 };
 
-export const userHasPermission = (user: User | null, _permission: string): boolean => {
-  // Bỏ giới hạn chức năng: Tất cả người dùng đã đăng nhập đều có toàn quyền.
-  if (user) return true;
+export const userHasPermission = (user: User | null, permission: string): boolean => {
+  if (!user) return false;
 
-  return false;
+  // Admin users have all permissions
+  const isAdmin = user.roles?.some((r) => {
+    const code = normalize((r as { code?: string }).code ?? r.name);
+    return code === 'admin' || code === 'super_admin' || code === 'admin_company';
+  });
+  if (isAdmin) return true;
+
+  return hasUserPermissions(user, permission);
 };
