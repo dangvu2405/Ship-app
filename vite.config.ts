@@ -93,16 +93,17 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     watch: {
-      // Polling = nhiều invalidation → dễ lệch optimize cache; chỉ bật khi cần (Docker/WSL).
       usePolling: process.env.VITE_WATCH_POLLING === 'true',
     },
-    port: 3000,
+    host: '0.0.0.0',
+    port: 5000,
+    allowedHosts: 'all',
     proxy: proxyConfig,
   },
   preview: {
-    port: Number(process.env.PORT) || 3000,
-    host: true, // Listen on all addresses (0.0.0.0)
-    allowedHosts: ["dtv2405.id.vn"],
+    port: 5000,
+    host: '0.0.0.0',
+    allowedHosts: 'all',
     proxy: proxyConfig,
   },
   }
