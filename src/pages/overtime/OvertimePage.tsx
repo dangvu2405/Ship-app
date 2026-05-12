@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd';
+import { useCallback, useMemo, useState } from 'react';
+import { Button, Card, Col, Flex, Row, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ClockCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
@@ -7,13 +7,13 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { DateTimeBadge } from '@/components/common/DateTimeBadge';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/hooks/useAuth';
-import type { Driver, OvertimeRequest } from '@/types';
-import overtimeService from '@/services/overtime.service';
-import toast from 'react-hot-toast';
-import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import type { OvertimeRequest } from '@/types';
 import { ROUTES } from '@/routes';
 import { ErrorState } from '@/components/common/ErrorState';
-import { useList } from '@refinedev/core';
+import { useUpdate } from '@refinedev/core';
+import { CreateOvertimeModal } from './components/CreateOvertimeModal';
+import { RejectOvertimeModal } from './components/RejectOvertimeModal';
+import { StatusFilter } from '@/pages/overtime/components/StatusFilter';
 
 const STATUS_COLOR: Record<string, string> = {
   pending: 'orange',
@@ -33,18 +33,16 @@ const APPROVER_ROLES = ['admin', 'admin_company', 'hr_manager'] as const;
 export function OvertimePage() {
   const { t } = useTranslation();
   const { hasRole } = useAuth();
-  const canApprove = APPROVER_ROLES.some((r) => hasRole(r));
+  const canApprove = useMemo(() => APPROVER_ROLES.some((r) => hasRole(r)), [hasRole]);
 
   const [current, setCurrent] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const [busyId, setBusyId] = useState<number | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [activeRecord, setActiveRecord] = useState<OvertimeRequest | null>(null);
 
-  const [createForm] = Form.useForm();
-  const [rejectForm] = Form.useForm();
+  const { mutate: updateRequest } = useUpdate();
 
   const filters = useMemo(
     () => [...(statusFilter ? [{ field: 'status', operator: 'eq' as const, value: statusFilter }] : [])],
@@ -60,38 +58,27 @@ export function OvertimePage() {
   });
 
   const list = listData?.data ?? [];
-  const { data: driversData } = useList<Driver>({
-    resource: 'drivers',
-    pagination: { current: 1, pageSize: 500 },
-    sorters: [{ field: 'id', order: 'desc' }],
-  });
-  const driverOptions = useMemo(
-    () =>
-      (driversData?.data ?? []).map((driver) => ({
-        value: driver.id,
-        label: driver.employee?.name ?? driver.name ?? `#${driver.id}`,
-      })),
-    [driversData?.data],
-  );
-
   const total = listData?.total ?? 0;
-  const pendingCount = list.filter((item) => item.status === 'pending').length;
-  const approvedCount = list.filter((item) => item.status === 'approved').length;
-  const rejectedCount = list.filter((item) => item.status === 'rejected').length;
 
-  const runAction = async (id: number, fn: () => Promise<unknown>, msg: string) => {
-    setBusyId(id);
-    try {
-      await fn();
-      toast.success(msg);
-      void refetch();
-    } catch (err) {
-      if (!shouldShowLocalErrorToast(err)) return;
-      toast.error(getErrorMessage(err) ?? 'Thao tác thất bại');
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const stats = useMemo(() => ({
+    pending: list.filter((item) => item.status === 'pending').length,
+    approved: list.filter((item) => item.status === 'approved').length,
+    rejected: list.filter((item) => item.status === 'rejected').length,
+  }), [list]);
+
+  const handleApprove = useCallback((record: OvertimeRequest) => {
+    updateRequest({
+      resource: 'overtime',
+      id: record.id,
+      values: { status: 'approved' },
+      successNotification: () => ({
+        message: t('workforce.overtimeApproved'),
+        type: 'success',
+      }),
+    }, {
+      onSuccess: () => refetch(),
+    });
+  }, [updateRequest, refetch, t]);
 
   const columns = useMemo<ColumnsType<OvertimeRequest>>(
     () => [
@@ -137,16 +124,12 @@ export function OvertimePage() {
               width: 160,
               render: (_: unknown, r: OvertimeRequest) => {
                 if (r.status !== 'pending') return null;
-                const isBusy = busyId === r.id;
                 return (
                   <Space size={4} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                     <Button
                       size="small"
                       type="primary"
-                      loading={isBusy}
-                      onClick={() =>
-                        void runAction(r.id, () => overtimeService.approve(r.id), t('workforce.overtimeApproved'))
-                      }
+                      onClick={() => handleApprove(r)}
                     >
                       {t('common.approve')}
                     </Button>
@@ -155,7 +138,6 @@ export function OvertimePage() {
                       danger
                       onClick={() => {
                         setActiveRecord(r);
-                        rejectForm.resetFields();
                         setRejectOpen(true);
                       }}
                     >
@@ -168,7 +150,7 @@ export function OvertimePage() {
           ]
         : []),
     ],
-    [t, busyId, canApprove, rejectForm],
+    [t, canApprove, handleApprove],
   );
 
   return (
@@ -184,10 +166,7 @@ export function OvertimePage() {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => {
-              createForm.resetFields();
-              setCreateOpen(true);
-            }}
+            onClick={() => setCreateOpen(true)}
           >
             {t('workforce.createOvertime')}
           </Button>
@@ -198,39 +177,28 @@ export function OvertimePage() {
         title={<Flex align="center" gap={8}><ClockCircleOutlined /><span>{t('sidebar.overtime')} ({total})</span></Flex>}
       >
         <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-          <Col xs={24} md={8}>
-            <Card size="small">
-              <Typography.Text type="secondary">Chờ duyệt</Typography.Text>
-              <div><Typography.Title level={4} style={{ margin: 0 }}>{pendingCount}</Typography.Title></div>
-            </Card>
-          </Col>
-          <Col xs={24} md={8}>
-            <Card size="small">
-              <Typography.Text type="secondary">Đã duyệt</Typography.Text>
-              <div><Typography.Title level={4} style={{ margin: 0 }}>{approvedCount}</Typography.Title></div>
-            </Card>
-          </Col>
-          <Col xs={24} md={8}>
-            <Card size="small">
-              <Typography.Text type="secondary">Từ chối</Typography.Text>
-              <div><Typography.Title level={4} style={{ margin: 0 }}>{rejectedCount}</Typography.Title></div>
-            </Card>
-          </Col>
+          {[
+            { label: 'Chờ duyệt', value: stats.pending, color: 'text-orange-500' },
+            { label: 'Đã duyệt', value: stats.approved, color: 'text-green-500' },
+            { label: 'Từ chối', value: stats.rejected, color: 'text-red-500' },
+          ].map((s) => (
+            <Col xs={24} md={8} key={s.label}>
+              <Card size="small">
+                <Typography.Text type="secondary">{s.label}</Typography.Text>
+                <div><Typography.Title level={4} style={{ margin: 0 }}>{s.value}</Typography.Title></div>
+              </Card>
+            </Col>
+          ))}
         </Row>
 
-        <Flex gap={8} style={{ marginBottom: 16 }} wrap="wrap">
-          <Select
-            allowClear
-            style={{ width: 180 }}
-            placeholder="Lọc trạng thái"
-            value={statusFilter}
-            onChange={(v) => {
-              setCurrent(1);
-              setStatusFilter(v);
-            }}
-            options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
-          />
-        </Flex>
+        <StatusFilter
+          value={statusFilter}
+          onChange={(v?: string) => {
+            setCurrent(1);
+            setStatusFilter(v);
+          }}
+          options={STATUS_LABEL}
+        />
 
         {isError ? (
           <ErrorState
@@ -251,108 +219,18 @@ export function OvertimePage() {
         )}
       </Card>
 
-      {/* Create modal */}
-      <Modal
-        title={t('workforce.createOvertime')}
+      <CreateOvertimeModal
         open={createOpen}
-        onCancel={() => setCreateOpen(false)}
-        onOk={() => createForm.submit()}
-        okText={t('workforce.createRequest')}
-        cancelText={t('common.cancel')}
-      >
-        <Form
-          form={createForm}
-          layout="vertical"
-          onFinish={async (vals) => {
-            try {
-              await overtimeService.create(vals as Partial<OvertimeRequest>);
-              toast.success(t('workforce.createOvertimeSuccess'));
-              setCreateOpen(false);
-              void refetch();
-            } catch (err) {
-              if (!shouldShowLocalErrorToast(err)) return;
-              toast.error(getErrorMessage(err) ?? 'Tạo đơn thất bại');
-            }
-          }}
-        >
-          <Form.Item name="driver_id" label="Tài xế" rules={[{ required: true, message: 'Chọn tài xế' }]}>
-            <Select
-              showSearch
-              options={driverOptions}
-              placeholder="Chọn tài xế"
-              optionFilterProp="label"
-            />
-          </Form.Item>
-          <Form.Item name="work_date" label={t('workforce.overtimeDate')} rules={[{ required: true, message: 'Chọn ngày' }]}>
-            <Input type="date" />
-          </Form.Item>
-          <Space style={{ width: '100%' }} align="start">
-            <Form.Item name="start_time" label={t('workforce.startTimeOt')} rules={[{ required: true, message: 'Nhập giờ bắt đầu' }]}>
-              <Input type="time" />
-            </Form.Item>
-            <Form.Item
-              name="end_time"
-              label={t('workforce.endTimeOt')}
-              dependencies={['start_time']}
-              rules={[
-                { required: true, message: 'Nhập giờ kết thúc' },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    const from = getFieldValue('start_time') as string | undefined;
-                    if (!value || !from || String(value) > String(from)) {
-                      return Promise.resolve();
-                    }
-                    return Promise.reject(new Error('Giờ kết thúc phải lớn hơn giờ bắt đầu'));
-                  },
-                }),
-              ]}
-            >
-              <Input type="time" />
-            </Form.Item>
-          </Space>
-          <Form.Item name="ot_hours" label={`${t('workforce.overtimeHours')} (giờ)`}>
-            <InputNumber style={{ width: '100%' }} min={0.5} step={0.5} />
-          </Form.Item>
-          <Form.Item name="reason" label={t('workforce.overtimeReason')}>
-            <Input.TextArea rows={2} placeholder={t('workforce.overtimeReasonPlaceholder')} />
-          </Form.Item>
-        </Form>
-      </Modal>
+        onClose={() => setCreateOpen(false)}
+        onSuccess={() => refetch()}
+      />
 
-      {/* Reject modal */}
-      <Modal
-        title={t('workforce.rejectOvertime')}
+      <RejectOvertimeModal
         open={rejectOpen}
-        onCancel={() => setRejectOpen(false)}
-        onOk={() => rejectForm.submit()}
-        okText={t('common.reject')}
-        okButtonProps={{ danger: true }}
-        cancelText={t('common.cancel')}
-      >
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-          Tài xế #{activeRecord?.driver_id} · {activeRecord?.work_date} ({activeRecord?.start_time} → {activeRecord?.end_time})
-        </Typography.Text>
-        <Form
-          form={rejectForm}
-          layout="vertical"
-          onFinish={async (vals) => {
-            if (!activeRecord) return;
-            try {
-              await overtimeService.reject(activeRecord.id, vals.rejection_reason as string);
-              toast.success(t('workforce.rejected'));
-              setRejectOpen(false);
-              void refetch();
-            } catch (err) {
-              if (!shouldShowLocalErrorToast(err)) return;
-              toast.error(getErrorMessage(err) ?? 'Thao tác thất bại');
-            }
-          }}
-        >
-          <Form.Item name="rejection_reason" label="Lý do từ chối" rules={[{ required: true, message: 'Nhập lý do' }]}>
-            <Input.TextArea rows={3} placeholder="Nêu lý do..." />
-          </Form.Item>
-        </Form>
-      </Modal>
+        record={activeRecord}
+        onClose={() => setRejectOpen(false)}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

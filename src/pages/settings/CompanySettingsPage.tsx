@@ -15,33 +15,33 @@ import api from '@/services/api';
 import { ENDPOINTS } from '@/services/endpoints';
 import { recordAuditIntent } from '@/lib/audit-action';
 
-let codeCheckTimer: ReturnType<typeof setTimeout> | null = null;
-const checkCompanyCodeUnique = (
-  endpoint: string,
-  code: string,
-  currentId?: number,
-): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (codeCheckTimer) clearTimeout(codeCheckTimer);
-    codeCheckTimer = setTimeout(async () => {
-      try {
-        const res = await api.get(endpoint, {
-          params: { code, per_page: 5 },
-          skipErrorToast: true,
-        } as Parameters<typeof api.get>[1]);
-        const list = (res.data as { data?: { data?: Array<{ id: number; code?: string }> } }).data?.data ?? [];
-        const dup = list.find(
-          (row) => row.code?.trim().toLowerCase() === code.trim().toLowerCase() && row.id !== currentId,
-        );
-        resolve(!dup);
-      } catch {
-        resolve(true);
-      }
-    }, 350);
-  });
+import React from 'react';
+const useCompanyCodeCheckUnique = () => {
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  return (endpoint: string, code: string, currentId?: number) =>
+    new Promise<boolean>((resolve) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(async () => {
+        try {
+          const res = await api.get(endpoint, {
+            params: { code, per_page: 5 },
+            skipErrorToast: true,
+          } as Parameters<typeof api.get>[1]);
+          const list = (res.data as { data?: { data?: Array<{ id: number; code?: string }> } }).data?.data ?? [];
+          const dup = list.find(
+            (row) => row.code?.trim().toLowerCase() === code.trim().toLowerCase() && row.id !== currentId,
+          );
+          resolve(!dup);
+        } catch {
+          resolve(true);
+        }
+      }, 350);
+    });
 };
 
 export function CompanySettingsPage() {
+  const checkCompanyCodeUnique = useCompanyCodeCheckUnique();
   const { t } = useTranslation();
   const { currentTenantId } = useAuthStore();
   const { hasRole } = useAuth();
@@ -113,7 +113,7 @@ export function CompanySettingsPage() {
           if (isSuperAdmin) {
             await api.patch(ENDPOINTS.adminCompanies.status(company.id), { status: nextStatus });
           } else {
-            await api.patch(`${ENDPOINTS.companies.base}/${company.id}/status`, { status: nextStatus });
+            await api.patch(ENDPOINTS.companies.status(company.id), { status: nextStatus });
           }
           recordAuditIntent({
             resource: 'companies',

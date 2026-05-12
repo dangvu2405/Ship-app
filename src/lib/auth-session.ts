@@ -1,33 +1,32 @@
 import { STORAGE_KEYS } from '@/utils/constants';
 
 export const getAuthToken = (): string | null => {
-  return (
-    localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) ??
-    sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
-  );
+  // Rely on HttpOnly cookies for security. 
+  // Returning null here forces Axios to not send the Authorization header,
+  // allowing the browser to send the session cookie instead.
+  return null;
 };
 
 export const getRefreshToken = (): string | null => {
-  return (
-    localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) ??
-    sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
-  );
+  return null;
 };
 
 export const hasAuthToken = (): boolean => {
-  return !!getAuthToken();
-};
-
-/** persistent=true (default) → localStorage (survives browser restart). persistent=false → sessionStorage (cleared when tab closes). */
-export const setAuthToken = (token: string, persistent = true): void => {
-  const store = persistent ? localStorage : sessionStorage;
-  store.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+  // We can't check HttpOnly cookies from JS. 
+  // We'll rely on the auth store's isAuthenticated state instead.
+  return false; 
 };
 
 /** persistent=true (default) → localStorage. persistent=false → sessionStorage. */
-export const setRefreshToken = (token: string, persistent = true): void => {
-  const store = persistent ? localStorage : sessionStorage;
-  store.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+export const setAuthToken = (token: string): void => {
+  void token;
+  // No-op: Token is now handled by HttpOnly cookies from the backend.
+};
+
+/** persistent=true (default) → localStorage. persistent=false → sessionStorage. */
+export const setRefreshToken = (token: string): void => {
+  void token;
+  // No-op
 };
 
 export const clearAuthToken = (): void => {

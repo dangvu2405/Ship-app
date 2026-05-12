@@ -5,13 +5,7 @@ import type {
   CustomerListParams,
   CustomerPayment,
 } from '@/types/api/customer';
-import type {
-  StoreCustomerPaymentRequest,
-  StoreCustomerRequest,
-  StorePriceListItemRequest,
-  StorePriceListRequest,
-  UpdateCustomerRequest,
-} from '@/types/requests/customer';
+import type { StoreCustomerPaymentRequest, StoreCustomerRequest, UpdateCustomerRequest } from '@/types/requests/customer';
 import { createResourceQueryKeys } from '@/shared/query/createResourceQueryKeys';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { showSuccess } from './_shared';
@@ -205,87 +199,6 @@ export function useDeleteCustomerPayment({ successMessage = 'Deleted successfull
     mutationFn: (paymentId: number) => customerService.deletePayment(paymentId),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: customerKeys.all });
-      handleMutationSuccess(successMessage);
-      await onSuccess?.(result);
-    },
-    onError: async (error) => {
-      await onError?.(error);
-    },
-  });
-}
-export function useCustomerPriceLists(id?: number | null, enabled = true) {
-  const query = useQuery({
-    queryKey: id == null ? ['customers', 'price-lists', 'missing-id'] as const : ['customers', id, 'price-lists'] as const,
-    queryFn: async () => customerService.getPriceLists(id as number),
-    enabled: enabled && id != null,
-  });
-
-  return {
-    ...query,
-    priceLists: query.data?.data ?? [],
-    loading: query.isLoading,
-    error: query.error ? getErrorMessage(query.error) : null,
-  } as const;
-}
-
-export function useCreatePriceList({ successMessage = 'Created successfully', onSuccess, onError }: MutationHandlers = {}) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (params: { customerId: number; values: StorePriceListRequest }) =>
-      customerService.createPriceList(params.customerId, params.values),
-    onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ['customers'] });
-      handleMutationSuccess(successMessage);
-      await onSuccess?.(result);
-    },
-    onError: async (error) => {
-      await onError?.(error);
-    },
-  });
-}
-
-export function useDeletePriceList({ successMessage = 'Deleted successfully', onSuccess, onError }: MutationHandlers = {}) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => customerService.deletePriceList(id),
-    onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ['customers'] });
-      handleMutationSuccess(successMessage);
-      await onSuccess?.(result);
-    },
-    onError: async (error) => {
-      await onError?.(error);
-    },
-  });
-}
-
-export function useAddPriceListItem({ successMessage = 'Added successfully', onSuccess, onError }: MutationHandlers = {}) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (params: { priceListId: number; values: StorePriceListItemRequest }) =>
-      customerService.addPriceListItem(params.priceListId, params.values),
-    onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ['customers'] });
-      handleMutationSuccess(successMessage);
-      await onSuccess?.(result);
-    },
-    onError: async (error) => {
-      await onError?.(error);
-    },
-  });
-}
-
-export function useDeletePriceListItem({ successMessage = 'Deleted successfully', onSuccess, onError }: MutationHandlers = {}) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (params: { priceListId: number; itemId: number }) =>
-      customerService.deletePriceListItem(params.priceListId, params.itemId),
-    onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ['customers'] });
       handleMutationSuccess(successMessage);
       await onSuccess?.(result);
     },

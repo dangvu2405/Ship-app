@@ -1,286 +1,192 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigation } from '@refinedev/core';
-import { useListFilters } from '@/hooks/useListFilters';
-import { useTable } from '@refinedev/antd';
-import type { CrudFilter } from '@refinedev/core';
-import { Button, Card, Flex, Input, Select, Space, Table, Tag } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import {
-  TeamOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
-import { ListPageFilters } from '@/components/common/ListPageFilters';
+import { SearchField } from '@/components/common/SearchField';
+import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ErrorState } from '@/components/common/ErrorState';
+import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
-import { CustomerFormDialog } from './CustomerFormDialog';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useAppFeedback } from '@/hooks/useAppFeedback';
+import PlusIcon from 'lucide-react/dist/esm/icons/plus';
+import EyeIcon from 'lucide-react/dist/esm/icons/eye';
+import PencilIcon from 'lucide-react/dist/esm/icons/pencil';
+import Trash2Icon from 'lucide-react/dist/esm/icons/trash-2';
 import type { Customer } from '@/types';
+import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
-import { useSafeRefetch } from '@/hooks/useSafeRefetch';
-import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { CustomerFormDialog } from './CustomerFormDialog';
+import { useCustomerList, useDeleteCustomer } from '@/hooks/useCustomers';
 
 export function CustomersList() {
   const { t } = useTranslation();
-  const feedback = useAppFeedback();
   const { show } = useNavigation();
-  const { mutate: deleteItem } = useResourceDeleteMutation('customers');
-  
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<number | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
-  const [activeId, setActiveId] = useState<number | undefined>(undefined);
-  
-  const { inputs: filterInputs, applied: filterApplied, setInput: setFilterInput, apply: applyFilters, clear: clearFiltersBase } = useListFilters({
-    search: '',
-    type: undefined as string | undefined,
+  const [selected, setSelected] = useState<Customer | null>(null);
+  const [current, setCurrent] = useState(1);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
+  const [appliedKeyword, setAppliedKeyword] = useState('');
+  const [appliedType, setAppliedType] = useState<string | undefined>(undefined);
+
+  const { data, total, loading, error, refetch } = useCustomerList({
+    current,
+    pageSize: 15,
+    search: appliedKeyword,
+    type: appliedType as 'company' | 'individual' | undefined,
   });
-  
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const { mutateAsync: deleteCustomer } = useDeleteCustomer();
 
-  const permanentFilters = useMemo<CrudFilter[]>(() => {
-    const f: CrudFilter[] = [];
-    if (filterApplied.search.trim()) {
-      f.push({ field: 'search', operator: 'contains', value: filterApplied.search.trim() });
-    }
-    if (filterApplied.type) {
-      f.push({ field: 'type', operator: 'eq', value: filterApplied.type });
-    }
-    return f;
-  }, [filterApplied]);
-
-  const { tableProps, tableQuery } = useTable<Customer>({
-    resource: 'customers',
-    pagination: { pageSize: 15 },
-    filters: { permanent: permanentFilters },
-    syncWithLocation: true,
-  });
-
-  const safeRefetch = useSafeRefetch('customers-customerslist', tableQuery.refetch);
-
-  const clearFilters = () => {
-    clearFiltersBase();
-    setSelectedRowKeys([]);
+  const handleSearchFilters = () => {
+    setAppliedKeyword(searchKeyword.trim());
+    setAppliedType(selectedType);
+    setCurrent(1);
   };
 
-  const handleDelete = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setDeleteDialogOpen(true);
+  const handleClearFilters = () => {
+    setSearchKeyword('');
+    setSelectedType(undefined);
+    setAppliedKeyword('');
+    setAppliedType(undefined);
+    setCurrent(1);
   };
 
-  const handleOpenDialog = (mode: 'create' | 'edit', id?: number) => {
-    setDialogMode(mode);
-    setActiveId(id);
-    setDialogOpen(true);
+  const handleCreate = () => {
+    setFormMode('create');
+    setEditingId(undefined);
+    setFormOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setDialogMode('create');
-    setActiveId(undefined);
+  const handleEdit = (id: number) => {
+    setFormMode('edit');
+    setEditingId(id);
+    setFormOpen(true);
   };
 
   const confirmDelete = () => {
-    if (!selectedCustomer) return;
-
-    deleteItem(
-      { id: selectedCustomer.id },
-      {
-        onSuccess: () => {
-          feedback.success(t('notifications.deleteSuccess', { item: t('customers.title') }));
-          setDeleteDialogOpen(false);
-          setSelectedCustomer(null);
-          void safeRefetch(true);
-        },
-        onError: (error) => {
-          if (!shouldShowLocalErrorToast(error)) {
-            return;
-          }
-          feedback.error(t('notifications.deleteError', { item: t('customers.title') }));
-        },
-      },
-    );
+    if (!selected) return;
+    void deleteCustomer(selected.id)
+      .then(() => {
+        toast.success(t('notifications.deleteSuccess', { item: t('customers.title') }));
+        setDeleteDialogOpen(false);
+        setSelected(null);
+        refetch();
+      })
+      .catch((error) => {
+        if (!shouldShowLocalErrorToast(error)) return;
+        toast.error(t('notifications.deleteError', { item: t('customers.title') }));
+      });
   };
 
-  const breadcrumb = [
-    { label: t('dashboard.title'), path: ROUTES.dashboard },
-    { label: t('customers.title') },
+  const columns: DataTableColumn<Customer>[] = [
+    { key: 'name', header: t('customers.name'), dataIndex: 'name' },
+    {
+      key: 'type',
+      header: t('customers.type'),
+      render: (r) => (r.type === 'company' ? t('customers.typeCompany') : t('customers.typeIndividual')),
+    },
+    { key: 'tax_code', header: t('customers.taxCode'), dataIndex: 'tax_code' },
+    { key: 'email', header: t('customers.email'), dataIndex: 'email' },
+    { key: 'phone', header: t('customers.phone'), dataIndex: 'phone' },
+    {
+      key: 'actions',
+      header: t('common.actions'),
+      render: (record) => (
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); show('customers', record.id); }}>
+            <EyeIcon className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleEdit(record.id); }}>
+            <PencilIcon className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelected(record); setDeleteDialogOpen(true); }}>
+            <Trash2Icon className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
-  const total = tableQuery.data?.total ?? 0;
-
-  const columns: ColumnsType<Customer> = useMemo(
-    () => [
-      {
-        title: t('customers.name'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (v: string, row) => (
-          <Button type="link" style={{ padding: 0 }} onClick={() => show('customers', row.id)}>
-            {v}
-          </Button>
-        ),
-      },
-      {
-        title: t('customers.type'),
-        key: 'type',
-        render: (_: unknown, row) => (
-          <Tag color={row.type === 'company' ? 'blue' : 'green'}>
-            {row.type === 'company' ? t('customers.typeCompany') : t('customers.typeIndividual')}
-          </Tag>
-        ),
-      },
-      {
-        title: t('customers.taxCode'),
-        dataIndex: 'tax_code',
-        key: 'tax_code',
-        render: (v: string | null) => v || '—',
-      },
-      {
-        title: t('customers.email'),
-        dataIndex: 'email',
-        key: 'email',
-        render: (v: string | null) => v || '—',
-      },
-      {
-        title: t('customers.phone'),
-        dataIndex: 'phone',
-        key: 'phone',
-        render: (v: string | null) => v || '—',
-      },
-      {
-        title: t('common.actions'),
-        key: 'actions',
-        fixed: 'right',
-        width: 140,
-        render: (_: unknown, row) => (
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined aria-hidden />}
-              aria-label={t('common.view')}
-              onClick={() => show('customers', row.id)}
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined aria-hidden />}
-              aria-label={t('common.edit')}
-              onClick={() => handleOpenDialog('edit', row.id)}
-            />
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined aria-hidden />}
-              aria-label={t('common.delete')}
-              onClick={() => handleDelete(row)}
-            />
-          </Space>
-        ),
-      },
-    ],
-    [show, t],
-  );
-
-  if (tableQuery.isError) {
-    return (
-      <>
-        <PageHeader title={t('customers.title')} description={t('customers.description')} breadcrumb={breadcrumb} />
-        <ErrorState
-          title={t('common.loadError')}
-          description={t('common.tryAgainDescription')}
-          onRetry={() => void tableQuery.refetch()}
-        />
-      </>
-    );
-  }
+  const listData = data ?? [];
+  const pageSize = 15;
 
   return (
-    <div className="enterprise-page customers-page space-y-4">
+    <>
       <PageHeader
         title={t('customers.title')}
         description={t('customers.description')}
-        breadcrumb={breadcrumb}
+        breadcrumb={[{ label: t('dashboard.title'), path: ROUTES.dashboard }, { label: t('customers.title') }]}
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog('create')}>
+          <Button onClick={handleCreate} className="gap-2">
+            <PlusIcon className="h-4 w-4" />
             {t('customers.createCustomer')}
           </Button>
         }
       />
-
-      <Card
-        className="enterprise-section-card"
-        title={<Flex align="center" gap={8}><TeamOutlined /><span>{t('customers.title')}</span></Flex>}
-        extra={<Tag>{total} {t('common.records')}</Tag>}
-        styles={{ body: { padding: 16 } }}
-      >
-        <ListPageFilters variant="grid-2" className="enterprise-filter-bar mb-4">
-          <Input
+      <Card className="rounded-xl shadow-sm border">
+        <CardContent className="p-6">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <SearchField
             placeholder={t('common.search')}
-            value={filterInputs.search}
-            onChange={(e) => setFilterInput('search', e.target.value)}
-            onPressEnter={applyFilters}
-            allowClear
-            onClear={() => setFilterInput('search', '')}
+            value={searchKeyword}
+            onChange={setSearchKeyword}
           />
+
           <Select
-            className="w-full"
             allowClear
             placeholder={t('customers.type')}
-            value={filterInputs.type}
-            onChange={(v) => setFilterInput('type', v)}
+            value={selectedType}
+            onChange={setSelectedType}
             options={[
-              { value: 'company', label: t('customers.typeCompany') },
-              { value: 'individual', label: t('customers.typeIndividual') },
+              { label: t('customers.typeCompany'), value: 'company' },
+              { label: t('customers.typeIndividual'), value: 'individual' },
             ]}
           />
-          <div className="list-page-filters__btn-row col-span-full">
-            <ListPageFilters.Actions
-              onSearch={applyFilters}
-              onReset={clearFilters}
-              busy={tableQuery.isFetching && !tableQuery.isLoading}
-            />
-          </div>
-        </ListPageFilters>
 
-        <Table<Customer>
-          {...tableProps}
-          rowKey="id"
-          columns={columns}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: setSelectedRowKeys,
-          }}
-          scroll={{ x: 'max-content' }}
-          loading={tableProps.loading}
-          className="enterprise-table"
-        />
+          <Button type="button" onClick={handleSearchFilters}>{t('common.search')}</Button>
+          <Button type="button" variant="outline" onClick={handleClearFilters}>{t('common.reset')}</Button>
+        </div>
+
+        {loading ? (
+          <TableSkeleton rows={5} columns={columns.length} />
+        ) : error ? (
+          <ErrorState
+            title={t('common.loadError')}
+            description={t('common.tryAgainDescription')}
+            onRetry={() => refetch()}
+          />
+        ) : (
+          <DataTable<Customer>
+            data={listData}
+            columns={columns}
+            onRowClick={(r) => show('customers', r.id)}
+            emptyMessage={t('common.noData')}
+            pagination={{ current, total, pageSize, onPageChange: setCurrent }}
+          />
+        )}
+        </CardContent>
       </Card>
-
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDelete}
-        itemName={selectedCustomer?.name}
-      />
-      <CustomerFormDialog
-        open={dialogOpen}
-        mode={dialogMode}
-        recordId={activeId}
-        onClose={handleCloseDialog}
-        onSuccess={() => {
-          void safeRefetch(true);
-        }}
-      />
-    </div>
+      <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={confirmDelete} itemName={selected?.name} />
+      {formOpen && (
+        <CustomerFormDialog
+          open={formOpen}
+          mode={formMode}
+          recordId={editingId}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingId(undefined);
+          }}
+          onSuccess={() => {
+            refetch();
+          }}
+        />
+      )}
+    </>
   );
 }
-

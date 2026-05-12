@@ -3,21 +3,17 @@ import { ENDPOINTS } from './endpoints';
 import type {
   CustomerDebtResponse,
   CustomerDetailResponse,
+  CustomerGroupsResponse,
   CustomerListParams,
   CustomerListResponse,
+  CustomerPriceListItemResponse,
+  CustomerPriceListResponse,
   CustomerPaymentsResponse,
   CustomerPriceListsResponse,
   CustomerTripsResponse,
-  PriceListDetailResponse,
-  PriceListItemDetailResponse,
+  ReconciliationListResponse,
 } from '@/types/api/customer';
-import type {
-  StoreCustomerPaymentRequest,
-  StoreCustomerRequest,
-  StorePriceListItemRequest,
-  StorePriceListRequest,
-  UpdateCustomerRequest,
-} from '@/types/requests/customer';
+import type { StoreCustomerPaymentRequest, StoreCustomerRequest, UpdateCustomerRequest } from '@/types/requests/customer';
 
 const customerService = {
   async getList(params?: CustomerListParams): Promise<CustomerListResponse> {
@@ -28,6 +24,9 @@ const customerService = {
             per_page: params.pageSize,
             search: params.search?.trim() || undefined,
             type: params.type || undefined,
+            group_id: params.group_id || undefined,
+            status: params.status || undefined,
+            include_deleted: params.include_deleted ? 1 : 0,
           }
         : undefined,
     });
@@ -83,6 +82,59 @@ const customerService = {
     return response.data;
   },
 
+  async getPriceLists(customerId: number): Promise<CustomerPriceListsResponse> {
+    const response = await api.get<CustomerPriceListsResponse>(ENDPOINTS.customers.priceLists(customerId));
+    return response.data;
+  },
+
+  async getGroups(params?: { current?: number; pageSize?: number; keyword?: string }): Promise<CustomerGroupsResponse> {
+    const response = await api.get<CustomerGroupsResponse>(ENDPOINTS.customers.groups, {
+      params: params
+        ? {
+            page: params.current,
+            per_page: params.pageSize,
+            keyword: params.keyword?.trim() || undefined,
+          }
+        : undefined,
+    });
+    return response.data;
+  },
+
+  async createPriceList(customerId: number, values: { name: string; effective_from: string; effective_to?: string; notes?: string }): Promise<CustomerPriceListResponse> {
+    const response = await api.post<CustomerPriceListResponse>(ENDPOINTS.customers.priceLists(customerId), values);
+    return response.data;
+  },
+
+  async addPriceListItem(
+    priceListId: number,
+    values: {
+      route_template_id?: number;
+      vehicle_type_id?: number;
+      cargo_type_id?: number;
+      price: number;
+      price_unit: 'per_trip' | 'per_km' | 'per_ton';
+      notes?: string;
+    },
+  ): Promise<CustomerPriceListItemResponse> {
+    const response = await api.post<CustomerPriceListItemResponse>(ENDPOINTS.priceLists.items(priceListId), values);
+    return response.data;
+  },
+
+  async getReconciliations(customerId: number, params?: { current?: number; pageSize?: number }): Promise<ReconciliationListResponse> {
+    const response = await api.get<ReconciliationListResponse>(ENDPOINTS.reconciliations.base, {
+      params: {
+        customer_id: customerId,
+        ...(params
+          ? {
+              page: params.current,
+              per_page: params.pageSize,
+            }
+          : {}),
+      },
+    });
+    return response.data;
+  },
+
   async createPayment(id: number, data: StoreCustomerPaymentRequest): Promise<CustomerDetailResponse> {
     const response = await api.post<CustomerDetailResponse>(ENDPOINTS.customers.payments(id), data);
     return response.data;
@@ -90,56 +142,6 @@ const customerService = {
 
   async deletePayment(paymentId: number): Promise<CustomerDetailResponse> {
     const response = await api.delete<CustomerDetailResponse>(ENDPOINTS.payments.byId(paymentId));
-    return response.data;
-  },
-  
-  async getPriceLists(id: number): Promise<CustomerPriceListsResponse> {
-    const response = await api.get<CustomerPriceListsResponse>(ENDPOINTS.customers.priceLists(id));
-    return response.data;
-  },
-  
-  async createPriceList(customerId: number, data: StorePriceListRequest): Promise<PriceListDetailResponse> {
-    const response = await api.post<PriceListDetailResponse>(ENDPOINTS.customers.priceLists(customerId), data);
-    return response.data;
-  },
-  
-  async deletePriceList(id: number): Promise<PriceListDetailResponse> {
-    const response = await api.delete<PriceListDetailResponse>(ENDPOINTS.priceLists.byId(id));
-    return response.data;
-  },
-  
-  async addPriceListItem(priceListId: number, data: StorePriceListItemRequest): Promise<PriceListItemDetailResponse> {
-    const response = await api.post<PriceListItemDetailResponse>(ENDPOINTS.priceLists.items(priceListId), data);
-    return response.data;
-  },
-  
-  async deletePriceListItem(priceListId: number, itemId: number): Promise<PriceListItemDetailResponse> {
-    const response = await api.delete<PriceListItemDetailResponse>(ENDPOINTS.priceLists.itemById(priceListId, itemId));
-    return response.data;
-  },
-  
-  async getGroups(params?: { current?: number; pageSize?: number; keyword?: string }): Promise<any> {
-    const response = await api.get(ENDPOINTS.customerGroups.base, {
-      params: params
-        ? {
-            page: params.current,
-            per_page: params.pageSize,
-            search: params.keyword,
-          }
-        : undefined,
-    });
-    return response.data;
-  },
-  
-  async getReconciliations(id: number, params?: { current?: number; pageSize?: number }): Promise<any> {
-    const response = await api.get(ENDPOINTS.customers.reconciliations(id), {
-      params: params
-        ? {
-            page: params.current,
-            per_page: params.pageSize,
-          }
-        : undefined,
-    });
     return response.data;
   },
 };

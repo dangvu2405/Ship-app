@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Col, Flex, Row, Tag, Typography, theme } from 'antd';
-import { BankOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Flex, Row, Tag, Typography, theme, Avatar } from 'antd';
+import { BankOutlined, LogoutOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
 import type { Tenant } from '@/types';
+
+const { Title, Text } = Typography;
 
 export function TenantSelector() {
   const navigate = useNavigate();
@@ -31,7 +33,7 @@ export function TenantSelector() {
     navigate(ROUTES.login, { replace: true });
   };
 
-  const tenants = pendingTenants.length > 0 ? pendingTenants : [];
+  const tenants = pendingTenants || [];
 
   return (
     <div
@@ -40,86 +42,102 @@ export function TenantSelector() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
-        background: token.colorFillAlter,
+        padding: 40,
+        background: `linear-gradient(135deg, ${token.colorFillAlter} 0%, ${token.colorFillSecondary} 100%)`,
+        ['--tenantHoverShadow' as any]: token.boxShadowSecondary,
       }}
     >
-      <div style={{ width: '100%', maxWidth: 640 }}>
-        <Flex vertical gap={24} align="center">
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: token.borderRadiusLG,
-              background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorPrimaryActive} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: token.colorTextLightSolid,
-              fontWeight: 700,
-              fontSize: 24,
-            }}
-          >
-            S
-          </div>
+      <div style={{ width: '100%', maxWidth: 800 }}>
+        <Flex vertical gap={48} align="center">
+          <Flex vertical align="center" gap={16}>
+             <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 20,
+                background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorPrimaryActive} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 900,
+                fontSize: 28,
+                boxShadow: `0 10px 20px ${token.colorPrimary}40`
+              }}
+            >
+              S
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <Title level={2} style={{ marginBottom: 8, fontWeight: 800 }}>Chào mừng trở lại</Title>
+              <Text type="secondary" style={{ fontSize: 16 }}>
+                Vui lòng chọn tổ chức bạn muốn làm việc hôm nay.
+              </Text>
+            </div>
+          </Flex>
 
-          <div style={{ textAlign: 'center' }}>
-            <Typography.Title level={3} style={{ marginBottom: 8 }}>
-              Chọn tổ chức
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              Tài khoản của bạn thuộc nhiều tổ chức. Vui lòng chọn tổ chức để tiếp tục.
-            </Typography.Text>
-          </div>
-
-          <Row gutter={[16, 16]} style={{ width: '100%' }}>
+          <Row gutter={[24, 24]} style={{ width: '100%' }}>
             {tenants.map((tenant) => (
               <Col xs={24} sm={12} key={tenant.id}>
                 <Card
                   hoverable
                   onClick={() => handleSelect(tenant)}
-                  style={{ height: '100%', cursor: 'pointer' }}
-                  styles={{ body: { padding: '20px 24px' } }}
+                  style={{ 
+                    height: '100%', 
+                    cursor: 'pointer',
+                    borderRadius: 20,
+                    border: 'none',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  styles={{ body: { padding: 24 } }}
+                  className="tenant-card"
                 >
-                  <Flex gap={16} align="center">
-                    {tenant.logo_url ? (
-                      <img
+                  <Flex vertical gap={24}>
+                    <Flex justify="space-between" align="flex-start">
+                      <Avatar
+                        size={56}
+                        shape="square"
                         src={tenant.logo_url}
-                        alt={tenant.name}
-                        style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 8,
+                        icon={<BankOutlined />}
+                        style={{ 
+                          borderRadius: 14, 
                           background: token.colorPrimaryBg,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
                           color: token.colorPrimary,
-                          flexShrink: 0,
+                          fontSize: 24
+                        }}
+                      />
+                      <Tag
+                        color={tenant.status === 'active' ? 'success' : 'default'}
+                        style={{ 
+                          borderRadius: 20, 
+                          paddingInline: 12, 
+                          margin: 0, 
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          fontSize: 10
                         }}
                       >
-                        <BankOutlined style={{ fontSize: 20 }} />
-                      </div>
-                    )}
-                    <Flex vertical gap={4} style={{ minWidth: 0 }}>
-                      <Typography.Text strong ellipsis style={{ maxWidth: '100%' }}>
+                        {tenant.status === 'active' ? 'Hoạt động' : tenant.status}
+                      </Tag>
+                    </Flex>
+                    
+                    <Flex vertical gap={4}>
+                      <Title level={4} style={{ margin: 0, fontWeight: 700 }} ellipsis>
                         {tenant.name}
-                      </Typography.Text>
-                      <Flex gap={8} align="center" wrap="wrap">
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {tenant.code}
-                        </Typography.Text>
-                        <Tag
-                          color={tenant.status === 'active' ? 'success' : 'default'}
-                          style={{ margin: 0, fontSize: 11 }}
-                        >
-                          {tenant.status === 'active' ? 'Hoạt động' : tenant.status}
-                        </Tag>
-                      </Flex>
+                      </Title>
+                      <Text type="secondary" style={{ fontSize: 13, letterSpacing: 0.5 }}>
+                        {tenant.code}
+                      </Text>
+                    </Flex>
+
+                    <Flex justify="flex-end">
+                       <Button 
+                         type="text" 
+                         icon={<ArrowRightOutlined />} 
+                         style={{ color: token.colorPrimary }}
+                       >
+                         Truy cập
+                       </Button>
                     </Flex>
                   </Flex>
                 </Card>
@@ -131,12 +149,22 @@ export function TenantSelector() {
             type="text"
             icon={<LogoutOutlined />}
             onClick={() => void handleLogout()}
-            style={{ color: token.colorTextSecondary }}
+            style={{ 
+              color: token.colorTextSecondary, 
+              fontWeight: 600,
+              fontSize: 14
+            }}
           >
-            Đăng xuất
+            Đăng xuất khỏi hệ thống
           </Button>
         </Flex>
       </div>
+      <style>{`
+        .tenant-card:hover {
+          transform: translateY(-8px);
+          box-shadow: var(--tenantHoverShadow);
+        }
+      `}</style>
     </div>
   );
 }

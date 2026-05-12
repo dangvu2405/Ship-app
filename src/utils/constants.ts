@@ -5,62 +5,6 @@
 
 import { LEGACY_ROUTES } from '@/routes';
 
-function resolveApiPrefix(): string {
-  const p = import.meta.env.VITE_API_PREFIX?.trim();
-  if (p) {
-    return p.startsWith('/') ? p : `/${p}`;
-  }
-  return '/api';
-}
-
-/** Gốc REST (axios baseURL), mặc định `/api`. */
-export const API_PREFIX = resolveApiPrefix();
-
-function trimTrailingSlashes(s: string): string {
-  return s.replace(/\/+$/, '');
-}
-
-/**
- * Bỏ segment phiên bản (`/v1`, `/v2`, …) ở cuối base → `/api` (gọi `/api/health`, `/api/v2/...`).
- */
-export function resolveApiRootBaseUrl(versionedBase: string): string {
-  const t = trimTrailingSlashes(versionedBase);
-  const stripped = t.replace(/\/v\d+\/?$/, '');
-  return stripped || '/api';
-}
-
-/** Origin backend: scheme + host + port, không có path (khớp APP_URL của Laravel). */
-const DEFAULT_API_ORIGIN = 'http://localhost:8080';
-
-/**
- * Base URL cho axios / Refine simple-rest:
- * 1. `VITE_API_BASE_URL` — URL đầy đủ tới `/api`.
- * 2. Dev: `/api` → Vite proxy tới backend.
- * 3. Prod: `VITE_API_ORIGIN` + `VITE_API_PREFIX` (mặc định `/api`).
- */
-function resolveApiBaseUrl(): string {
-  const explicit = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (explicit) {
-    return trimTrailingSlashes(explicit);
-  }
-
-  if (import.meta.env.DEV) {
-    return API_PREFIX;
-  }
-
-  const origin =
-    import.meta.env.VITE_API_ORIGIN?.trim() ||
-    import.meta.env.VITE_PROXY_TARGET?.trim() ||
-    '';
-  const prodOrigin = origin || DEFAULT_API_ORIGIN;
-  return `${trimTrailingSlashes(prodOrigin)}${API_PREFIX}`;
-}
-
-export const API_BASE_URL = resolveApiBaseUrl();
-
-/** Gốc `/api` — dùng với `useApiRoot` trên axios. */
-export const API_ROOT_BASE_URL = resolveApiRootBaseUrl(API_BASE_URL);
-
 const normalizeApiPath = (path: string): string => {
   const trimmed = path.trim();
   if (!trimmed) return '';
@@ -77,6 +21,9 @@ export const AUTH_FORGOT_PASSWORD = {
 
 /** Bật UI chat khi backend triển khai đầy đủ (mặc định tắt — API trả 501). */
 export const CHAT_ENABLED = import.meta.env.VITE_CHAT_ENABLED === 'true';
+
+/** `POST /auth/register` — bật khi backend có route đăng ký public. */
+export const REGISTER_ENABLED = import.meta.env.VITE_REGISTER_ENABLED === 'true';
 
 // Versioned localStorage keys - bump version on schema changes
 export const STORAGE_KEYS = {

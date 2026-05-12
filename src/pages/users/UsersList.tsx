@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useList, useDelete, useNavigation } from '@refinedev/core';
 import { App, Button, Card, Dropdown, Input, Result, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -69,22 +69,22 @@ export function UsersList() {
     ],
   });
 
-  const handleApplyFilters = () => { applyFilters(); setCurrent(1); };
-  const handleClearFilters = () => { clearFilters(); setCurrent(1); };
+  const handleApplyFilters = useCallback(() => { applyFilters(); setCurrent(1); }, [applyFilters]);
+  const handleClearFilters = useCallback(() => { clearFilters(); setCurrent(1); }, [clearFilters]);
 
-  const handleCreate = () => {
+  const handleCreate = useCallback(() => {
     setFormMode('create');
     setEditingId(undefined);
     setFormOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (id: number) => {
+  const handleEdit = useCallback((id: number) => {
     setFormMode('edit');
     setEditingId(id);
     setFormOpen(true);
-  };
+  }, []);
 
-  const handleToggleStatus = (user: User) => {
+  const handleToggleStatus = useCallback((user: User) => {
     const nextStatus = user.status === 'active' ? 'inactive' : 'active';
     modal.confirm({
       title: nextStatus === 'inactive' ? 'Vô hiệu hóa người dùng?' : 'Kích hoạt người dùng?',
@@ -98,28 +98,32 @@ export function UsersList() {
           message.success('Đã cập nhật trạng thái');
           void refetch();
         } catch (err) {
-          message.error(getErrorMessage(err) ?? 'Cập nhật trạng thái thất bại');
+          if (shouldShowLocalErrorToast(err)) {
+            message.error(getErrorMessage(err) || 'Cập nhật thất bại');
+          }
         }
       },
     });
-  };
+  }, [modal, message, refetch]);
 
-  const handleResetPassword = (user: User) => {
+  const handleResetPassword = useCallback((user: User) => {
     modal.confirm({
       title: 'Đặt lại mật khẩu?',
-      content: `Mật khẩu mới sẽ được gửi tới email của ${user.username}.`,
-      okText: 'Đặt lại',
+      content: `Mật khẩu của người dùng ${user.username} sẽ được đặt lại về giá trị mặc định.`,
+      okText: 'Xác nhận',
       cancelText: 'Hủy',
       onOk: async () => {
         try {
-          await api.post(ENDPOINTS.users.resetPassword(user.id), {});
-          message.success('Đã gửi email đặt lại mật khẩu');
+          await api.post(ENDPOINTS.users.resetPassword(user.id));
+          message.success('Đã đặt lại mật khẩu thành công');
         } catch (err) {
-          message.error(getErrorMessage(err) ?? 'Reset mật khẩu thất bại');
+          if (shouldShowLocalErrorToast(err)) {
+            message.error(getErrorMessage(err) || 'Thao tác thất bại');
+          }
         }
       },
     });
-  };
+  }, [modal, message]);
 
   const confirmDelete = () => {
     if (!selectedUser) return;
@@ -225,7 +229,7 @@ export function UsersList() {
         </Space>
       ),
     },
-  ], [show, t, handleToggleStatus, handleResetPassword]);
+  ], [show, t, handleToggleStatus, handleResetPassword, handleEdit]);
 
   const breadcrumb = [
     { label: t('dashboard.title'), path: ROUTES.dashboard },

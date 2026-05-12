@@ -89,7 +89,7 @@ class InvoiceService {
   }
 
   async sendCqt(id: number): Promise<Invoice> {
-    const response = await api.patch(ENDPOINTS.invoices.sendCqt(id));
+    const response = await api.get(ENDPOINTS.invoices.cqt(id));
     throwIfEnvelopeFailed(response.data);
     return unwrapEnvelope<Invoice>(response.data);
   }
@@ -107,13 +107,13 @@ class InvoiceService {
   }
 
   async sendEmail(id: number): Promise<void> {
-    const response = await api.post(ENDPOINTS.invoices.sendEmail(id));
+    const response = await api.patch(ENDPOINTS.invoices.email(id));
     throwIfEnvelopeFailed(response.data);
     unwrapEnvelope(response.data);
   }
 
   async downloadPdf(id: number, code?: string): Promise<void> {
-    const response = await api.get(ENDPOINTS.invoices.exportPdf(id), { responseType: 'blob' });
+    const response = await api.get(ENDPOINTS.invoices.pdf(id), { responseType: 'blob' });
     const blob = response.data as Blob;
     const contentDisposition = response.headers['content-disposition'] as string | undefined;
     const matched = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];

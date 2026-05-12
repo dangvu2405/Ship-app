@@ -3,6 +3,7 @@ import { FormItemProps } from 'antd/es/form';
 import { InputProps } from 'antd/es/input';
 import { TextAreaProps } from 'antd/es/input';
 import { InputNumberProps } from 'antd/es/input-number';
+import type { DefaultOptionType } from 'antd/es/select';
 import { SelectProps } from 'antd/es/select';
 import type { SwitchProps } from 'antd/es/switch';
 import type { UploadProps } from 'antd/es/upload';
@@ -10,14 +11,7 @@ import type { UploadProps } from 'antd/es/upload';
 /**
  * Select Option interface
  */
-export interface SelectOption {
-  /** Display label */
-  label: string;
-  /** Option value */
-  value: string | number;
-  /** Whether option is disabled */
-  disabled?: boolean;
-}
+export type SelectOption = DefaultOptionType;
 
 /**
  * Base props for all FormItem components
@@ -45,6 +39,8 @@ export interface BaseFormItemProps extends Omit<FormItemProps, 'children'> {
   className?: string;
   /** Custom style */
   style?: React.CSSProperties;
+  /** Antd v6+ Variant style */
+  variant?: 'outlined' | 'borderless' | 'filled' | 'underlined';
 }
 
 /**

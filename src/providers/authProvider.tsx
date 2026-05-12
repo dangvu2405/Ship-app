@@ -3,19 +3,28 @@ import { User } from '@/types';
 import authService from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
-import { clearAuthToken, hasAuthToken, setAuthToken, setRefreshToken } from '@/lib/auth-session';
+import { getErrorStatus } from '@/utils/errorHandler';
 
 const getAuthStoreState = () => {
   return useAuthStore.getState();
 };
 
-const setCurrentUser = (user: User | null) => {
-  useAuthStore.getState().setUser(user);
-};
-
 const getApiErrorMessage = (error: unknown) => {
   if (!error || typeof error !== 'object' || !('response' in error)) return undefined;
   return (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+};
+
+const GENERIC_LOGIN_FAIL = 'Invalid email or password.';
+const GENERIC_FORGOT_HINT =
+  'If an account exists for this email, you will receive reset instructions.';
+
+const normalizeLoginUser = (response: { data?: { user: User; tenants?: User['tenants'] } }): User => {
+  const u = response.data?.user;
+  if (!u) throw new Error('Missing user');
+  return {
+    ...u,
+    tenants: (response.data as { tenants?: User['tenants'] })?.tenants ?? u.tenants ?? [],
+  };
 };
 
 export const authProvider: AuthProvider = {
@@ -24,32 +33,30 @@ export const authProvider: AuthProvider = {
       const response = await authService.login({ email, password });
 
       if (response.success && response.data?.user) {
-        const accessToken = response.data.access_token || response.data.token;
-        if (accessToken) {
-          setAuthToken(accessToken);
-        }
-        if (response.data.refresh_token) {
-          setRefreshToken(response.data.refresh_token);
-        }
-        setCurrentUser(response.data.user);
+        const user = normalizeLoginUser(response as { data: { user: User } });
+        useAuthStore.getState().setSession(user);
+        const { currentTenantId } = useAuthStore.getState();
         return {
           success: true,
-          redirectTo: ROUTES.dashboard,
+          redirectTo: currentTenantId ? ROUTES.dashboard : ROUTES.selectTenant,
         };
       }
 
       return {
         success: false,
         error: {
-          message: 'Login failed',
+          message: GENERIC_LOGIN_FAIL,
           name: 'LoginError',
         },
       };
     } catch (error: unknown) {
+      const status = getErrorStatus(error);
+      const safeAuth =
+        status === 401 || status === 403 || status === 404 || status === 419 || status === 429;
       return {
         success: false,
         error: {
-          message: getApiErrorMessage(error) || 'Login failed',
+          message: safeAuth ? GENERIC_LOGIN_FAIL : getApiErrorMessage(error) || GENERIC_LOGIN_FAIL,
           name: 'LoginError',
         },
       };
@@ -57,13 +64,7 @@ export const authProvider: AuthProvider = {
   },
 
   logout: async () => {
-    try {
-      await authService.logout();
-    } catch {
-    } finally {
-      clearAuthToken();
-      setCurrentUser(null);
-    }
+    await useAuthStore.getState().logout();
 
     return {
       success: true,
@@ -74,19 +75,13 @@ export const authProvider: AuthProvider = {
   check: async () => {
     const UNAUTHENTICATED = { authenticated: false, redirectTo: ROUTES.login, logout: true } as const;
     const AUTHENTICATED = { authenticated: true } as const;
-    const hasToken = hasAuthToken();
-
-    if (!hasToken) {
-      setCurrentUser(null);
-      return UNAUTHENTICATED;
-    }
 
     const tryGetCurrentUser = async (): Promise<boolean> => {
       try {
         const response = await authService.getCurrentUser();
         const user = authService.getUserFromMeResponse(response);
         if (response.success && user) {
-          setCurrentUser(user);
+          useAuthStore.getState().setSession(user);
           return true;
         }
         return false;
@@ -97,16 +92,14 @@ export const authProvider: AuthProvider = {
 
     if (await tryGetCurrentUser()) return AUTHENTICATED;
 
-    setCurrentUser(null);
-    clearAuthToken();
+    useAuthStore.getState().clearClientSession();
 
     return UNAUTHENTICATED;
   },
 
   onError: async (error) => {
     if (error?.status === 401) {
-      clearAuthToken();
-      setCurrentUser(null);
+      useAuthStore.getState().clearClientSession();
       return {
         logout: true,
         redirectTo: ROUTES.login,
@@ -127,7 +120,7 @@ export const authProvider: AuthProvider = {
       const response = await authService.getCurrentUser();
       const user = authService.getUserFromMeResponse(response);
       if (response.success && user) {
-        setCurrentUser(user);
+        useAuthStore.getState().setSession(user);
         return user as User;
       }
 
@@ -161,10 +154,12 @@ export const authProvider: AuthProvider = {
         },
       };
     } catch (error: unknown) {
+      const status = getErrorStatus(error);
+      const generic = 'Registration could not be completed.';
       return {
         success: false,
         error: {
-          message: getApiErrorMessage(error) || 'Registration failed',
+          message: status === 422 ? getApiErrorMessage(error) || generic : generic,
           name: 'RegistrationError',
         },
       };
@@ -180,19 +175,17 @@ export const authProvider: AuthProvider = {
       return {
         success: false,
         error: {
-          message: response.message || 'Request failed',
+          message: GENERIC_FORGOT_HINT,
           name: 'ForgotPasswordError',
         },
       };
     } catch (error: unknown) {
-      const errorMessage =
-        error && typeof error === 'object' && 'response' in error
-          ? (error as { response?: { data?: { message?: string } } })?.response?.data?.message
-          : undefined;
+      const status = getErrorStatus(error);
       return {
         success: false,
         error: {
-          message: errorMessage || 'Request failed',
+          message:
+            status === 422 ? getApiErrorMessage(error) || GENERIC_FORGOT_HINT : GENERIC_FORGOT_HINT,
           name: 'ForgotPasswordError',
         },
       };

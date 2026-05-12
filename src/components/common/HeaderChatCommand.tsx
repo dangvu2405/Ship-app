@@ -17,9 +17,8 @@ export const HeaderChatCommand = () => {
 
   const isVisible = isAuthenticated && hasAuthToken();
 
-  if (!isVisible) return null;
-
   useEffect(() => {
+    if (!isVisible) return;
     const onShortcut = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.altKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -30,7 +29,9 @@ export const HeaderChatCommand = () => {
 
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
-  }, []);
+  }, [isVisible]);
+
+  if (!isVisible) return null;
 
 
 

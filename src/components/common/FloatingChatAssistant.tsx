@@ -17,10 +17,6 @@ export const FloatingChatAssistant = () => {
 
   const isChatVisible = isAuthenticated && hasAuthToken();
 
-  if (!isChatVisible) {
-    return null;
-  }
-
   const dragStateRef = useRef({
     dragging: false,
     startX: 0,
@@ -43,7 +39,29 @@ export const FloatingChatAssistant = () => {
     };
   }, [viewport.height, viewport.width]);
 
+  const panelPosition = useMemo(() => {
+    if (!viewport.width || !viewport.height) {
+      return { left: EDGE_GAP, top: EDGE_GAP, width: 380, maxHeight: 640 };
+    }
+
+    const width = Math.min(420, Math.max(360, viewport.width - 24));
+    const maxHeight = Math.min(760, Math.max(420, viewport.height - 24));
+
+    let left = anchor.x + BUBBLE_SIZE + 10;
+    if (left + width > viewport.width - EDGE_GAP) {
+      left = anchor.x - width - 10;
+    }
+    left = Math.max(EDGE_GAP, Math.min(left, viewport.width - width - EDGE_GAP));
+
+    const desiredTop = anchor.y - 12;
+    const top = Math.max(EDGE_GAP, Math.min(desiredTop, viewport.height - maxHeight - EDGE_GAP));
+
+    return { left, top, width, maxHeight };
+  }, [anchor.x, anchor.y, viewport.height, viewport.width]);
+
   useEffect(() => {
+    if (!isChatVisible) return;
+
     const syncViewport = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -68,21 +86,31 @@ export const FloatingChatAssistant = () => {
 
     syncViewport();
 
+    let rafId: number | null = null;
     const handlePointerMove = (event: PointerEvent) => {
       const drag = dragStateRef.current;
       if (!drag.dragging) return;
 
-      const dx = event.clientX - drag.startX;
-      const dy = event.clientY - drag.startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        dragStateRef.current.moved = true;
-      }
+      if (rafId) return;
 
-      setAnchor(clampAnchor(drag.originX + dx, drag.originY + dy));
+      rafId = requestAnimationFrame(() => {
+        const dx = event.clientX - drag.startX;
+        const dy = event.clientY - drag.startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          dragStateRef.current.moved = true;
+        }
+
+        setAnchor(clampAnchor(drag.originX + dx, drag.originY + dy));
+        rafId = null;
+      });
     };
 
     const handlePointerUp = () => {
       dragStateRef.current.dragging = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
     };
 
     window.addEventListener('resize', syncViewport);
@@ -93,8 +121,13 @@ export const FloatingChatAssistant = () => {
       window.removeEventListener('resize', syncViewport);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [clampAnchor]);
+  }, [clampAnchor, isChatVisible]);
+
+  if (!isChatVisible) {
+    return null;
+  }
 
   const handleDragStart = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -114,26 +147,6 @@ export const FloatingChatAssistant = () => {
       setOpen((prev) => !prev);
     }
   };
-
-  const panelPosition = useMemo(() => {
-    if (!viewport.width || !viewport.height) {
-      return { left: EDGE_GAP, top: EDGE_GAP, width: 380, maxHeight: 640 };
-    }
-
-    const width = Math.min(420, Math.max(360, viewport.width - 24));
-    const maxHeight = Math.min(760, Math.max(420, viewport.height - 24));
-
-    let left = anchor.x + BUBBLE_SIZE + 10;
-    if (left + width > viewport.width - EDGE_GAP) {
-      left = anchor.x - width - 10;
-    }
-    left = Math.max(EDGE_GAP, Math.min(left, viewport.width - width - EDGE_GAP));
-
-    const desiredTop = anchor.y - 12;
-    const top = Math.max(EDGE_GAP, Math.min(desiredTop, viewport.height - maxHeight - EDGE_GAP));
-
-    return { left, top, width, maxHeight };
-  }, [anchor.x, anchor.y, viewport.height, viewport.width]);
 
   return (
     <>

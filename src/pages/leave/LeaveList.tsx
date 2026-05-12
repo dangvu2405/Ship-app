@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -118,7 +118,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     [leaveTypes],
   );
 
-  const runAction = async (id: number, fn: () => Promise<unknown>, successMsg: string) => {
+  const runAction = useCallback(async (id: number, fn: () => Promise<unknown>, successMsg: string) => {
     setBusyId(id);
     try {
       await fn();
@@ -130,7 +130,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     } finally {
       setBusyId(null);
     }
-  };
+  }, [refetch]);
 
   const columns = useMemo<ColumnsType<LeaveRequest>>(() => [
     {
@@ -206,7 +206,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
         );
       },
     },
-  ], [t, busyId, canApproveLeave, driverOptions, leaveTypes, rejectForm]);
+  ], [t, busyId, canApproveLeave, driverOptions, leaveTypes, rejectForm, runAction]);
 
   const selectedDriverId = Form.useWatch('driver_id', createForm);
   const selectedLeaveTypeId = Form.useWatch('leave_type_id', createForm);

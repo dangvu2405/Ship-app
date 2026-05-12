@@ -6,6 +6,7 @@ import { ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 import authService from '@/services/auth.service';
 import { ROUTES } from '@/routes';
 import { notifyErrorOnce } from '@/utils/errorToast';
+import { getErrorStatus } from '@/utils/errorHandler';
 import { useTranslation } from '@/hooks/useTranslation';
 import { FORGOT_PASSWORD_EMAIL_STORAGE_KEY } from '@/lib/forgot-password-flow';
 import { forgotPasswordConfirmSchema } from '@/schemas/password';
@@ -33,8 +34,21 @@ export function ForgotPasswordVerifyForm() {
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [attempts, setAttempts] = useState(0);
+  const [serverOtpBlocked, setServerOtpBlocked] = useState(false);
+  const MAX_ATTEMPTS = 5;
   const resetEnabled = authService.isForgotPasswordResetEnabled();
   const sendEnabled = authService.isForgotPasswordSendEnabled();
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
 
   useEffect(() => {
     const fromState = (location.state as { email?: string } | null)?.email?.trim();
@@ -59,9 +73,16 @@ export function ForgotPasswordVerifyForm() {
       setIsSubmitting(true);
       const response = await authService.checkOtp({ email, otp: code });
       if (!response.success) {
-        toast.error(response.message || t('auth.forgotPasswordOtpInvalid'));
+        setAttempts((prev) => prev + 1);
+        const remaining = MAX_ATTEMPTS - (attempts + 1);
+        if (remaining <= 0) {
+          toast.error(t('auth.forgotPasswordTooManyAttempts'));
+        } else {
+          toast.error(`${response.message || t('auth.forgotPasswordOtpInvalid')} (${remaining} ${t('auth.attemptsLeft')})`);
+        }
         return;
       }
+
       const tok = extractResetToken(response as ApiResponse<unknown>);
       if (tok) {
         setResetToken(tok);
@@ -75,7 +96,13 @@ export function ForgotPasswordVerifyForm() {
       setPhase('password');
       toast.success(t('auth.forgotPasswordOtpVerified'));
     } catch (error) {
-      notifyErrorOnce('auth-check-otp', error, { fallbackMessage: t('auth.forgotPasswordOtpInvalid') });
+      const status = getErrorStatus(error);
+      if (status === 429) {
+        setServerOtpBlocked(true);
+        toast.error(t('auth.rateLimited'));
+      } else {
+        notifyErrorOnce('auth-check-otp', error, { fallbackMessage: t('auth.forgotPasswordOtpInvalid') });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -128,11 +155,19 @@ export function ForgotPasswordVerifyForm() {
       const response = await authService.forgotPassword(email);
       if (response.success) {
         toast.success(t('auth.forgotPasswordResendSuccess'));
+        setCountdown(60); // 1 minute cooldown
         return;
       }
+
       toast.error(response.message || t('auth.forgotPasswordFailed'));
     } catch (error) {
-      notifyErrorOnce('auth-forgot-resend', error, { fallbackMessage: t('auth.forgotPasswordFailed') });
+      const status = getErrorStatus(error);
+      if (status === 429) {
+        setServerOtpBlocked(true);
+        toast.error(t('auth.rateLimited'));
+      } else {
+        notifyErrorOnce('auth-forgot-resend', error, { fallbackMessage: t('auth.forgotPasswordFailed') });
+      }
     } finally {
       setIsResending(false);
     }
@@ -194,6 +229,7 @@ export function ForgotPasswordVerifyForm() {
             {phase === 'otp' ? (
               <form onSubmit={handleVerifyOtp}>
                 <Flex vertical gap={16}>
+                  <Alert type="info" showIcon message={t('auth.forgotPasswordOtpServerEnforced')} />
                   <div>
                     <Typography.Text strong>{t('auth.forgotPasswordOtpLabel')}</Typography.Text>
                     <Input.OTP
@@ -206,9 +242,19 @@ export function ForgotPasswordVerifyForm() {
                     />
                   </div>
                   {!resetEnabled && <Alert type="info" message={t('auth.forgotPasswordResetUnavailable')} showIcon />}
-                  <Button type="primary" htmlType="submit" block size="large" loading={isSubmitting} disabled={!resetEnabled}>
-                    {t('auth.forgotPasswordOtpSubmit')}
+                  <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    block 
+                    size="large" 
+                    loading={isSubmitting} 
+                    disabled={!resetEnabled || attempts >= MAX_ATTEMPTS || serverOtpBlocked}
+                  >
+                    {attempts >= MAX_ATTEMPTS || serverOtpBlocked
+                      ? t('auth.forgotPasswordLocked')
+                      : t('auth.forgotPasswordOtpSubmit')}
                   </Button>
+
                 </Flex>
               </form>
             ) : (
@@ -256,10 +302,11 @@ export function ForgotPasswordVerifyForm() {
                 type="link"
                 onClick={() => void handleResend()}
                 loading={isResending}
-                disabled={isSubmitting || !sendEnabled}
+                disabled={isSubmitting || !sendEnabled || countdown > 0 || serverOtpBlocked}
               >
-                {t('auth.forgotPasswordResend')}
+                {countdown > 0 ? `${t('auth.forgotPasswordResendIn')} ${countdown}s` : t('auth.forgotPasswordResend')}
               </Button>
+
               <Link to={ROUTES.login}>
                 <Button type="link" icon={<ArrowLeftOutlined />} style={{ padding: 0, height: 'auto' }}>
                   {t('auth.forgotPasswordBackToLogin')}

@@ -44,7 +44,6 @@ export const Settings = () => {
     setApiHealth('loading');
     try {
       await api.get(ENDPOINTS.public.health, {
-        useApiRoot: true,
         skipErrorToast: true,
         errorMode: 'silent',
       });

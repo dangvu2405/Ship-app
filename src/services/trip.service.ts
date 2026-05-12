@@ -32,14 +32,14 @@ class TripService {
   }
 
   /** Gán tài xế + xe cho chuyến (pending → assigned). */
-  async assign(id: number, payload?: { driver_id: number; vehicle_id: number }): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.assign(id), payload);
+  async assign(id: number, data?: { driver_id?: number; vehicle_id?: number }): Promise<TripMutationResponse> {
+    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.assign(id), data);
     return response.data;
   }
 
-  /** Tài xế xác nhận nhận chuyến (assigned → driver_accepted). */
+  /** Không có PATCH riêng trên `api.php` — cập nhật qua PUT resource. */
   async accept(id: number): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.accept(id));
+    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), { status: 'driver_accepted' });
     return response.data;
   }
 
@@ -49,21 +49,37 @@ class TripService {
     return response.data;
   }
 
-  /** Đón khách thành công (en_route_pickup → picked_up). */
+  /** Không có PATCH riêng — PUT status. */
   async pickup(id: number): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.pickup(id));
+    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), { status: 'picked_up' });
     return response.data;
   }
 
-  /** Bắt đầu hành trình (picked_up → in_transit). */
+  /** Không có PATCH riêng — PUT status. */
   async transit(id: number): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.transit(id));
+    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), { status: 'in_transit' });
     return response.data;
   }
 
-  /** Đến điểm đến (in_transit → arrived). */
+  /** Theo trip id: PUT status. Điểm dừng: dùng `arriveStop(stopId)` → `PATCH /stops/:id/arrive`. */
   async arrive(id: number): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.arrive(id));
+    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), { status: 'arrived' });
+    return response.data;
+  }
+
+  async arriveStop(stopId: number): Promise<TripMutationResponse> {
+    const response = await api.patch<TripMutationResponse>(ENDPOINTS.tripStops.arrive(stopId));
+    return response.data;
+  }
+
+  async completeStop(stopId: number): Promise<TripMutationResponse> {
+    const response = await api.patch<TripMutationResponse>(ENDPOINTS.tripStops.complete(stopId));
+    return response.data;
+  }
+
+  /** PATCH `/trips/:id/deliver` — khớp workflow backend khi tách khỏi `arrive`. */
+  async deliver(id: number): Promise<TripMutationResponse> {
+    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.deliver(id));
     return response.data;
   }
 
@@ -80,21 +96,35 @@ class TripService {
     return response.data;
   }
 
-  /** Báo trễ (bất kỳ trạng thái active → delayed). */
+  /** Không có PATCH delay — PUT status + lý do tùy backend. */
   async delay(id: number, reason?: string): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.delay(id), { reason });
+    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), {
+      status: 'delayed',
+      cancellation_reason: reason,
+    });
     return response.data;
   }
 
-  /** Báo khẩn cấp. */
   async emergency(id: number, reason: string): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.emergency(id), { reason });
+    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), {
+      status: 'emergency',
+      cancellation_reason: reason,
+    });
     return response.data;
   }
 
-  /** Tiếp tục sau trễ (delayed → in_transit). */
   async resume(id: number): Promise<TripMutationResponse> {
-    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.resume(id));
+    const response = await api.put<TripMutationResponse>(ENDPOINTS.trips.byId(id), { status: 'in_transit' });
+    return response.data;
+  }
+
+  async changeVehicle(id: number, payload: { vehicle_id: number }): Promise<TripMutationResponse> {
+    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.changeVehicle(id), payload);
+    return response.data;
+  }
+
+  async changeDriver(id: number, payload: { driver_id: number }): Promise<TripMutationResponse> {
+    const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.changeDriver(id), payload);
     return response.data;
   }
 
@@ -128,26 +158,28 @@ class TripService {
   async dispatchAction(
     id: number,
     action: string,
-    payload?: { reason?: string; driver_id?: number; vehicle_id?: number },
+    payload?: { reason?: string; vehicle_id?: number; driver_id?: number },
   ): Promise<TripMutationResponse> {
     switch (action) {
-      case 'assign':    
-        if (payload?.driver_id && payload?.vehicle_id) {
-          return this.assign(id, { driver_id: payload.driver_id, vehicle_id: payload.vehicle_id });
-        }
-        // Fallback for cases where assign doesn't provide payload (should be caught by backend validation)
-        return this.assign(id, undefined);
+      case 'assign':    return this.assign(id);
       case 'accept':    return this.accept(id);
       case 'start':     return this.start(id);
       case 'pickup':    return this.pickup(id);
       case 'transit':   return this.transit(id);
       case 'arrive':    return this.arrive(id);
+      case 'deliver':   return this.deliver(id);
       case 'complete':  return this.complete(id);
       case 'cancel':    return this.cancel(id, payload?.reason ?? '');
       case 'delay':     return this.delay(id, payload?.reason);
       case 'emergency': return this.emergency(id, payload?.reason ?? '');
       case 'resume':    return this.resume(id);
       default:
+        if (action === 'change-vehicle' && payload && 'vehicle_id' in payload) {
+          return this.changeVehicle(id, { vehicle_id: Number(payload.vehicle_id) });
+        }
+        if (action === 'change-driver' && payload && 'driver_id' in payload) {
+          return this.changeDriver(id, { driver_id: Number(payload.driver_id) });
+        }
         return this.update(id, { status: action as TripStatus });
     }
   }

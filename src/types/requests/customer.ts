@@ -16,16 +16,3 @@ export type StoreCustomerPaymentRequest = {
   payment_date?: string;
   note?: string;
 };
-
-export type StorePriceListRequest = {
-  name: string;
-  effective_from: string;
-  effective_to?: string;
-  notes?: string;
-};
-
-export type StorePriceListItemRequest = {
-  price: number;
-  price_unit: 'per_trip' | 'per_km' | 'per_ton';
-  notes?: string;
-};

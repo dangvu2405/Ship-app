@@ -26,12 +26,14 @@ import { formatMoney } from '@/utils/displayFormat';
 import { useReport, useExportReport } from '@/hooks/useReports';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
 
-import WalletIcon from 'lucide-react/dist/esm/icons/wallet';
-import UsersIcon from 'lucide-react/dist/esm/icons/users';
-import TruckIcon from 'lucide-react/dist/esm/icons/truck';
-import FileTextIcon from 'lucide-react/dist/esm/icons/file-text';
-import TrendingUpIcon from 'lucide-react/dist/esm/icons/trending-up';
-import DollarSignIcon from 'lucide-react/dist/esm/icons/dollar-sign';
+import {
+  WalletOutlined,
+  TeamOutlined,
+  TruckOutlined,
+  FileTextOutlined,
+  LineChartOutlined,
+  DollarOutlined,
+} from '@ant-design/icons';
 
 const now = () => {
   const d = new Date();
@@ -135,14 +137,14 @@ function buildReportCsvRows(
 
 
 const reportTypes = [
-  { id: 'revenue', label: 'Báo cáo doanh thu', icon: DollarSignIcon, desc: 'Thống kê doanh thu theo kỳ, theo tuyến, theo khách hàng' },
-  { id: 'costs', label: 'Báo cáo chi phí', icon: WalletIcon, desc: 'Theo loại, theo xe/tài xế, ngưỡng vượt' },
-  { id: 'profit', label: 'Báo cáo lợi nhuận', icon: TrendingUpIcon, desc: 'Doanh thu trừ chi phí theo kỳ' },
-  { id: 'trips', label: 'Báo cáo chuyến đi', icon: TruckIcon, desc: 'Phân tích chuyến theo trạng thái, tuyến đường, tài xế' },
-  { id: 'vehicles', label: 'Báo cáo phương tiện', icon: TruckIcon, desc: 'Sử dụng xe, hiệu suất, chi phí trên xe' },
-  { id: 'drivers', label: 'Báo cáo tài xế', icon: UsersIcon, desc: 'Hiệu suất làm việc, vi phạm, chấm công' },
-  { id: 'maintenance', label: 'Báo cáo bảo dưỡng', icon: FileTextIcon, desc: 'Lịch và chi phí bảo dưỡng định kỳ' },
-  { id: 'debt', label: 'Báo cáo công nợ', icon: DollarSignIcon, desc: 'Theo kỳ, theo khách, aging' },
+  { id: 'revenue', label: 'Báo cáo doanh thu', icon: DollarOutlined, desc: 'Thống kê doanh thu theo kỳ, theo tuyến, theo khách hàng' },
+  { id: 'costs', label: 'Báo cáo chi phí', icon: WalletOutlined, desc: 'Theo loại, theo xe/tài xế, ngưỡng vượt' },
+  { id: 'profit', label: 'Báo cáo lợi nhuận', icon: LineChartOutlined, desc: 'Doanh thu trừ chi phí theo kỳ' },
+  { id: 'trips', label: 'Báo cáo chuyến đi', icon: TruckOutlined, desc: 'Phân tích chuyến theo trạng thái, tuyến đường, tài xế' },
+  { id: 'vehicles', label: 'Báo cáo phương tiện', icon: TruckOutlined, desc: 'Sử dụng xe, hiệu suất, chi phí trên xe' },
+  { id: 'drivers', label: 'Báo cáo tài xế', icon: TeamOutlined, desc: 'Hiệu suất làm việc, vi phạm, chấm công' },
+  { id: 'maintenance', label: 'Báo cáo bảo dưỡng', icon: FileTextOutlined, desc: 'Lịch và chi phí bảo dưỡng định kỳ' },
+  { id: 'debt', label: 'Báo cáo công nợ', icon: DollarOutlined, desc: 'Theo kỳ, theo khách, aging' },
 ];
 
 type ServerReportType = 'revenue' | 'costs' | 'profit' | 'trips' | 'vehicles' | 'drivers' | 'maintenance' | 'debt';
@@ -599,7 +601,7 @@ export function Reports() {
                 >
                   <Space direction="vertical" size={6}>
                     <Flex align="center" gap={8}>
-                      <report.icon className="h-4 w-4 text-blue-600" />
+                      <report.icon style={{ color: token.colorPrimary }} />
                       <Typography.Text strong>{report.label}</Typography.Text>
                     </Flex>
                     <Typography.Text type="secondary">{report.desc}</Typography.Text>

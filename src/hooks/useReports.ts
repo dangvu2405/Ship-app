@@ -18,12 +18,8 @@ export function useReport<T = unknown>(type: ReportType, filter: ReportFilter = 
   const query = useQuery<T | null>({
     queryKey: ['reports', type, filter] as const,
     queryFn: async () => {
-      try {
-        const data = (await fetchers[type](filter)) as T | null;
-        return data ?? null;
-      } catch {
-        return null;
-      }
+      const data = (await fetchers[type](filter)) as T | null;
+      return data ?? null;
     },
     enabled,
     staleTime: 30_000,

@@ -1,12 +1,29 @@
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import { Table, Typography, Card } from 'antd';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Table, Typography, Card, theme, type TableProps } from 'antd';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, ResponsiveContainer, Line, LineChart, Pie, PieChart, Cell } from 'recharts';
 
 type MessageRendererProps = {
   content: string;
+};
+
+type RichContent = {
+  type: 'table' | 'chart';
+  title?: string;
+  rows?: Record<string, unknown>[];
+  columns?: TableProps<Record<string, unknown>>['columns'];
+  data?: unknown[];
+  config?: ChartConfig;
+  chartType?: 'bar' | 'line' | 'pie';
+  xAxisKey?: string;
+  yAxisKey?: string;
+};
+
+type Segment = {
+  type: 'text' | 'rich';
+  value: string;
 };
 
 const sanitizeHtml = (html: string): string => {
@@ -19,9 +36,11 @@ const sanitizeHtml = (html: string): string => {
 };
 
 export function MessageRenderer({ content }: MessageRendererProps) {
+  const { token } = theme.useToken();
+
   const renderRichContent = (jsonStr: string) => {
     try {
-      const data = JSON.parse(jsonStr);
+      const data = JSON.parse(jsonStr) as RichContent;
       
       if (data.type === 'table' && Array.isArray(data.rows)) {
         const columns = data.columns || Object.keys(data.rows[0] || {}).map((k: string) => ({ title: k, dataIndex: k, key: k }));
@@ -29,19 +48,19 @@ export function MessageRenderer({ content }: MessageRendererProps) {
           <div style={{ margin: '12px 0' }}>
             <Table
               dataSource={data.rows}
-              columns={columns}
+              columns={columns as TableProps<Record<string, unknown>>['columns']}
               size="small"
               pagination={data.rows.length > 5 ? { pageSize: 5 } : false}
               bordered
-              style={{ background: '#fff' }}
+              style={{ background: token.colorBgContainer }}
             />
           </div>
         );
       }
 
       if (data.type === 'chart') {
-        const chartData = data.data;
-        const config = data.config || { value: { label: 'Value', color: '#1890ff' } };
+        const chartData = data.data || [];
+        const config = data.config || { value: { label: 'Value', color: token.colorPrimary } };
         
         return (
           <Card size="small" style={{ margin: '12px 0' }}>
@@ -65,9 +84,12 @@ export function MessageRenderer({ content }: MessageRendererProps) {
                 ) : (
                   <ResponsiveContainer>
                     <PieChart>
-                      <Pie data={chartData} dataKey={data.yAxisKey || 'value'} nameKey={data.xAxisKey || 'name'} innerRadius={60} outerRadius={80}>
-                        {chartData.map((_: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={['#1890ff', '#2fc25b', '#facc14', '#f04864', '#8543e0'][index % 5]} />
+                      <Pie data={(chartData || []) as Record<string, unknown>[]} dataKey={data.yAxisKey || 'value'} nameKey={data.xAxisKey || 'name'} innerRadius={60} outerRadius={80}>
+                        {((chartData || []) as unknown[]).map((_, index: number) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={[token.colorPrimary, token.colorSuccess, token.colorWarning, token.colorError, token.colorInfo][index % 5]} 
+                          />
                         ))}
                       </Pie>
                       <ChartTooltip content={<ChartTooltipContent />} />
@@ -86,9 +108,8 @@ export function MessageRenderer({ content }: MessageRendererProps) {
   };
 
   const segments = useMemo(() => {
-    // Detect JSON blocks like ```json ... ``` or just { ... } if it's the whole message
     const regex = /```json\s*([\s\S]*?)\s*```/g;
-    const parts = [];
+    const parts: Segment[] = [];
     let lastIndex = 0;
     let match;
 
@@ -109,7 +130,7 @@ export function MessageRenderer({ content }: MessageRendererProps) {
 
   return (
     <div role="region" aria-label="Assistant message" className="chat-markdown">
-      {segments.map((segment: { type: string; value: string }, idx: number) => {
+      {segments.map((segment: Segment, idx: number) => {
         if (segment.type === 'rich') {
           return <div key={idx}>{renderRichContent(segment.value)}</div>;
         }

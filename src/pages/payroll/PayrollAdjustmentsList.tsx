@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Button, Card, Form, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
@@ -59,7 +59,7 @@ export function PayrollAdjustmentsList() {
   const list = listData?.data ?? [];
   const total = listData?.total ?? 0;
 
-  const runAction = async (id: number, fn: () => Promise<unknown>, msg: string) => {
+  const runAction = useCallback(async (id: number, fn: () => Promise<unknown>, msg: string) => {
     setBusyId(id);
     try {
       await fn();
@@ -71,7 +71,7 @@ export function PayrollAdjustmentsList() {
     } finally {
       setBusyId(null);
     }
-  };
+  }, [refetch]);
 
   const columns = useMemo<ColumnsType<PayrollAdjustment>>(
     () => [
@@ -151,7 +151,7 @@ export function PayrollAdjustmentsList() {
           ]
         : []),
     ],
-    [t, busyId, canApprove, rejectForm],
+    [t, busyId, canApprove, rejectForm, runAction],
   );
 
   return (

@@ -1,6 +1,6 @@
 import { DataProvider, BaseRecord, GetListParams, GetOneParams, CreateParams, UpdateParams, CrudFilter, type CustomParams } from '@refinedev/core';
 import simpleRestDataProvider from '@refinedev/simple-rest';
-import { API_BASE_URL } from '@/utils/constants';
+import { ENV } from '@/config/env';
 import api from '@/services/api';
 import { ENDPOINTS } from '@/services/endpoints';
 import { throwIfEnvelopeFailed, unwrapEnvelope } from '@/services/http';
@@ -88,7 +88,7 @@ const parseEnvelopeList = <TData extends BaseRecord>(resource: string, body: Env
 
 // Custom data provider that uses our axios instance
 export const dataProvider: DataProvider = {
-  ...simpleRestDataProvider(API_BASE_URL),
+  ...simpleRestDataProvider(ENV.API_BASE_URL),
 
   getList: async <TData extends BaseRecord = BaseRecord>(params: GetListParams) => {
     const { resource, pagination, filters, sorters, meta } = params;
@@ -122,16 +122,17 @@ export const dataProvider: DataProvider = {
 
       try {
         const response = await api.get(ENDPOINTS.leaveOps.base, { params: queryParams });
-        const body = response.data as any;
+        const body = response.data as EnvelopeLike<TData[]>;
         throwIfEnvelopeFailed(body);
-        const envelopeData = unwrapEnvelope<any>(body);
+        const envelopeData = unwrapEnvelope<unknown>(body);
         if (Array.isArray(envelopeData)) {
           return { data: envelopeData as TData[], total: body.meta?.total ?? envelopeData.length };
         }
-        if (envelopeData && Array.isArray(envelopeData.data)) {
+        if (envelopeData && typeof envelopeData === 'object' && 'data' in envelopeData && Array.isArray((envelopeData as { data: unknown }).data)) {
+          const nested = envelopeData as { data: TData[]; meta?: { total?: number } };
           return {
-            data: envelopeData.data as TData[],
-            total: envelopeData.meta?.total ?? body.meta?.total ?? envelopeData.data.length,
+            data: nested.data,
+            total: nested.meta?.total ?? body.meta?.total ?? nested.data.length,
           };
         }
       } catch (error) {
@@ -140,16 +141,17 @@ export const dataProvider: DataProvider = {
           throw error;
         }
         const fallback = await api.get(ENDPOINTS.workforce.leaveRequests, { params: queryParams });
-        const fallbackBody = fallback.data as any;
+        const fallbackBody = fallback.data as EnvelopeLike<TData[]>;
         throwIfEnvelopeFailed(fallbackBody);
-        const fallbackData = unwrapEnvelope<any>(fallbackBody);
+        const fallbackData = unwrapEnvelope<unknown>(fallbackBody);
         if (Array.isArray(fallbackData)) {
           return { data: fallbackData as TData[], total: fallbackBody.meta?.total ?? fallbackData.length };
         }
-        if (fallbackData && Array.isArray(fallbackData.data)) {
+        if (fallbackData && typeof fallbackData === 'object' && 'data' in fallbackData && Array.isArray((fallbackData as { data: unknown }).data)) {
+          const nested = fallbackData as { data: TData[]; meta?: { total?: number } };
           return {
-            data: fallbackData.data as TData[],
-            total: fallbackData.meta?.total ?? fallbackBody.meta?.total ?? fallbackData.data.length,
+            data: nested.data,
+            total: nested.meta?.total ?? fallbackBody.meta?.total ?? nested.data.length,
           };
         }
       }
@@ -182,6 +184,9 @@ export const dataProvider: DataProvider = {
       body = response.data;
     } catch (error) {
       const status = (error as ApiErrorLike)?.response?.status;
+      if (status === 403) {
+        throw new Error(`Forbidden resource "${resource}"`);
+      }
       if (isUnavailableStatus(status)) {
         const candidates = LEGACY_LIST_FALLBACKS[resource] ?? [];
         for (const candidate of candidates) {
@@ -198,6 +203,9 @@ export const dataProvider: DataProvider = {
         }
         if (!body) {
           RUNTIME_UNAVAILABLE_LIST_RESOURCES.add(resource);
+          if (status === 404 && !NOT_IMPLEMENTED_RESOURCES.has(resource)) {
+            throw new Error(`Missing endpoint for resource "${resource}"`);
+          }
           return { data: [], total: 0 };
         }
       } else {

@@ -75,7 +75,7 @@ export function UserForm(props: UserFormProps) {
         },
       });
     },
-    [t],
+    [t, toast],
   );
 
   const passwordMin = 8;

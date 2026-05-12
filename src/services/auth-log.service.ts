@@ -68,12 +68,12 @@ const authLogService = {
   },
 
   async revokeSession(sessionId: string): Promise<ApiResponse<null>> {
-    const response = await api.patch(ENDPOINTS.auth.sessions.revoke(sessionId));
+    const response = await api.post(ENDPOINTS.auth.sessions.revoke(sessionId));
     return response.data;
   },
 
   async lockAccountForSession(sessionId: string): Promise<ApiResponse<null>> {
-    const response = await api.patch(ENDPOINTS.auth.sessions.lockAccount(sessionId));
+    const response = await api.post(ENDPOINTS.auth.sessions.lockAccount(sessionId));
     return response.data;
   },
 };

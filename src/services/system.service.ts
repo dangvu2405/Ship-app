@@ -5,7 +5,6 @@ class SystemService {
   async checkApiHealth(): Promise<boolean> {
     try {
       await api.get(ENDPOINTS.public.health, {
-        useApiRoot: true,
         skipErrorToast: true,
         errorMode: 'silent',
       });

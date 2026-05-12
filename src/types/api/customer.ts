@@ -6,19 +6,10 @@ export type CustomerListParams = {
   pageSize?: number;
   search?: string;
   type?: CustomerType;
-  group_id?: number | string;
+  group_id?: number;
   status?: string;
   include_deleted?: boolean;
 };
-
-export interface ReconciliationSessionSummary {
-  id: number;
-  customer_id: number;
-  total_amount?: number;
-  status?: string;
-  created_at?: string;
-  updated_at?: string;
-}
 
 export type CustomerPaymentMethod = 'cash' | 'bank_transfer' | 'credit';
 
@@ -43,12 +34,11 @@ export interface CustomerDebtOverview {
   overdue_trips?: number;
 }
 
-export interface PriceListItem {
+export interface CustomerGroupItem {
   id: number;
-  price_list_id: number;
-  price: number;
-  price_unit: 'per_trip' | 'per_km' | 'per_ton';
-  notes?: string | null;
+  name: string;
+  code?: string | null;
+  description?: string | null;
 }
 
 export interface PriceList {
@@ -58,7 +48,27 @@ export interface PriceList {
   effective_from: string;
   effective_to?: string | null;
   notes?: string | null;
-  items?: PriceListItem[];
+}
+
+export interface PriceListItem {
+  id: number;
+  price_list_id: number;
+  route_template_id?: number | null;
+  vehicle_type_id?: number | null;
+  cargo_type_id?: number | null;
+  price: number;
+  price_unit: 'per_trip' | 'per_km' | 'per_ton';
+  notes?: string | null;
+}
+
+export interface ReconciliationSessionSummary {
+  id: number;
+  customer_id: number;
+  period_from?: string | null;
+  period_to?: string | null;
+  status?: string | null;
+  total_amount?: number | null;
+  created_at?: string;
 }
 
 export type CustomerListResponse = ApiResponse<PaginatedResponse<Customer>>;
@@ -66,6 +76,8 @@ export type CustomerDetailResponse = ApiResponse<Customer>;
 export type CustomerTripsResponse = ApiResponse<PaginatedResponse<Trip>>;
 export type CustomerDebtResponse = ApiResponse<CustomerDebtOverview>;
 export type CustomerPaymentsResponse = ApiResponse<PaginatedResponse<CustomerPayment>>;
+export type CustomerGroupsResponse = ApiResponse<PaginatedResponse<CustomerGroupItem>>;
 export type CustomerPriceListsResponse = ApiResponse<PriceList[]>;
-export type PriceListDetailResponse = ApiResponse<PriceList>;
-export type PriceListItemDetailResponse = ApiResponse<PriceListItem>;
+export type CustomerPriceListResponse = ApiResponse<PriceList>;
+export type CustomerPriceListItemResponse = ApiResponse<PriceListItem>;
+export type ReconciliationListResponse = ApiResponse<PaginatedResponse<ReconciliationSessionSummary>>;
