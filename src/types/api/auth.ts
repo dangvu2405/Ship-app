@@ -6,6 +6,7 @@ export type LoginResponse = {
   tenants?: Tenant[];
   token?: string;
   access_token?: string;
+  refreshToken?: string;
   refresh_token?: string;
 };
 

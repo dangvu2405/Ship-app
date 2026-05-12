@@ -2,7 +2,6 @@ import api from './api';
 import { ApiResponse, User } from '@/types';
 import { ENDPOINTS } from './endpoints';
 import { AUTH_FORGOT_PASSWORD } from '@/utils/constants';
-import { buildOriginUrl } from '@/config/env';
 
 export interface LoginCredentials {
   email: string;
@@ -33,7 +32,7 @@ class AuthService {
       return; // Bỏ qua nếu token đã được thiết lập bởi backend
     }
     try {
-      await api.get(buildOriginUrl('/sanctum/csrf-cookie'));
+      await api.get('/sanctum/csrf-cookie', { useApiRoot: true, withCredentials: true });
     } catch (err) {
       console.warn('[Auth] CSRF fetch failed. Check Sanctum config.', err);
     }
@@ -63,21 +62,40 @@ class AuthService {
     return AUTH_FORGOT_PASSWORD.verifyEnabled;
   }
 
-  async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: User }>> {
+  async login(
+    credentials: LoginCredentials,
+  ): Promise<
+    ApiResponse<{
+      user: User;
+      // Backend variants
+      token?: string;
+      refreshToken?: string;
+      access_token?: string;
+      refresh_token?: string;
+    }>
+  > {
     await this.ensureCsrfCookie();
 
-    const response = await api.post<ApiResponse<{ user: User }>>(ENDPOINTS.auth.login, credentials, { 
-      skipErrorToast: true, 
-      errorMode: 'silent' 
+    const response = await api.post<
+      ApiResponse<{
+        user: User;
+        token?: string;
+        refreshToken?: string;
+        access_token?: string;
+        refresh_token?: string;
+      }>
+    >(ENDPOINTS.auth.login, credentials, {
+      skipErrorToast: true,
+      errorMode: 'silent'
     });
     return response.data;
   }
 
   async socialLogin(credentials: SocialLoginCredentials): Promise<ApiResponse<{ user: User }>> {
     await this.ensureCsrfCookie();
-    const response = await api.post<ApiResponse<{ user: User }>>(ENDPOINTS.auth.socialLogin, credentials, { 
-      skipErrorToast: true, 
-      errorMode: 'silent' 
+    const response = await api.post<ApiResponse<{ user: User }>>(ENDPOINTS.auth.socialLogin, credentials, {
+      skipErrorToast: true,
+      errorMode: 'silent'
     });
     return response.data;
   }

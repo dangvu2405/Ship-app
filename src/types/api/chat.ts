@@ -1,43 +1,62 @@
 import type { ChatMessage, ChatSession } from '../domain/chat';
 
-export type SendChatMessagePayload = {
+export type SendChatMessageApiPayload = {
   message: string;
   task?: string;
   session_id?: string;
 };
 
-export type ChatMessageResponseData = {
+export type ChatMessageResponseResult = {
   session_id: string;
   message: ChatMessage;
 };
 
-export type ChatErrorPayload = {
+/** @deprecated Use ChatMessageResponseResult */
+export type ChatMessageResponseData = ChatMessageResponseResult;
+
+export type ChatStreamErrorEvent = {
   message: string;
 };
 
 export type ChatStreamEventName = 'meta' | 'chunk' | 'done' | 'error';
 
-export type ChatStreamMetaPayload = {
+export type ChatStreamMetaEvent = {
   session_id?: string;
   cached?: boolean;
   guarded?: boolean;
 };
 
-export type ChatStreamChunkPayload = {
-  chunk: string;
+export type ChatStreamChunkEvent = {
+  text?: string;
+  chunk?: string;
 };
 
-export type ChatStreamDonePayload = {
+export type ChatStreamDoneEvent = {
   session_id: string;
   message: ChatMessage;
 };
 
-export type ChatStreamEventPayloadByName = {
-  meta: ChatStreamMetaPayload;
-  chunk: ChatStreamChunkPayload;
-  done: ChatStreamDonePayload;
-  error: ChatErrorPayload;
+export type ChatStreamEventMap = {
+  meta: ChatStreamMetaEvent;
+  chunk: ChatStreamChunkEvent;
+  done: ChatStreamDoneEvent;
+  error: ChatStreamErrorEvent;
 };
+
+/** @deprecated Use ChatStreamErrorEvent */
+export type ChatErrorPayload = ChatStreamErrorEvent;
+
+/** @deprecated Use ChatStreamMetaEvent */
+export type ChatStreamMetaPayload = ChatStreamMetaEvent;
+
+/** @deprecated Use ChatStreamChunkEvent */
+export type ChatStreamChunkPayload = ChatStreamChunkEvent;
+
+/** @deprecated Use ChatStreamDoneEvent */
+export type ChatStreamDonePayload = ChatStreamDoneEvent;
+
+/** @deprecated Use ChatStreamEventMap */
+export type ChatStreamEventPayloadByName = ChatStreamEventMap;
 
 export type ChatSessionView = ChatSession & {
   active?: boolean;

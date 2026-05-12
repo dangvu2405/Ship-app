@@ -1,32 +1,31 @@
 import { STORAGE_KEYS } from '@/utils/constants';
 
+let remember = false;
+
+const getStorage = () => {
+  return remember ? localStorage : sessionStorage;
+};
+
 export const getAuthToken = (): string | null => {
-  // Rely on HttpOnly cookies for security. 
-  // Returning null here forces Axios to not send the Authorization header,
-  // allowing the browser to send the session cookie instead.
-  return null;
+  return getStorage().getItem(STORAGE_KEYS.AUTH_TOKEN);
 };
 
 export const getRefreshToken = (): string | null => {
-  return null;
+  return getStorage().getItem(STORAGE_KEYS.REFRESH_TOKEN);
 };
 
 export const hasAuthToken = (): boolean => {
-  // We can't check HttpOnly cookies from JS. 
-  // We'll rely on the auth store's isAuthenticated state instead.
-  return false; 
+  return !!getAuthToken();
 };
 
-/** persistent=true (default) → localStorage. persistent=false → sessionStorage. */
-export const setAuthToken = (token: string): void => {
-  void token;
-  // No-op: Token is now handled by HttpOnly cookies from the backend.
+export const setAuthToken = (token: string, rememberMe = true): void => {
+  remember = rememberMe;
+  getStorage().setItem(STORAGE_KEYS.AUTH_TOKEN, token);
 };
 
-/** persistent=true (default) → localStorage. persistent=false → sessionStorage. */
-export const setRefreshToken = (token: string): void => {
-  void token;
-  // No-op
+export const setRefreshToken = (token: string, rememberMe = true): void => {
+  remember = rememberMe;
+  getStorage().setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
 };
 
 export const clearAuthToken = (): void => {

@@ -10,6 +10,8 @@ import {
   clearAuthToken,
   clearTenantId,
   getTenantId,
+  setAuthToken,
+  setRefreshToken,
   setTenantId,
 } from '@/lib/auth-session';
 
@@ -29,7 +31,7 @@ interface AuthState {
   checkAuth: () => Promise<void>;
   setUser: (user: User | null) => void;
   /** Lưu token + user khi hoàn tất luồng ngoài form email/password (nếu có). */
-  setSession: (user: User, token?: string) => void;
+  setSession: (user: User, rememberMe?: boolean, token?: string, refreshToken?: string) => void;
   /** Chọn tenant sau khi login — ghi vào localStorage và cập nhật state. */
   selectTenant: (tenantId: number) => void;
   /** Xoá tenant hiện tại để switch sang tenant khác (đưa user về /select-tenant). */
@@ -98,9 +100,10 @@ export const useAuthStore = create<AuthState>()(
               ...response.data.user, 
               tenants: (response.data as any).tenants ?? response.data.user.tenants ?? [] 
             };
-            const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
-
-            set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
+            const data = response.data as any;
+            const token: string | undefined = data.token ?? data.access_token;
+            const refreshToken: string | undefined = data.refreshToken ?? data.refresh_token;
+            get().setSession(user, rememberMe, token, refreshToken);
             toast.success('Login successful');
           }
         } catch (error) {
@@ -163,7 +166,13 @@ export const useAuthStore = create<AuthState>()(
         set({ user, isAuthenticated: !!user });
       },
 
-      setSession: (user: User) => {
+      setSession: (user: User, rememberMe = true, token?: string, refreshToken?: string) => {
+        if (token) {
+          setAuthToken(token, rememberMe);
+        }
+        if (refreshToken) {
+          setRefreshToken(refreshToken, rememberMe);
+        }
         const storedTenantId = getTenantId();
         const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, storedTenantId);
         set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });

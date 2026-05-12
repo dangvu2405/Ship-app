@@ -1,7 +1,14 @@
 import api from './api';
 import { ENDPOINTS } from './endpoints';
 import type { ApiResponse, ChatMessage, ChatSession } from '@/types';
-import type { ChatTask } from '@/utils/chatPrompt';
+import type {
+  ChatStreamChunkEvent,
+  ChatStreamErrorEvent,
+  ChatStreamHandlers,
+  ChatStreamMetaEvent,
+  SendChatMessagePayload,
+  SendChatMessageResult,
+} from '@/types';
 import {
   normalizeChatMessages,
   normalizeChatSessions,
@@ -11,49 +18,9 @@ import {
 import { getTenantId } from '@/lib/auth-session';
 import { buildApiUrl } from '@/config/env';
 
-export interface SendChatMessagePayload {
-  content?: string;
-  message?: string;
-  task?: ChatTask;
-  session_id?: string;
-  context?: Record<string, unknown>;
-  model?: string;
-}
-
-export interface SendChatMessageResult {
-  session_id?: string;
-  session?: ChatSession;
-  message?: ChatMessage;
-  response_text?: string;
-  model?: string;
-  cached?: boolean;
-  guarded?: boolean;
-}
-
-interface StreamMetaEvent {
-  session_id?: string;
-  cached?: boolean;
-  guarded?: boolean;
-}
-
-interface StreamChunkEvent {
-  index?: number;
-  text?: string;
-}
-
+// Internal types — chỉ dùng trong file này, không export ra ngoài
+// Dùng "type" thay vì "interface" để báo hiệu đây là nội bộ
 type StreamDoneEvent = SendChatMessageResult;
-
-interface StreamErrorEvent {
-  message?: string;
-  [key: string]: unknown;
-}
-
-interface StreamHandlers {
-  onMeta?: (meta: StreamMetaEvent) => void;
-  onChunk?: (chunk: StreamChunkEvent) => void;
-  onDone?: (done: StreamDoneEvent) => void;
-  onError?: (error: StreamErrorEvent) => void;
-}
 
 class ChatService {
   private toApiPayload(payload: SendChatMessagePayload) {
@@ -91,7 +58,7 @@ class ChatService {
     };
   }
 
-  async sendMessageStream(payload: SendChatMessagePayload, handlers: StreamHandlers = {}, signal?: AbortSignal): Promise<StreamDoneEvent | undefined> {
+  async sendMessageStream(payload: SendChatMessagePayload, handlers: ChatStreamHandlers = {}, signal?: AbortSignal): Promise<StreamDoneEvent | undefined> {
     const tenantId = getTenantId();
     const response = await fetch(buildApiUrl(ENDPOINTS.chat.messagesStream), {
       method: 'POST',
@@ -141,16 +108,16 @@ class ChatService {
       }
 
       if (name === 'meta' && typeof data === 'object' && data !== null) {
-        handlers.onMeta?.(data as StreamMetaEvent);
+        handlers.onMeta?.(data as ChatStreamMetaEvent);
       } else if (name === 'chunk' && typeof data === 'object' && data !== null) {
-        handlers.onChunk?.(data as StreamChunkEvent);
+        handlers.onChunk?.(data as ChatStreamChunkEvent);
       } else if (name === 'done' && typeof data === 'object' && data !== null) {
         const normalizedDone = normalizeSendMessageDonePayload(data);
         donePayload = normalizedDone;
         handlers.onDone?.(normalizedDone);
       } else if (name === 'error' && typeof data === 'object' && data !== null) {
-        handlers.onError?.(data as StreamErrorEvent);
-        throw new Error((data as StreamErrorEvent).message || 'Chat stream error');
+        handlers.onError?.(data as ChatStreamErrorEvent);
+        throw new Error((data as ChatStreamErrorEvent).message || 'Chat stream error');
       }
     };
 

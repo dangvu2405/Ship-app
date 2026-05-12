@@ -11,6 +11,9 @@ export * from './domain/fleet';
 export * from './domain/payroll';
 export * from './domain/workforce';
 
+// Module Chat (service-level public types)
+export * from './chat.types';
+
 export * from './api/auth';
 export * from './api/company';
 export * from './api/customer';

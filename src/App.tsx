@@ -5,7 +5,7 @@ import routerProvider, { UnsavedChangesNotifier, DocumentTitleHandler } from '@r
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
 import { shipEnterpriseTheme } from '@/providers/theme-provider';
-import { Fragment, Suspense, useEffect } from 'react';
+import { Fragment, Suspense, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { antdUtils } from './utils/antdGlobal';
@@ -132,13 +132,15 @@ function App() {
 
   const { defaultAlgorithm, darkAlgorithm } = antdTheme;
 
+  const memoizedTheme = useMemo(() => ({
+    ...shipEnterpriseTheme,
+    algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm,
+  }), [theme, defaultAlgorithm, darkAlgorithm]);
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ConfigProvider
-        theme={{
-          ...shipEnterpriseTheme,
-          algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm,
-        }}
+        theme={memoizedTheme}
       >
         <AntdApp>
           <QueryClientProvider client={queryClient}>

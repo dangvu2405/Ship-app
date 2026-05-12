@@ -4,6 +4,7 @@ import authService from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
 import { getErrorStatus } from '@/utils/errorHandler';
+import { clearAuthToken, hasAuthToken } from '@/lib/auth-session';
 
 const getAuthStoreState = () => {
   return useAuthStore.getState();
@@ -28,14 +29,23 @@ const normalizeLoginUser = (response: { data?: { user: User; tenants?: User['ten
 };
 
 export const authProvider: AuthProvider = {
-  login: async ({ email, password }) => {
+  login: async ({ email, password, remember }) => {
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password, remember });
 
       if (response.success && response.data?.user) {
         const user = normalizeLoginUser(response as { data: { user: User } });
-        useAuthStore.getState().setSession(user);
+        
+        // Set session will handle tokens and tenant resolution
+        useAuthStore.getState().setSession(
+          user,
+          remember,
+          response.data.token,
+          response.data.refreshToken
+        );
+
         const { currentTenantId } = useAuthStore.getState();
+        
         return {
           success: true,
           redirectTo: currentTenantId ? ROUTES.dashboard : ROUTES.selectTenant,
@@ -73,32 +83,32 @@ export const authProvider: AuthProvider = {
   },
 
   check: async () => {
-    const UNAUTHENTICATED = { authenticated: false, redirectTo: ROUTES.login, logout: true } as const;
-    const AUTHENTICATED = { authenticated: true } as const;
+    const UNAUTHENTICATED = { authenticated: false, redirectTo: ROUTES.login, logout: true };
+    
+    if (!hasAuthToken()) {
+      return UNAUTHENTICATED;
+    }
 
-    const tryGetCurrentUser = async (): Promise<boolean> => {
-      try {
-        const response = await authService.getCurrentUser();
-        const user = authService.getUserFromMeResponse(response);
-        if (response.success && user) {
-          useAuthStore.getState().setSession(user);
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
+    try {
+      const response = await authService.getCurrentUser();
+      const user = authService.getUserFromMeResponse(response);
+      if (response.success && user) {
+        // Set session will re-validate tenant context
+        useAuthStore.getState().setSession(user);
+        return { authenticated: true };
       }
-    };
-
-    if (await tryGetCurrentUser()) return AUTHENTICATED;
-
-    useAuthStore.getState().clearClientSession();
-
-    return UNAUTHENTICATED;
+      
+      useAuthStore.getState().clearClientSession();
+      return UNAUTHENTICATED;
+    } catch (error) {
+      useAuthStore.getState().clearClientSession();
+      return UNAUTHENTICATED;
+    }
   },
 
   onError: async (error) => {
     if (error?.status === 401) {
+      clearAuthToken();
       useAuthStore.getState().clearClientSession();
       return {
         logout: true,

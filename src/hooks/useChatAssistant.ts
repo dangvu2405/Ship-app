@@ -105,7 +105,8 @@ export function useChatAssistant({
                 streamMeta = { cached: meta.cached, guarded: meta.guarded };
               },
               onChunk: (chunk) => {
-                if (!chunk.text) return;
+                const chunkText = chunk.text ?? chunk.chunk;
+                if (!chunkText) return;
                 attemptHadChunk = true;
                 hadAnyStreamChunk = true;
                 setMessages((prev) =>
@@ -115,8 +116,8 @@ export function useChatAssistant({
                           ...item,
                           content:
                             item.content === t('notificationCenter.chat.waitingResponse')
-                              ? chunk.text ?? ''
-                              : `${item.content}${chunk.text ?? ''}`,
+                              ? chunkText
+                              : `${item.content}${chunkText}`,
                           isPending: true,
                           isError: false,
                         }

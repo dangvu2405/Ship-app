@@ -16,7 +16,8 @@ export const ENDPOINTS = {
     login: '/auth/login',
     socialLogin: '/auth/social/login',
     logout: '/auth/logout',
-    refresh: '/auth/refresh',
+    // Backend exposes public refresh-by-token endpoint as /auth/refresh-token
+    refresh: '/auth/refresh-token',
     register: '/auth/register',
     me: '/auth/me',
     forgotPassword: '/auth/forgot-password',

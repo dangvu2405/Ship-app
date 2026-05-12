@@ -11,7 +11,7 @@ import {
   shouldHandleGlobalErrorToast,
 } from '@/utils/errorHandler';
 import { antdUtils } from '@/utils/antdGlobal';
-import { clearAuthToken, getTenantId } from './auth-session';
+import { clearAuthToken, getAuthToken, getRefreshToken, getTenantId, setAuthToken } from './auth-session';
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -100,16 +100,25 @@ const forceLogout = () => {
 
 const attemptRefresh = async (): Promise<boolean> => {
   try {
-    const response: AxiosResponse<{ success?: boolean }> = await axios.post(
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      return false;
+    }
+    const response: AxiosResponse<{ success?: boolean; data?: { access_token?: string; token?: string } }> = await axios.post(
       `${ENV.API_BASE_URL}${ENDPOINTS.auth.refresh}`,
-      {},
+      // Support both snake_case and camelCase payloads (backend variants).
+      { refresh_token: refreshToken, refreshToken },
       {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        withCredentials: true,
         timeout: ENV.AXIOS_TIMEOUT_MS,
       },
     );
-    return response.data?.success === true;
+    const nextToken = response.data?.data?.access_token ?? response.data?.data?.token;
+    if (response.data?.success && nextToken) {
+      setAuthToken(nextToken);
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -122,11 +131,15 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  withCredentials: true,
 });
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig & { useApiRoot?: boolean }) => {
+    const token = getAuthToken();
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+
     if (config.useApiRoot) {
       config.baseURL = ENV.API_ROOT_URL;
       delete config.useApiRoot;
@@ -172,7 +185,10 @@ api.interceptors.response.use(
       }
     }
 
-    const isAuthEndpoint = config?.url?.includes('/auth/');
+    const url = String(config?.url ?? '');
+    // `config.url` can be '/auth/login' OR 'auth/login' (we strip leading '/' in request interceptor)
+    // OR a full absolute URL. Treat all as auth endpoints consistently.
+    const isAuthEndpoint = /(^|\/|\b)auth\//.test(url);
     if (status === 401 && config && !config._retry && !isAuthEndpoint) {
       if (AUTH_REFRESH_ENABLED) {
         if (isRefreshing) {
