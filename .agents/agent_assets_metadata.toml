@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Wt33yduv6jV-Tgyp753wo"
+uri = "file://reports/ui-test-report.md"
+type = "text"
+title = "UI Test Report — Ship ERP"
