@@ -38,8 +38,9 @@ export function NavUser({
     : user.email?.[0].toUpperCase() || 'U';
 
   const handleLogout = () => {
-    logout();
-    navigate(ROUTES.login);
+    logout({
+      redirectPath: ROUTES.login,
+    });
   };
 
   const dropdownItems: MenuProps['items'] = [

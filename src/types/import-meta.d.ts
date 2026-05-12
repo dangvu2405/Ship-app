@@ -1,9 +1,8 @@
 interface ImportMetaEnv {
   readonly DEV?: boolean;
-  readonly VITE_API_PREFIX?: string;
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_API_ORIGIN?: string;
-  readonly VITE_PROXY_TARGET?: string;
+  readonly VITE_API_TIMEOUT_MS?: string;
   readonly VITE_AUTH_FORGOT_PASSWORD_SEND_ENABLED?: string;
   readonly VITE_AUTH_FORGOT_PASSWORD_VERIFY_ENABLED?: string;
   readonly VITE_AUTH_FORGOT_PASSWORD_PATH?: string;

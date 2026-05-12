@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Badge, Descriptions, Form } from 'antd';
 import type { DescriptionsProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import type { UploadProps } from 'antd/es/upload';
-import { Inbox } from 'lucide-react';
+import { InboxOutlined } from '@ant-design/icons';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
 import { useList } from '@refinedev/core';
 import {
@@ -18,26 +18,31 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 import api from '@/services/api';
+import { ENDPOINTS } from '@/services/endpoints';
 import type { Driver, Employee } from '@/types';
 
 /** Vietnam-friendly phone pattern; reused if a phone field is added at form level. */
 export const PHONE_PATTERN = /^[0-9+()\-\s]{8,15}$/;
 
-let licenseCheckTimer: ReturnType<typeof setTimeout> | null = null;
-const checkLicenseUnique = (licenseNo: string, currentId?: number): Promise<boolean> =>
-  new Promise((resolve) => {
-    if (licenseCheckTimer) clearTimeout(licenseCheckTimer);
-    licenseCheckTimer = setTimeout(async () => {
-      try {
-        const res = await api.get('/drivers', { params: { license_no: licenseNo, per_page: 5 } });
-        const data = (res.data?.data?.data ?? res.data?.data ?? []) as Array<{ id: number; license_no?: string }>;
-        const conflict = Array.isArray(data) && data.some((d) => (d.license_no ?? '').toUpperCase() === licenseNo.toUpperCase() && d.id !== currentId);
-        resolve(!conflict);
-      } catch {
-        resolve(true);
-      }
-    }, 400);
-  });
+import React from 'react';
+const useLicenseCheckUnique = () => {
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  return useCallback((licenseNo: string, currentId?: number) =>
+    new Promise<boolean>((resolve) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(async () => {
+        try {
+          const res = await api.get(ENDPOINTS.drivers.base, { params: { license_no: licenseNo, per_page: 5 } });
+          const data = (res.data?.data?.data ?? res.data?.data ?? []) as Array<{ id: number; license_no?: string }>;
+          const conflict = Array.isArray(data) && data.some((d) => (d.license_no ?? '').toUpperCase() === licenseNo.toUpperCase() && d.id !== currentId);
+          resolve(!conflict);
+        } catch {
+          resolve(true);
+        }
+      }, 400);
+    }), []);
+};
 
 interface DriverFormProps {
   form: ReturnType<typeof Form.useForm>[0];
@@ -51,6 +56,7 @@ const normFile = (e: { fileList?: UploadFile[] }) => e?.fileList ?? [];
 
 export function DriverForm(props: DriverFormProps) {
   const { form, initialValues, isViewMode } = props;
+  const checkLicenseUnique = useLicenseCheckUnique();
   const { t } = useTranslation();
   const feedback = useAppFeedback();
 
@@ -76,16 +82,30 @@ export function DriverForm(props: DriverFormProps) {
     filters: [{ field: 'status', operator: 'eq', value: 'active' }],
     sorters: [{ field: 'name', order: 'asc' }],
   });
-  const employeeOptions = (empData?.data ?? []).map((e) => ({
+
+  const employeeOptions = useMemo(() => (empData?.data ?? []).map((e) => ({
     label: `${e.code} — ${e.name}`,
     value: e.id,
-  }));
+  })), [empData?.data]);
 
-  const statusOptions = [
+  const statusOptions = useMemo(() => [
     { label: t('drivers.statusAvailable'), value: 'available' },
     { label: t('drivers.statusOnTrip'), value: 'on_trip' },
     { label: t('drivers.statusOff'), value: 'off' },
-  ];
+  ], [t]);
+
+  const requireUploadUnlessUrl = useCallback((urlField: keyof Driver) => ({
+    validator: async (_: unknown, value: UploadFile[]) => {
+      const existingUrl = initialValues?.[urlField];
+      if (typeof existingUrl === 'string' && existingUrl.trim()) {
+        return;
+      }
+      if (uploadListOk(value)) {
+        return;
+      }
+      throw new Error(t('drivers.uploadRequired'));
+    },
+  }), [initialValues, t]);
 
   if (isViewMode) {
     const statusLabel =
@@ -172,19 +192,6 @@ export function DriverForm(props: DriverFormProps) {
 
     return <Descriptions title={t('common.view')} layout="vertical" bordered column={3} items={items} />;
   }
-
-  const requireUploadUnlessUrl = (urlField: keyof Driver) => ({
-    validator: async (_: unknown, value: UploadFile[]) => {
-      const existingUrl = initialValues?.[urlField];
-      if (typeof existingUrl === 'string' && existingUrl.trim()) {
-        return;
-      }
-      if (uploadListOk(value)) {
-        return;
-      }
-      throw new Error(t('drivers.uploadRequired'));
-    },
-  });
 
   return (
     <FormAccordionSections
@@ -307,7 +314,7 @@ export function DriverForm(props: DriverFormProps) {
                     }}
                   >
                     <p className="flex justify-center">
-                      <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden />
+                      <InboxOutlined style={{ fontSize: 48, color: '#bfbfbf' }} />
                     </p>
                     <p className="text-xs text-muted-foreground">{t('drivers.idCardFront')}</p>
                   </FormItemUploadDragger>
@@ -326,7 +333,7 @@ export function DriverForm(props: DriverFormProps) {
                     }}
                   >
                     <p className="flex justify-center">
-                      <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden />
+                      <InboxOutlined style={{ fontSize: 48, color: '#bfbfbf' }} />
                     </p>
                     <p className="text-xs text-muted-foreground">{t('drivers.idCardBack')}</p>
                   </FormItemUploadDragger>
@@ -383,7 +390,7 @@ export function DriverForm(props: DriverFormProps) {
                     }}
                   >
                     <p className="flex justify-center">
-                      <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden />
+                      <InboxOutlined style={{ fontSize: 48, color: '#bfbfbf' }} />
                     </p>
                     <p className="text-xs text-muted-foreground">{t('drivers.insuranceDoc')}</p>
                   </FormItemUploadDragger>

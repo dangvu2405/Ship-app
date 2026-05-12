@@ -114,7 +114,7 @@ export const AuthLogsAndSessionManagement = () => {
     } finally {
       setSummaryLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const loadSessionsPage = useCallback(async (page: number) => {
     setSessionsLoading(true);
@@ -132,7 +132,7 @@ export const AuthLogsAndSessionManagement = () => {
     } finally {
       setSessionsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     void loadSummary();
@@ -161,7 +161,7 @@ export const AuthLogsAndSessionManagement = () => {
     } finally {
       setAuditLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const paginatedAuditLogs = useMemo(() => {
     const start = (auditCurrentPage - 1) * AUDIT_PAGE_SIZE;
@@ -196,7 +196,7 @@ export const AuthLogsAndSessionManagement = () => {
         toast.error(getErrorMessage(error) || t('notificationCenter.sessions.actionError'));
       }
     },
-    [t, currentPage, loadSummary, loadSessionsPage],
+    [t, currentPage, loadSummary, loadSessionsPage, toast],
   );
 
   const openLogoutConfirm = useCallback((sessionId: string) => setLogoutConfirmId(sessionId), []);

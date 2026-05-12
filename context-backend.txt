@@ -1,0 +1,32 @@
+BACKEND CONTEXT EXPORT (placeholder)
+
+Repo path: /home/vumoi/company_ship/ship-app
+Generated at: 2026-05-12
+
+Status
+- GitNexus CLI in this environment does NOT support `gitnexus export` (command not found).
+  Available commands include: analyze, query, context, impact, detect-changes, wiki, ...
+- This repository appears to be a frontend React/Vite project and does not contain a Laravel backend layout.
+
+Requested focus paths (missing in this repo)
+- app/Http/Controllers/
+- app/Http/Requests/
+- app/Http/Resources/
+- app/Http/Middleware/
+- app/Models/
+- app/Services/
+- app/Jobs/
+- app/Events/
+- app/Listeners/
+- app/Policies/
+- app/Providers/
+- database/migrations/
+- database/seeders/
+- routes/
+- config/
+
+Next steps (choose one)
+1) If you intended to scan a Laravel backend, run this in the correct backend repo (or add the backend subfolder and update --focus paths accordingly).
+2) If your backend lives elsewhere (monorepo), provide the correct paths (e.g. backend/app/Http, backend/routes, backend/database).
+3) If you want a similar “export focused folders into one file” for this frontend repo, say so and I’ll generate `context-frontend.txt` from `src/`, `vite.config.ts`, etc.
+

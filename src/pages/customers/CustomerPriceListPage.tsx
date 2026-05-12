@@ -5,7 +5,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useCustomerList, useCustomerPriceLists, useCreatePriceList, useAddPriceListItem } from '@/hooks/useCustomers';
+import { useCustomerList, useCustomerPriceLists } from '@/hooks/useCustomerList';
+import { useCreatePriceList, useAddPriceListItem } from '@/hooks/useCustomerMutations';
 import type { PriceList } from '@/types/api/customer';
 
 

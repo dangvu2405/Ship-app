@@ -8,8 +8,8 @@ import {
   normalizeSendMessageDonePayload,
   normalizeSendMessagePayload,
 } from '@/utils/chatResponse';
-import { API_BASE_URL } from '@/utils/constants';
-import { getAuthToken, getTenantId } from '@/lib/auth-session';
+import { getTenantId } from '@/lib/auth-session';
+import { buildApiUrl } from '@/config/env';
 
 export interface SendChatMessagePayload {
   content?: string;
@@ -91,18 +91,18 @@ class ChatService {
     };
   }
 
-  async sendMessageStream(payload: SendChatMessagePayload, handlers: StreamHandlers = {}): Promise<StreamDoneEvent | undefined> {
-    const token = getAuthToken();
+  async sendMessageStream(payload: SendChatMessagePayload, handlers: StreamHandlers = {}, signal?: AbortSignal): Promise<StreamDoneEvent | undefined> {
     const tenantId = getTenantId();
-    const response = await fetch(`${API_BASE_URL}${ENDPOINTS.chat.messagesStream}`, {
+    const response = await fetch(buildApiUrl(ENDPOINTS.chat.messagesStream), {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
-        ...(token    ? { Authorization: `Bearer ${token}` } : {}),
         ...(tenantId ? { 'X-Tenant-ID': String(tenantId) } : {}),
       },
       body: JSON.stringify(this.toApiPayload(payload)),
+      signal,
     });
 
     if (!response.ok || !response.body) {

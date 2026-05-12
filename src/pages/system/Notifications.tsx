@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { BellRing } from 'lucide-react';
+import { BellOutlined } from '@ant-design/icons';
 import { useTable } from '@refinedev/antd';
 import { Button, Card, Flex, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -111,7 +111,7 @@ export function Notifications() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <BellRing className="h-5 w-5 text-primary" />
+          <BellOutlined style={{ fontSize: 20, color: 'var(--ant-primary-color)' }} />
           <h1>{t('notificationCenter.title')}</h1>
         </div>
         <p className="text-muted-foreground">{t('notificationCenter.description')}</p>

@@ -1,17 +1,22 @@
 import { useQuery, type QueryKey, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import api from '@/services/api';
 import type { ApiResponse } from '@/types';
 
 // Track consecutive 401 occurrences globally to trigger forced logout after N failures.
 const AUTH_401_COUNTER_KEY = '__app_auth_401_count';
+
+interface CustomWindow extends Window {
+  [AUTH_401_COUNTER_KEY]?: number;
+}
+
 const increment401Count = (): number => {
-  // store on window to survive across hook instances
-  const w = window as any;
+  const w = window as unknown as CustomWindow;
   w[AUTH_401_COUNTER_KEY] = (w[AUTH_401_COUNTER_KEY] || 0) + 1;
   return w[AUTH_401_COUNTER_KEY];
 };
 const reset401Count = (): void => {
-  (window as any)[AUTH_401_COUNTER_KEY] = 0;
+  (window as unknown as CustomWindow)[AUTH_401_COUNTER_KEY] = 0;
 };
 
 type UseRequestConfig<TData> = {
@@ -51,7 +56,7 @@ export function useRequest<TData>(config: UseRequestConfig<TData>): UseQueryResu
     refetchInterval,
     // Retry at most 3 times with react-query default backoff
     retry: (failureCount: number, error: unknown) => {
-      const respStatus = (error as any)?.response?.status;
+      const respStatus = isAxiosError(error) ? error.response?.status : undefined;
       if (respStatus === 401) {
         const count = increment401Count();
         // If we've seen 3 or more 401s globally, trigger force-logout event (session expired)

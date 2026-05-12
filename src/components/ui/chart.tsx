@@ -86,6 +86,16 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     ([, config]) => config.theme ?? config.color
   )
 
+  const isSafeCssColor = (value: string) => {
+    const v = value.trim()
+    return (
+      /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(v) ||
+      /^rgb(a)?\(/.test(v) ||
+      /^hsl(a)?\(/.test(v) ||
+      /^var\(--[a-zA-Z0-9-_]+\)$/.test(v)
+    )
+  }
+
   if (!colorConfig.length) {
     return null
   }
@@ -96,13 +106,15 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart="${id}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    if (!color) return null
+    if (!isSafeCssColor(color)) return null
+    return `  --color-${key}: ${color};`
   })
   .join("\n")}
 }

@@ -72,7 +72,7 @@ class PayrollService {
 
   /** Xuất bảng lương tổng hợp theo kỳ (Excel). */
   async downloadPayrollAggregateExport(params: { month: number; year: number; driver_id?: number }): Promise<void> {
-    const query = new URLSearchParams(params as any).toString();
+    const query = new URLSearchParams(params as unknown as Record<string, string>).toString();
     return this.downloadBlob(ENDPOINTS.payrolls.exportAggregate + `?${query}`, `payroll-aggregate-${params.month}-${params.year}.xlsx`);
   }
 

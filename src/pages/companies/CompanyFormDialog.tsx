@@ -45,7 +45,7 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
     onClose: handleClose,
   });
 
-  const handleSubmit = (values: any) => {
+  const handleSubmit = (values: Partial<Company> & Record<string, unknown>) => {
     const payload = { ...values };
     
     // Gộp các trường địa chỉ từ VnAdminAddressFields thành chuỗi address
@@ -55,7 +55,7 @@ export function CompanyFormDialog({ open, mode, recordId, onClose, onSuccess }: 
         payload.addr_ward_name,
         payload.addr_district_name,
         payload.addr_province_name,
-      ].filter(Boolean).map((p: string) => p.trim());
+      ].filter((p): p is string => typeof p === 'string' && p.trim() !== '').map((p) => p.trim());
       
       if (parts.length > 0) {
         payload.address = parts.join(', ');

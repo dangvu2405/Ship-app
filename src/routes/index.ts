@@ -17,7 +17,6 @@ const tripsCrudRoutes = ordersCrudRoutes;
 export const ROUTES = {
   root: '/',
   login: '/login',
-  noRoleAccess: '/no-role-access',
   googleCallback: '/auth/google/callback',
   register: '/register',
   forgotPassword: '/forgot-password',
@@ -27,15 +26,22 @@ export const ROUTES = {
   admin: {
     root: ADMIN_PREFIX,
     companies: createCrudRoutes('companies'),
+    offices: createCrudRoutes('offices'),
+    departments: createCrudRoutes('departments'),
+    positions: createCrudRoutes('positions'),
     vehicles: createCrudRoutes('vehicles'),
     vehicleMaintenance: `${ADMIN_PREFIX}/vehicles/maintenance`,
-    vehicleAssignments: `${ADMIN_PREFIX}/vehicles/assignments`,
     vehicleCosts: `${ADMIN_PREFIX}/vehicles/costs`,
     trips: tripsCrudRoutes,
+    trip_bonus_rules: createCrudRoutes('trip-bonus-rules'),
     dispatch: {
       board: `${ADMIN_PREFIX}/dispatch`,
       today: `${ADMIN_PREFIX}/dispatch/today`,
     },
+    vehicleAssignments: createCrudRoutes('vehicles/assignments'),
+    vehicle_assignments: createCrudRoutes('vehicles/assignments'),
+    vehicleExpenses: createCrudRoutes('vehicles/expenses'),
+    vehicle_expenses: createCrudRoutes('vehicles/expenses'),
     orders: {
       list: ordersCrudRoutes.list,
       create: ordersCrudRoutes.create,
@@ -54,10 +60,14 @@ export const ROUTES = {
     tripBonusRules: `${ADMIN_PREFIX}/trip-bonus-rules`,
     payroll: {
       list: `${ADMIN_PREFIX}/payroll`,
-      adjustments: `${ADMIN_PREFIX}/payroll/adjustments`,
-      allowances: `${ADMIN_PREFIX}/payroll/allowances`,
-      deductions: `${ADMIN_PREFIX}/payroll/deductions`,
+      adjustments: createCrudRoutes('payroll/adjustments'),
+      allowances: createCrudRoutes('payroll/allowances'),
+      deductions: createCrudRoutes('payroll/deductions'),
     },
+    payroll_adjustments: createCrudRoutes('payroll/adjustments'),
+    allowances: createCrudRoutes('payroll/allowances'),
+    deductions: createCrudRoutes('payroll/deductions'),
+    payrolls: createCrudRoutes('payroll'),
     invoices: createCrudRoutes('invoices'),
     accounting: {
       revenue: `${ADMIN_PREFIX}/accounting/revenue`,
@@ -71,6 +81,7 @@ export const ROUTES = {
       overview: `${ADMIN_PREFIX}/reports/overview`,
     },
     users: createCrudRoutes('users'),
+    roles: createCrudRoutes('roles'),
     profile: `${ADMIN_PREFIX}/profile`,
     settings: {
       root: `${ADMIN_PREFIX}/settings`,

@@ -57,7 +57,7 @@ export function TripCostsTab({ tripId }: TripCostsTabProps) {
     queryFn: () => costService.listCostCategories({ per_page: 200 }),
   });
 
-  const categories = categoriesResult?.data ?? [];
+  const categories = useMemo(() => categoriesResult?.data ?? [], [categoriesResult?.data]);
 
   const { tableProps, tableQuery } = useTable<TripCost>({
     resource: 'trip-costs',

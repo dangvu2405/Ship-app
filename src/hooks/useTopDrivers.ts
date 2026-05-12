@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@/services/api';
+import { ENDPOINTS } from '@/services/endpoints';
 import { getErrorMessage } from '@/utils/errorHandler';
 import type { Trip } from '@/types';
 
@@ -24,7 +25,7 @@ export function useTopDrivers(options: { companyId?: number; month: number; year
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/trips', {
+      const res = await api.get(ENDPOINTS.trips.base, {
         params: {
           status: 'completed',
           month,

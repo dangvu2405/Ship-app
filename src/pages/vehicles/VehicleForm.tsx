@@ -19,23 +19,28 @@ import { getErrorMessage } from '@/utils/errorHandler';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 import { fetchVpicAllMakes, fetchVpicModelsForMake } from '@/utils/vpicNhtsa';
 import api from '@/services/api';
+import { ENDPOINTS } from '@/services/endpoints';
 import type { Vehicle, VehicleTypeCatalog } from '@/types';
 
-let plateCheckTimer: ReturnType<typeof setTimeout> | null = null;
-const checkPlateUnique = (plate: string, currentId?: number): Promise<boolean> =>
-  new Promise((resolve) => {
-    if (plateCheckTimer) clearTimeout(plateCheckTimer);
-    plateCheckTimer = setTimeout(async () => {
-      try {
-        const res = await api.get('/vehicles', { params: { plate_number: plate, per_page: 5 } });
-        const data = (res.data?.data?.data ?? res.data?.data ?? []) as Array<{ id: number; plate_number?: string }>;
-        const conflict = Array.isArray(data) && data.some((v) => v.plate_number?.toUpperCase() === plate.toUpperCase() && v.id !== currentId);
-        resolve(!conflict);
-      } catch {
-        resolve(true);
-      }
-    }, 400);
-  });
+import React from 'react';
+const usePlateCheckUnique = () => {
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  return (plate: string, currentId?: number) =>
+    new Promise<boolean>((resolve) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(async () => {
+        try {
+          const res = await api.get(ENDPOINTS.vehicles.base, { params: { plate_number: plate, per_page: 5 } });
+          const data = (res.data?.data?.data ?? res.data?.data ?? []) as Array<{ id: number; plate_number?: string }>;
+          const conflict = Array.isArray(data) && data.some((v) => v.plate_number?.toUpperCase() === plate.toUpperCase() && v.id !== currentId);
+          resolve(!conflict);
+        } catch {
+          resolve(true);
+        }
+      }, 400);
+    });
+};
 
 interface VehicleFormProps {
   form: ReturnType<typeof Form.useForm>[0];
@@ -48,6 +53,7 @@ const normUploadFileList = (e: { fileList?: UploadFile[] }) => e?.fileList ?? []
 
 export function VehicleForm(props: VehicleFormProps) {
   const { form, initialValues, isViewMode, isEdit } = props;
+  const checkPlateUnique = usePlateCheckUnique();
   const { t } = useTranslation();
   const feedback = useAppFeedback();
   const brandWatch = Form.useWatch('brand', form);

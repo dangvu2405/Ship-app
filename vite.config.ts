@@ -8,11 +8,36 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, '')
-  // Đồng bộ VITE_API_ORIGIN với APP_URL backend (chỉ origin, không /api). VITE_PROXY_TARGET = alias cũ.
-  const proxyTarget =
-    env.VITE_API_ORIGIN?.trim() ||
-    env.VITE_PROXY_TARGET?.trim() ||
-    'https://ship-app-api.onrender.com'
+  const proxyTarget = env.VITE_API_ORIGIN?.trim() || 'http://localhost:8080'
+  const apiPrefix = env.VITE_API_BASE_URL?.trim() || '/api'
+  const normalizedApiPrefix = apiPrefix.startsWith('/') ? apiPrefix : `/${apiPrefix}`
+  const proxyConfig = {
+    [normalizedApiPrefix]: {
+      target: proxyTarget,
+      changeOrigin: true,
+      secure: false,
+    },
+    '/sanctum': {
+      target: proxyTarget,
+      changeOrigin: true,
+      secure: false,
+    },
+    '/health': {
+      target: proxyTarget,
+      changeOrigin: true,
+      secure: false,
+    },
+    '/up': {
+      target: proxyTarget,
+      changeOrigin: true,
+      secure: false,
+    },
+    '/vpic': {
+      target: 'https://vpic.nhtsa.dot.gov',
+      changeOrigin: true,
+      rewrite: (p: string) => p.replace(/^\/vpic/, ''),
+    },
+  }
 
   return {
   plugins: [react()],
@@ -72,30 +97,13 @@ export default defineConfig(({ mode }) => {
       usePolling: process.env.VITE_WATCH_POLLING === 'true',
     },
     port: 3000,
-    proxy: {
-      '/api': {
-        target: proxyTarget,
-        changeOrigin: true,
-      },
-      '/vpic': {
-        target: 'https://vpic.nhtsa.dot.gov',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/vpic/, ''),
-      },
-    },
+    proxy: proxyConfig,
   },
   preview: {
     port: Number(process.env.PORT) || 3000,
     host: true, // Listen on all addresses (0.0.0.0)
     allowedHosts: ["dtv2405.id.vn"],
-    proxy: {
-      '/vpic': {
-        target: 'https://vpic.nhtsa.dot.gov',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/vpic/, ''),
-        
-      },
-    },
+    proxy: proxyConfig,
   },
   }
 })

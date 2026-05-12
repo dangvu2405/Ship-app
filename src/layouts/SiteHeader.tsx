@@ -1,5 +1,6 @@
 import { MoonOutlined, SunOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SwapOutlined } from '@ant-design/icons';
 import { Button, Divider, Flex, Tooltip } from 'antd';
+import { useCallback } from 'react';
 import { useAppStore } from '@/stores/app.store';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -20,10 +21,10 @@ export function SiteHeader({ sidebarCollapsed, onToggleSidebar }: SiteHeaderProp
   const navigate = useNavigate();
   const canSwitchTenant = (user?.tenants?.length ?? 0) >= 2;
 
-  const handleSwitchTenant = () => {
+  const handleSwitchTenant = useCallback(() => {
     switchTenant();
     navigate('/select-tenant');
-  };
+  }, [switchTenant, navigate]);
 
   return (
     <Flex align="center" gap="small" style={{ width: '100%', height: '100%', paddingInline: 16 }}>

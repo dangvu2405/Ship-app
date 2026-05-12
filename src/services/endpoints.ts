@@ -71,33 +71,31 @@ export const ENDPOINTS = {
     debt: (id: Id) => `/customers/${id}/debt`,
     payments: (id: Id) => `/customers/${id}/payments`,
     priceLists: (id: Id) => `/customers/${id}/price-lists`,
-    reconciliations: (id: Id) => `/customers/${id}/reconciliations`,
     groups: '/customer-groups',
   },
   customerGroups: crud('/customer-groups'),
   priceLists: {
     ...crud('/price-lists'),
-    items: (id: Id) => `/price-list-items?price_list_id=${id}`,
-    itemById: (_id: Id, itemId: Id) => `/price-list-items/${itemId}`,
+    items: (id: Id) => `/price-lists/${id}/items`,
+    itemById: (priceListId: Id, itemId: Id) => `/price-lists/${priceListId}/items/${itemId}`,
   },
   routeTemplates: crud('/route-templates'),
-  reconciliations: crud('/reconciliation-sessions'),
-  payments: crud('/payment-records'),
+  reconciliations: crud('/reconciliations'),
+  payments: crud('/payments'),
   trips: {
     ...crud('/trips'),
     costs: (id: Id) => `/trip-costs?trip_id=${id}`,
-    assign:    (id: Id) => `/trips/${id}/assign`,
-    accept:    (id: Id) => `/trips/${id}/accept`,
-    start:     (id: Id) => `/trips/${id}/start`,
-    deliver:   (id: Id) => `/trips/${id}/deliver`,
-    pickup:    (id: Id) => `/trips/${id}/pickup`,
-    transit:   (id: Id) => `/trips/${id}/transit`,
-    arrive:    (id: Id) => `/trips/${id}/arrive`,
-    complete:  (id: Id) => `/trips/${id}/complete`,
-    cancel:    (id: Id) => `/trips/${id}/cancel`,
-    delay:     (id: Id) => `/trips/${id}/delay`,
-    emergency: (id: Id) => `/trips/${id}/emergency`,
-    resume:    (id: Id) => `/trips/${id}/resume`,
+    assign: (id: Id) => `/trips/${id}/assign`,
+    start: (id: Id) => `/trips/${id}/start`,
+    deliver: (id: Id) => `/trips/${id}/deliver`,
+    complete: (id: Id) => `/trips/${id}/complete`,
+    cancel: (id: Id) => `/trips/${id}/cancel`,
+    changeVehicle: (id: Id) => `/trips/${id}/change-vehicle`,
+    changeDriver: (id: Id) => `/trips/${id}/change-driver`,
+  },
+  tripStops: {
+    arrive: (stopId: Id) => `/stops/${stopId}/arrive`,
+    complete: (stopId: Id) => `/stops/${stopId}/complete`,
   },
   chat: {
     messages: '/chat/messages',
@@ -111,18 +109,14 @@ export const ENDPOINTS = {
   },
   invoices: {
     ...crud('/invoices'),
-    /** Phát hành hóa đơn (draft → issued, ký số nội bộ). */
-    issue:      (id: Id) => `/invoices/${id}/issue`,
-    /** Gửi hóa đơn lên CQT (issued → sent_cqt). */
-    sendCqt:    (id: Id) => `/invoices/${id}/send-cqt`,
-    /** Đánh dấu đã thanh toán. */
-    markPaid:   (id: Id) => `/invoices/${id}/mark-paid`,
-    /** Hủy hóa đơn (kèm lý do, gửi thông báo CQT nếu đã sent_cqt). */
-    cancel:     (id: Id) => `/invoices/${id}/cancel`,
-    /** Tải PDF hóa đơn điện tử. */
-    exportPdf:  (id: Id) => `/invoices/${id}/export-pdf`,
-    /** Gửi hóa đơn qua email cho khách hàng. */
-    sendEmail:  (id: Id) => `/invoices/${id}/send-email`,
+    issue: (id: Id) => `/invoices/${id}/issue`,
+    /** GET — tra cứu / trạng thái CQT theo `api.php`. */
+    cqt: (id: Id) => `/invoices/${id}/cqt`,
+    markPaid: (id: Id) => `/invoices/${id}/mark-paid`,
+    cancel: (id: Id) => `/invoices/${id}/cancel`,
+    pdf: (id: Id) => `/invoices/${id}/pdf`,
+    /** PATCH — action `email` trên backend. */
+    email: (id: Id) => `/invoices/${id}/email`,
     statusHistories: (id: Id) => `/invoices/${id}/status-histories`,
   },
   debtOverview: '/debt-overview',
@@ -157,7 +151,8 @@ export const ENDPOINTS = {
   },
   reports: {
     dashboard: '/reports/dashboard',
-    payrollSummary: '/reports/payroll-summary',
+    /** Backend: `GET /reports/payroll/export` — response JSON phải khớp `PayrollSummaryData` hoặc đổi UI. */
+    payrollSummary: '/reports/payroll/export',
     revenueSummary: '/reports/revenue-summary',
     revenue: '/reports/revenue',
     costs: '/reports/costs',
@@ -172,25 +167,26 @@ export const ENDPOINTS = {
   driverSchedules: {
     base: '/driver-work-schedules',
     byId: (id: Id) => `/driver-work-schedules/${id}`,
-    submit: (id: Id) => `/driver-schedules/${id}/submit`,
-    approve: (id: Id) => `/driver-schedules/${id}/approve`,
-    reject: (id: Id) => `/driver-schedules/${id}/reject`,
-    lock: (id: Id) => `/driver-schedules/${id}/lock`,
-    override: (id: Id) => `/driver-schedules/${id}/override`,
-    hosCheck: (id: Id) => `/driver-schedules/${id}/hos-check`,
+    submit: (id: Id) => `/driver-work-schedules/${id}/submit`,
+    approve: (id: Id) => `/driver-work-schedules/${id}/approve`,
+    reject: (id: Id) => `/driver-work-schedules/${id}/reject`,
+    /** Không có trong `api.md` — giữ path dự kiến nếu backend bổ sung. */
+    lock: (id: Id) => `/driver-work-schedules/${id}/lock`,
+    override: (id: Id) => `/driver-work-schedules/${id}/override`,
+    hosCheck: (id: Id) => `/driver-work-schedules/${id}/hos-check`,
   },
   workSchedules: {
     base: '/driver-work-schedules',
     byId: (id: Id) => `/driver-work-schedules/${id}`,
-    generate: '/work-schedules/generate',
-    submit: (id: Id) => `/work-schedules/${id}/submit`,
-    approve: (id: Id) => `/work-schedules/${id}/approve`,
-    reject: (id: Id) => `/work-schedules/${id}/reject`,
+    generate: '/driver-work-schedules/generate',
+    submit: (id: Id) => `/driver-work-schedules/${id}/submit`,
+    approve: (id: Id) => `/driver-work-schedules/${id}/approve`,
+    reject: (id: Id) => `/driver-work-schedules/${id}/reject`,
   },
   workforce: {
-    driverSchedules: '/workforce/driver-schedules',
-    approveDriverSchedule: (id: Id) => `/workforce/driver-schedules/${id}/approve`,
-    lockDriverSchedule: (id: Id) => `/workforce/driver-schedules/${id}/lock`,
+    driverSchedules: '/driver-work-schedules',
+    approveDriverSchedule: (id: Id) => `/driver-work-schedules/${id}/approve`,
+    lockDriverSchedule: (id: Id) => `/driver-work-schedules/${id}/lock`,
     leaveRequests: '/leave-requests',
     absences: '/workforce/absences',
   },
@@ -267,12 +263,13 @@ export const ENDPOINTS = {
     byId: (id: Id) => `/order-status-configs/${id}`,
   },
   reconciliationItems: {
-    items: (id: Id) => `/reconciliation-items?session_id=${id}`,
-    itemById: (_id: Id, itemId: Id) => `/reconciliation-items/${itemId}`,
-    confirm: (id: Id) => `/reconciliation-sessions/${id}/confirm`,
-    lock: (_id: Id) => `/reconciliation-sessions/${_id}/lock`,
+    items: (id: Id) => `/reconciliations/${id}/items`,
+    itemById: (sessionId: Id, itemId: Id) => `/reconciliations/${sessionId}/items/${itemId}`,
+    confirm: (id: Id) => `/reconciliations/${id}/confirm`,
+    /** Không có trong `api.md` snapshot. */
+    lock: (id: Id) => `/reconciliations/${id}/lock`,
   },
-  priceLookup: '/price-lookup',
+  priceLookup: '/prices/lookup',
   customerSearch: '/customers/search',
   companies: {
     ...crud('/companies'),
@@ -286,6 +283,6 @@ export const ENDPOINTS = {
     ...crud('/admin/companies'),
     status: (id: Id) => `/admin/companies/${id}/status`,
   },
-  shippingFeeLookup: '/shipping-fee-lookup',
+  shippingFeeLookup: '/shipping-fees/calculate',
 } as const;
 

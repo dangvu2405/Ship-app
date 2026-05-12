@@ -16,6 +16,12 @@ interface AddressAutocompleteProps {
   disabled?: boolean;
 }
 
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
 export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   placeholder,
   onSelect,
@@ -45,7 +51,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         },
       });
 
-      const formatted = response.data.map((item: any) => ({
+      const formatted = response.data.map((item: NominatimResult) => ({
         label: item.display_name,
         value: item.display_name,
         lat: parseFloat(item.lat),
@@ -66,9 +72,10 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       placeholder={placeholder || t('vnAddress.streetPlaceholder')}
       filterOption={false}
       onSearch={handleSearch}
-      onChange={(_, option: any) => {
-        if (option) {
-          onSelect(option.lat, option.lng, option.label);
+      onChange={(_, option) => {
+        const addrOption = option as AddressOption | undefined;
+        if (addrOption) {
+          onSelect(addrOption.lat, addrOption.lng, addrOption.label);
         }
       }}
       notFoundContent={loading ? <Spin size="small" /> : null}

@@ -239,6 +239,8 @@ export const en = {
     heroImageAlt: 'Login illustration',
     featureUnavailable: 'This feature is not available yet.',
     googleOAuthNotConfigured: 'Google OAuth client ID is not configured. Please set VITE_GOOGLE_OAUTH_CLIENT_ID.',
+    googleSignInLoadSlow:
+      'Google sign-in did not load in time. Check network, ad blockers, or try refreshing the page.',
     forgotPasswordTitle: 'Reset password',
     forgotPasswordSubtitle: 'Enter the email for your account. If it exists, we will send reset instructions.',
     forgotPasswordSubmit: 'Send reset link',
@@ -272,6 +274,12 @@ export const en = {
     forgotPasswordOtpVerified: 'Verified. Set your new password below.',
     forgotPasswordStrongHint: 'Use at least 8 characters with uppercase, lowercase, and a number.',
     forgotPasswordBackOtp: 'Back to OTP',
+    forgotPasswordTooManyAttempts: 'Too many incorrect attempts. Try again later or request a new code.',
+    forgotPasswordLocked: 'Too many attempts — try again later',
+    forgotPasswordOtpServerEnforced:
+      'Limits on wrong codes and resends are enforced on the server. This screen adds convenience only.',
+    attemptsLeft: 'attempts left',
+    forgotPasswordResendIn: 'Resend in',
     loginInvalidCredentials: 'Invalid email or password.',
     networkError: 'Network error. Please check your connection.',
     serverError: 'Server error. Please try again later.',

@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useMenu } from '@refinedev/core';
-import { Flex, Menu, Typography, theme } from 'antd';
+
+import { Flex, Menu, Typography, theme, Divider } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   AppstoreOutlined,
@@ -84,26 +84,9 @@ function resolveSelectedKey(pathname: string, items: AntMenuItem[]): string | un
  * Return keys of all groups that contain the active leaf, so the SubMenu is
  * open when navigating directly to a child route.
  */
-type RefineMenuNode = {
-  route?: string;
-  children?: RefineMenuNode[];
-};
 
-function collectRefineListRoutes(items: RefineMenuNode[]): string[] {
-  const out: string[] = [];
-  const walk = (list: RefineMenuNode[]) => {
-    for (const it of list) {
-      if (typeof it.route === 'string' && it.route.length > 0) {
-        out.push(it.route);
-      }
-      if (Array.isArray(it.children) && it.children.length > 0) {
-        walk(it.children);
-      }
-    }
-  };
-  walk(items);
-  return out;
-}
+
+
 
 function resolveOpenGroupKeys(activeKey: string | undefined, items: AntMenuItem[]): string[] {
   if (!activeKey) return [];
@@ -128,6 +111,25 @@ function resolveOpenGroupKeys(activeKey: string | undefined, items: AntMenuItem[
   return open;
 }
 
+/** Flatten menu tree for O(1) lookup */
+function flattenMenuItems(items: AntMenuItem[]): Record<string, AntMenuItem> {
+  const map: Record<string, AntMenuItem> = {};
+  const walk = (list: AntMenuItem[]) => {
+    for (const item of list) {
+      if (!item || typeof item !== 'object') continue;
+      const i = item as unknown as Record<string, any>;
+      if (typeof i.key === 'string') {
+        map[i.key] = item;
+      }
+      if (Array.isArray(i.children)) {
+        walk(i.children as AntMenuItem[]);
+      }
+    }
+  };
+  walk(items);
+  return map;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const AppSidebarContent = memo(function AppSidebarContent({
@@ -140,7 +142,7 @@ export const AppSidebarContent = memo(function AppSidebarContent({
   const { token } = theme.useToken();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { menuItems: refineMenuTree } = useMenu();
+
 
   const isAdmin = true; // Luôn hiển thị như admin
   const hasAccounting = true;
@@ -158,8 +160,8 @@ export const AppSidebarContent = memo(function AppSidebarContent({
       section('sec-fleet', 'ĐỘI XE', [
         leaf(ROUTES.admin.vehicles.list, 'Quản lý xe', <CarOutlined />),
         leaf(ROUTES.admin.vehicleMaintenance, 'Bảo dưỡng xe', <SafetyOutlined />),
-        leaf(ROUTES.admin.vehicleAssignments, 'Phân công xe', <DeploymentUnitOutlined />),
-        leaf(ROUTES.admin.vehicleCosts, 'Chi phí xe', <DollarOutlined />),
+        leaf(ROUTES.admin.vehicleAssignments.list, 'Phân công xe', <DeploymentUnitOutlined />),
+        leaf(ROUTES.admin.vehicleExpenses.list, 'Chi phí xe', <DollarOutlined />),
         leaf(ROUTES.admin.dispatch.board, 'Bảng điều phối', <AppstoreOutlined />),
       ]),
       section('sec-hr', 'NHÂN SỰ', [
@@ -179,9 +181,9 @@ export const AppSidebarContent = memo(function AppSidebarContent({
         leaf(ROUTES.admin.customers.list, 'Khách hàng', <SolutionOutlined />),
         leaf(ROUTES.admin.invoices.list, 'Hóa đơn', <FileTextOutlined />),
         leaf(ROUTES.admin.payroll.list, 'Bảng lương', <DollarOutlined />),
-        leaf(ROUTES.admin.payroll.adjustments, 'Điều chỉnh lương', <LineChartOutlined />),
-        leaf(ROUTES.admin.payroll.allowances, 'Phụ cấp', <PlusOutlined />),
-        leaf(ROUTES.admin.payroll.deductions, 'Khấu trừ', <MinusCircleOutlined />),
+        leaf(ROUTES.admin.payroll.adjustments.list, 'Điều chỉnh lương', <LineChartOutlined />),
+        leaf(ROUTES.admin.payroll.allowances.list, 'Phụ cấp', <PlusOutlined />),
+        leaf(ROUTES.admin.payroll.deductions.list, 'Khấu trừ', <MinusCircleOutlined />),
       ]),
       ...(canViewPriceList ? [section('sec-customer', 'KHÁCH HÀNG', [leaf(ROUTES.admin.customerPriceList, t('sidebar.priceList'), <AppstoreOutlined />)])] : []),
       ...(hasAccounting
@@ -207,36 +209,32 @@ export const AppSidebarContent = memo(function AppSidebarContent({
     ];
 
     return items;
-  }, [t, isAdmin, hasAccounting, canViewCompanySettings, canViewPriceList, canViewUsers]);
+  }, [t, hasAccounting, canViewCompanySettings, canViewPriceList, canViewUsers, isAdmin]);
 
-  const refineRoutesSorted = useMemo(() => {
-    const paths = collectRefineListRoutes(refineMenuTree);
-    return [...new Set(paths)].sort((a, b) => b.length - a.length);
-  }, [refineMenuTree]);
+  const flatMenuMap = useMemo(() => flattenMenuItems(menuItems), [menuItems]);
 
-  // ── Selected + open keys ──────────────────────────────────────────────────
-  const selectedKey = useMemo(() => {
-    const manual = resolveSelectedKey(pathname, menuItems);
-    if (manual) return manual;
-    return refineRoutesSorted.find((r) => pathname === r || pathname.startsWith(`${r}/`));
-  }, [pathname, menuItems, refineRoutesSorted]);
-
-  const defaultOpenKeys = useMemo(
-    () => resolveOpenGroupKeys(selectedKey, menuItems),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [], // compute once on mount; openKeys state takes over after
+  const [selectedKey, setSelectedKey] = useState<string | undefined>(() =>
+    resolveSelectedKey(pathname, menuItems),
+  );
+  const [openKeys, setOpenKeys] = useState<string[]>(() =>
+    resolveOpenGroupKeys(selectedKey, menuItems),
   );
 
-  const [openKeys, setOpenKeys] = useState<string[]>(defaultOpenKeys);
-
-  // Auto-expand the parent group whenever the active route changes
   useEffect(() => {
-    const groupsForActive = resolveOpenGroupKeys(selectedKey, menuItems);
-    setOpenKeys((prev) => {
-      const merged = Array.from(new Set([...prev, ...groupsForActive]));
-      return merged;
-    });
-  }, [selectedKey, menuItems]);
+    const keys = Object.keys(flatMenuMap);
+    let best = '';
+    for (const k of keys) {
+      if (pathname === k || pathname.startsWith(`${k}/`)) {
+        if (k.length > best.length) best = k;
+      }
+    }
+    
+    if (best) {
+      setSelectedKey(best);
+      const groups = resolveOpenGroupKeys(best, menuItems);
+      setOpenKeys((prev) => Array.from(new Set([...prev, ...groups])));
+    }
+  }, [pathname, flatMenuMap, menuItems]);
 
   // ── User section ──────────────────────────────────────────────────────────
   const userData = {
@@ -248,11 +246,19 @@ export const AppSidebarContent = memo(function AppSidebarContent({
   return (
     <Flex vertical style={{ height: '100%' }}>
       {/* Logo */}
-      <Link to={ROUTES.dashboard} style={{ display: 'block', padding: collapsed ? '12px 0' : '14px 16px 10px', textDecoration: 'none' }}>
-        <Flex align="center" gap={collapsed ? 0 : 10} justify={collapsed ? 'center' : 'flex-start'}>
-          <DeploymentUnitOutlined style={{ fontSize: 20, color: token.colorPrimary }} />
+      <Link to={ROUTES.dashboard} style={{ textDecoration: 'none' }}>
+        <Flex
+          align="center"
+          gap={collapsed ? 0 : token.marginSM}
+          justify={collapsed ? 'center' : 'flex-start'}
+          style={{
+            paddingBlock: token.paddingSM,
+            paddingInline: collapsed ? 0 : token.padding,
+          }}
+        >
+          <DeploymentUnitOutlined style={{ fontSize: token.fontSizeXL, color: token.colorPrimary }} />
           {!collapsed && (
-            <Typography.Text strong style={{ fontSize: 15, color: token.colorText }}>
+            <Typography.Text strong style={{ fontSize: token.fontSizeLG, color: token.colorText }}>
               Ship Logistics
             </Typography.Text>
           )}
@@ -260,7 +266,7 @@ export const AppSidebarContent = memo(function AppSidebarContent({
       </Link>
 
       {/* Navigation */}
-      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
+      <Flex vertical flex={1} style={{ overflowY: 'auto', overflowX: 'hidden' }}>
         <Menu
           mode="inline"
           inlineCollapsed={collapsed}
@@ -275,18 +281,19 @@ export const AppSidebarContent = memo(function AppSidebarContent({
           items={menuItems}
           style={{ borderInlineEnd: 0 }}
         />
-      </div>
+      </Flex>
 
       {/* User section */}
-      <div
+      <Divider style={{ margin: 0 }} />
+      <Flex
         style={{
-          padding: collapsed ? '8px' : '12px 16px',
-          borderTop: `1px solid ${token.colorBorderSecondary}`,
+          paddingBlock: token.paddingSM,
+          paddingInline: collapsed ? token.paddingXS : token.padding,
           flexShrink: 0,
         }}
       >
         <NavUser user={userData} collapsed={collapsed} />
-      </div>
+      </Flex>
     </Flex>
   );
 });

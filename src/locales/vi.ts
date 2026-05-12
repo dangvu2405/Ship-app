@@ -213,6 +213,7 @@ export const vi = {
     invalidCredentials: 'Thông tin đăng nhập không hợp lệ',
     sessionExpired: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
     welcomeBack: 'Chào mừng trở lại',
+    loginSubtitle: 'Đăng nhập vào hệ thống Ship ERP của bạn',
     loginToAccount: 'Đăng nhập vào tài khoản Ship ERP của bạn',
     emailPlaceholder: 'name@company.com',
     orContinueWith: 'Hoặc tiếp tục với',
@@ -239,6 +240,8 @@ export const vi = {
     heroImageAlt: 'Hình minh họa đăng nhập',
     featureUnavailable: 'Tính năng này chưa khả dụng.',
     googleOAuthNotConfigured: 'Chưa cấu hình Google OAuth client ID. Vui lòng thêm VITE_GOOGLE_OAUTH_CLIENT_ID.',
+    googleSignInLoadSlow:
+      'Đăng nhập Google chưa tải kịp. Kiểm tra mạng, trình chặn quảng cáo hoặc tải lại trang.',
     forgotPasswordTitle: 'Quên mật khẩu',
     forgotPasswordSubtitle:
       'Nhập email đăng ký tài khoản. Nếu tồn tại trong hệ thống, chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu.',
@@ -273,6 +276,12 @@ export const vi = {
     forgotPasswordOtpVerified: 'Xác thực thành công. Đặt mật khẩu mới bên dưới.',
     forgotPasswordStrongHint: 'Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số.',
     forgotPasswordBackOtp: 'Quay lại nhập OTP',
+    forgotPasswordTooManyAttempts: 'Đã nhập sai quá nhiều lần. Thử lại sau hoặc yêu cầu mã mới.',
+    forgotPasswordLocked: 'Quá nhiều lần thử — thử lại sau',
+    forgotPasswordOtpServerEnforced:
+      'Giới hạn mã sai và gửi lại được áp dụng ở máy chủ. Màn hình này chỉ hỗ trợ thao tác.',
+    attemptsLeft: 'lượt còn lại',
+    forgotPasswordResendIn: 'Gửi lại sau',
     loginInvalidCredentials: 'Email hoặc mật khẩu không đúng.',
     networkError: 'Lỗi mạng. Vui lòng kiểm tra kết nối.',
     serverError: 'Lỗi máy chủ. Vui lòng thử lại sau.',

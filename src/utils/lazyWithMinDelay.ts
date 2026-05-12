@@ -10,7 +10,6 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
  *
  * `ComponentType<any>` khớp cách `React.lazy` gõ kiểu upstream: route chunk có default export với props khác nhau.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- heterogeneous default exports (pages, charts); stricter bound breaks inference (e.g. Dashboard chart).
 export function lazyWithMinDelay<T extends ComponentType<any>>(
   load: () => Promise<{ default: T }>,
   minMs: number = LAZY_ROUTE_SPIN_MIN_MS,

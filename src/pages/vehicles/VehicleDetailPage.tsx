@@ -81,15 +81,17 @@ export function VehicleDetailPage() {
     () => ({
       pending:         t('trips.statusPending'),
       assigned:        t('trips.statusAssigned'),
+      driver_accepted: t('trips.statusDriverAccepted'),
       en_route_pickup: t('trips.statusEnRoutePickup'),
       picked_up:       t('trips.statusPickedUp'),
       in_transit:      t('trips.statusInTransit'),
       delayed:         t('trips.statusDelayed'),
       arrived:         t('trips.statusArrived'),
+      delivered:       t('trips.statusDelivered'),
       completed:       t('trips.statusCompleted'),
       cancelled:       t('trips.statusCancelled'),
       emergency:       t('trips.statusEmergency'),
-      draft:           t('trips.statusDraft'),
+      draft:           t('trips.statusPending'),
     }),
     [t],
   );

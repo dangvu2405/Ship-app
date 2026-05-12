@@ -18,40 +18,40 @@ interface CustomerFormProps {
 const PHONE_PATTERN = /^[0-9+()\-\s]{8,15}$/;
 const TAX_CODE_PATTERN = /^\d{10}(-\d{3})?$/;
 
-let codeCheckTimer: ReturnType<typeof setTimeout> | null = null;
-let taxCheckTimer: ReturnType<typeof setTimeout> | null = null;
-
-const checkCustomerUnique = (
-  field: 'code' | 'tax_code',
-  value: string,
-  currentId?: number,
-): Promise<boolean> => {
-  return new Promise((resolve) => {
-    const timerRef = field === 'code' ? codeCheckTimer : taxCheckTimer;
-    if (timerRef) clearTimeout(timerRef);
-    const next = setTimeout(async () => {
-      try {
-        const res = await api.get(ENDPOINTS.customers.base, {
-          params: { [field]: value, per_page: 5 },
-          skipErrorToast: true,
-        } as Parameters<typeof api.get>[1]);
-        const list = (res.data as { data?: { data?: Array<{ id: number; code?: string; tax_code?: string }> } }).data?.data ?? [];
-        const dup = list.find((row) => {
-          const v = (row as Record<string, unknown>)[field];
-          return typeof v === 'string' && v.trim().toLowerCase() === value.trim().toLowerCase() && row.id !== currentId;
-        });
-        resolve(!dup);
-      } catch {
-        resolve(true);
-      }
-    }, 350);
-    if (field === 'code') codeCheckTimer = next;
-    else taxCheckTimer = next;
-  });
+import React from 'react';
+const useCustomerUniqueCheck = () => {
+  const codeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const taxTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => {
+    if (codeTimer.current) clearTimeout(codeTimer.current);
+    if (taxTimer.current) clearTimeout(taxTimer.current);
+  }, []);
+  return (field: 'code' | 'tax_code', value: string, currentId?: number) =>
+    new Promise<boolean>((resolve) => {
+      const timerRef = field === 'code' ? codeTimer : taxTimer;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(async () => {
+        try {
+          const res = await api.get(ENDPOINTS.customers.base, {
+            params: { [field]: value, per_page: 5 },
+            skipErrorToast: true,
+          } as Parameters<typeof api.get>[1]);
+          const list = (res.data as { data?: { data?: Array<{ id: number; code?: string; tax_code?: string }> } }).data?.data ?? [];
+          const dup = list.find((row) => {
+            const v = (row as Record<string, unknown>)[field];
+            return typeof v === 'string' && v.trim().toLowerCase() === value.trim().toLowerCase() && row.id !== currentId;
+          });
+          resolve(!dup);
+        } catch {
+          resolve(true);
+        }
+      }, 350);
+    });
 };
 
 export function CustomerForm(props: CustomerFormProps) {
   const { form, groups = [], customerId } = props;
+  const checkCustomerUnique = useCustomerUniqueCheck();
   const { t } = useTranslation();
   const customerType = Form.useWatch('type', form);
   const isCompany = customerType === 'company';

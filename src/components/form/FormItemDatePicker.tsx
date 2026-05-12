@@ -1,4 +1,4 @@
-import { DatePicker, Form, TimePicker } from 'antd';
+import { DatePicker, Form, TimePicker, type GetProps } from 'antd';
 import dayjs from 'dayjs';
 import type { FormItemDatePickerProps } from './types';
 
@@ -44,7 +44,7 @@ export const FormItemDatePicker = ({
   const currentFormat = format || (picker === 'time' ? 'HH:mm' : (showTime ? 'DD/MM/YYYY HH:mm' : 'DD/MM/YYYY'));
   const storageFormat = valueFormat || getDefaultFormat();
 
-  const PickerComponent = picker === 'time' ? TimePicker : DatePicker;
+
 
   return (
     <Form.Item
@@ -61,16 +61,27 @@ export const FormItemDatePicker = ({
       normalize={(value) => (value ? (value as dayjs.Dayjs).format(storageFormat) : undefined)}
       {...formItemProps}
     >
-      <PickerComponent
-        placeholder={placeholder}
-        picker={picker === 'time' ? undefined : picker}
-        showTime={showTime}
-        format={currentFormat}
-        size={size}
-        disabled={disabled}
-        style={{ width: '100%', ...pickerProps?.style }}
-        {...pickerProps}
-      />
+      {picker === 'time' ? (
+        <TimePicker
+          placeholder={placeholder}
+          format={currentFormat}
+          size={size}
+          disabled={disabled}
+          {...(pickerProps as GetProps<typeof TimePicker>)}
+          style={{ width: '100%', ...pickerProps?.style }}
+        />
+      ) : (
+        <DatePicker
+          placeholder={placeholder}
+          picker={picker as 'date' | 'week' | 'month' | 'quarter' | 'year'}
+          showTime={showTime}
+          format={currentFormat}
+          size={size}
+          disabled={disabled}
+          {...(pickerProps as GetProps<typeof DatePicker>)}
+          style={{ width: '100%', ...pickerProps?.style }}
+        />
+      )}
     </Form.Item>
   );
 };

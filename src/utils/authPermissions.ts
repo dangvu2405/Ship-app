@@ -73,23 +73,17 @@ const hasUserPermissions = (user: User | null, permission: string): boolean => {
 };
 
 export const userHasRole = (user: User | null, role: string): boolean => {
-  if (!user || !user.roles) return false;
-  const target = normalize(role);
-  return user.roles.some((r) => {
-    const code = (r as { code?: string }).code ?? r.name;
-    return normalize(code) === target;
-  });
+  const expected = normalize(role);
+  return Boolean(user?.roles?.some((r) => {
+    const roleCode = (r as { code?: string }).code ?? r.name;
+    return normalize(roleCode) === expected || normalize(r.name) === expected;
+  }));
 };
 
 export const userHasPermission = (user: User | null, permission: string): boolean => {
-  if (!user) return false;
-
-  // Admin users have all permissions
-  const isAdmin = user.roles?.some((r) => {
-    const code = normalize((r as { code?: string }).code ?? r.name);
-    return code === 'admin' || code === 'super_admin' || code === 'admin_company';
-  });
-  if (isAdmin) return true;
+  if (userHasRole(user, 'admin') || userHasRole(user, 'super_admin') || userHasRole(user, 'admin_company')) {
+    return true;
+  }
 
   return hasUserPermissions(user, permission);
 };

@@ -1,27 +1,13 @@
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
-import toast from 'react-hot-toast';
-import { Button, Card, Divider, Flex, Form, Input, Switch, Typography, theme } from 'antd';
+import { Alert, Button, Card, Divider, Flex, Form, Input, Switch, Typography, theme } from 'antd';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
-import { GOOGLE_OAUTH_CLIENT_ID } from '@/utils/constants';
+import { GOOGLE_OAUTH_CLIENT_ID, REGISTER_ENABLED } from '@/utils/constants';
 import { getErrorStatus, getValidationErrors, isValidationError } from '@/utils/errorHandler';
-
-const inputStyle: React.CSSProperties = {
-  height: 48,
-  borderRadius: 6,
-  background: '#f2f2f2',
-  borderColor: '#e5e5e5',
-  borderWidth: 0.5,
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: '#333333',
-  letterSpacing: '0.3px',
-};
+import { antdUtils } from '@/utils/antdGlobal';
 
 type LoginFormValues = {
   email: string;
@@ -40,11 +26,12 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
+  const [googleUnavailable, setGoogleUnavailable] = useState(false);
 
   const isBusy = isSubmitting || isSocialSubmitting;
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
-  const googleCbRef = useRef<(r: GoogleCredentialResponse) => void>();
+  const googleCbRef = useRef<(r: any) => void>();
   const lastSubmitAt = useRef(0);
   const SUBMIT_COOLDOWN_MS = 1200;
 
@@ -53,14 +40,14 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
     navigate(currentTenantId ? ROUTES.dashboard : ROUTES.selectTenant);
   };
 
-  googleCbRef.current = (response) => {
+  googleCbRef.current = (response: any) => {
     void (async () => {
       try {
         setIsSocialSubmitting(true);
         await socialLogin({ provider: 'google', id_token: response.credential });
         navigateAfterLogin();
       } catch {
-        toast.error(t('auth.loginFailed'));
+        antdUtils.getMessage().error(t('auth.loginFailed'));
       } finally {
         setIsSocialSubmitting(false);
       }
@@ -69,38 +56,40 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
 
   useEffect(() => {
     if (!GOOGLE_OAUTH_CLIENT_ID) return;
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocalhost && import.meta.env.VITE_ENABLE_GOOGLE_LOGIN !== 'true') {
-      return;
-    }
-    const stableCallback = (r: GoogleCredentialResponse) => googleCbRef.current?.(r);
+    const stableCallback = (r: any) => googleCbRef.current?.(r);
     const tryRender = (): boolean => {
       const el = googleBtnRef.current;
-      if (!el || !window.google?.accounts?.id) return false;
+      if (!el || !(window as any).google?.accounts?.id) return false;
       if (!gsiInitialized) {
-        window.google.accounts.id.initialize({
+        (window as any).google.accounts.id.initialize({
           client_id: GOOGLE_OAUTH_CLIENT_ID,
           callback: stableCallback,
           auto_select: false,
-          cancel_on_tap_outside: true,
         });
         gsiInitialized = true;
       }
       el.innerHTML = '';
-      window.google.accounts.id.renderButton(el, {
+      (window as any).google.accounts.id.renderButton(el, {
         theme: 'filled_black',
         size: 'large',
         text: 'signin_with',
-        logo_alignment: 'left',
         width: el.offsetWidth || 360,
       });
       return true;
     };
     if (tryRender()) return undefined;
+    const loadTimer = window.setTimeout(() => setGoogleUnavailable(true), 12000);
     const timer = window.setInterval(() => {
-      if (tryRender()) window.clearInterval(timer);
+      if (tryRender()) {
+        window.clearInterval(timer);
+        window.clearTimeout(loadTimer);
+        setGoogleUnavailable(false);
+      }
     }, 100);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(loadTimer);
+    };
   }, []);
 
   const onFinish = async (values: LoginFormValues) => {
@@ -127,10 +116,10 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
       }
       const status = getErrorStatus(err);
       if (status === 401) {
-        toast.error(t('auth.loginInvalidCredentials'));
+        antdUtils.getMessage().error(t('auth.loginInvalidCredentials'));
         return;
       }
-      toast.error(t('auth.loginFailed'));
+      antdUtils.getMessage().error(t('auth.loginFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -139,120 +128,156 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn('auth-screen', className)}
-      style={{ background: token.colorFillAlter }}
+      style={{ 
+        background: `linear-gradient(135deg, ${token.colorFillAlter} 0%, ${token.colorFillSecondary} 100%)`,
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24
+      }}
       {...props}
     >
       <Card
-        className="auth-screen__card"
         variant="borderless"
         styles={{ body: { padding: 0 } }}
-        style={{ boxShadow: token.boxShadowSecondary }}
+        style={{ 
+          boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+          maxWidth: 960,
+          width: '100%',
+          overflow: 'hidden',
+          borderRadius: 24,
+          backdropFilter: 'blur(20px)',
+          background: 'rgba(255, 255, 255, 0.9)',
+        }}
       >
-        <div className="auth-screen__layout">
-          <div className="auth-screen__hero">
-            <img src="login-hero.jpeg" alt={t('auth.heroImageAlt')} className="auth-screen__hero-image" />
+        <div style={{ display: 'flex', minHeight: 600 }}>
+          <div style={{ 
+            flex: 1, 
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorPrimaryActive} 100%)`,
+            color: '#fff',
+            padding: 48,
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+             <div style={{ position: 'relative', zIndex: 1 }}>
+                <Typography.Title level={1} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>Ship ERP</Typography.Title>
+                <Typography.Paragraph style={{ color: 'rgba(255,255,255,0.8)', fontSize: 18, marginTop: 16 }}>
+                  Hệ thống quản trị vận tải thông minh, tối ưu hóa mọi hành trình.
+                </Typography.Paragraph>
+             </div>
+             <div style={{ 
+                position: 'absolute', 
+                bottom: -50, 
+                right: -50, 
+                width: 300, 
+                height: 300, 
+                background: 'rgba(255,255,255,0.1)', 
+                borderRadius: '50%',
+                zIndex: 0
+             }} />
           </div>
 
-          <div className="auth-screen__panel">
-            <div className="auth-screen__content">
-              <div className="auth-screen__brand">
-                <img src="icon.jpeg" className="auth-screen__brand-mark" alt="Ship ERP" />
-                <span className="auth-screen__brand-text">Ship ERP</span>
+          <div style={{ flex: 1, padding: 48, background: '#fff' }}>
+            <Flex vertical gap={32}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ 
+                  width: 32, 
+                  height: 32, 
+                  background: token.colorPrimary, 
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontWeight: 800
+                }}>S</div>
+                <Typography.Text strong style={{ fontSize: 18 }}>Ship ERP</Typography.Text>
               </div>
 
-              <Form form={form} layout="vertical" requiredMark={false} onFinish={onFinish} style={{ marginBottom: 0 }}>
-                <Flex vertical gap={24}>
-                  <Typography.Title
-                    level={4}
-                    style={{ margin: 0, fontSize: 20, fontWeight: 600, color: '#1a1a1a', lineHeight: '28px' }}
-                  >
-                    {t('auth.welcomeBack')}
-                  </Typography.Title>
+              <div>
+                <Typography.Title level={3} style={{ margin: 0, fontWeight: 700 }}>{t('auth.welcomeBack')}</Typography.Title>
+                <Typography.Text type="secondary">{t('auth.loginSubtitle') || 'Đăng nhập để tiếp tục quản lý đội xe của bạn.'}</Typography.Text>
+              </div>
 
-                  <Flex vertical gap={20}>
-                    <Flex vertical gap={16}>
-                      <Form.Item
-                        name="email"
-                        label={<span style={labelStyle}>{t('auth.email')}</span>}
-                        rules={[
-                          { required: true, message: t('validation.required', { field: t('auth.email') }) },
-                          { type: 'email', message: t('validation.email') },
-                        ]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Input
-                          id="email"
-                          type="email"
-                          size="large"
-                          style={inputStyle}
-                          placeholder={t('auth.emailPlaceholder')}
-                          autoComplete="email"
-                        />
-                      </Form.Item>
+              <Form form={form} layout="vertical" requiredMark={false} onFinish={onFinish}>
+                <Form.Item
+                  name="email"
+                  label={t('auth.email')}
+                  rules={[
+                    { required: true, message: t('validation.required', { field: t('auth.email') }) },
+                    { type: 'email', message: t('validation.email') },
+                  ]}
+                >
+                  <Input 
+                    size="large" 
+                    placeholder="admin@example.com" 
+                    style={{ borderRadius: 12 }} 
+                  />
+                </Form.Item>
 
-                      <Form.Item
-                        name="password"
-                        label={<span style={labelStyle}>{t('auth.password')}</span>}
-                        rules={[{ required: true, message: t('validation.required', { field: t('auth.password') }) }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Input.Password
-                          id="password"
-                          size="large"
-                          style={inputStyle}
-                          placeholder={t('auth.registerPasswordPlaceholder')}
-                          autoComplete="current-password"
-                        />
-                      </Form.Item>
+                <Form.Item
+                  name="password"
+                  label={t('auth.password')}
+                  rules={[{ required: true, message: t('validation.required', { field: t('auth.password') }) }]}
+                >
+                  <Input.Password 
+                    size="large" 
+                    placeholder="••••••••" 
+                    style={{ borderRadius: 12 }} 
+                  />
+                </Form.Item>
+
+                <Flex justify="space-between" align="center" style={{ marginBottom: 24 }}>
+                  <Form.Item name="rememberMe" valuePropName="checked" noStyle initialValue={false}>
+                    <Flex gap={8} align="center">
+                      <Switch size="small" />
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('auth.rememberMe')}</Typography.Text>
                     </Flex>
+                  </Form.Item>
+                  <Link to={ROUTES.forgotPassword} style={{ fontSize: 13, fontWeight: 600 }}>
+                    {t('auth.forgotPassword')}
+                  </Link>
+                </Flex>
 
-                    <Flex justify="space-between" align="center">
-                      <Form.Item name="rememberMe" valuePropName="checked" noStyle initialValue={false}>
-                        <Flex gap={8} align="center">
-                          <Switch size="small" />
-                          <span style={{ fontSize: 12, color: '#1a1a1a', letterSpacing: '0.3px' }}>
-                            {t('auth.rememberMe')}
-                          </span>
-                        </Flex>
-                      </Form.Item>
-                      <Link to={ROUTES.forgotPassword} style={{ fontSize: 12, color: '#007aff', letterSpacing: '0.3px' }}>
-                        {t('auth.forgotPassword')}
-                      </Link>
-                    </Flex>
-                  </Flex>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  size="large"
+                  loading={isBusy}
+                  style={{ 
+                    height: 52, 
+                    borderRadius: 16, 
+                    fontSize: 16, 
+                    fontWeight: 700,
+                    boxShadow: `0 8px 20px ${token.colorPrimary}40`
+                  }}
+                >
+                  {t('auth.login')}
+                </Button>
+              </Form>
 
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    block
-                    loading={isBusy}
-                    style={{ height: 40, borderRadius: 6, fontSize: 15, fontWeight: 700 }}
-                  >
-                    {t('auth.login')}
-                  </Button>
+              <Divider plain><Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('auth.orContinueWith')}</Typography.Text></Divider>
 
-                  <Divider style={{ margin: 0, borderColor: '#e5e5e5' }} />
+              <div ref={googleBtnRef} style={{ width: '100%', minHeight: 40 }} />
+              {GOOGLE_OAUTH_CLIENT_ID && googleUnavailable ? (
+                <Alert type="warning" showIcon message={t('auth.googleSignInLoadSlow')} />
+              ) : null}
 
-                  <Flex vertical gap={8} align="stretch">
-                    <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: 12 }}>
-                      {t('auth.orContinueWith')}
-                    </Typography.Text>
-                    <div ref={googleBtnRef} className="w-full" style={{ minHeight: 40 }} />
-                  </Flex>
-
-                  <div className="auth-screen__switch-auth">
+              {REGISTER_ENABLED ? (
+                <div style={{ textAlign: 'center' }}>
+                  <Typography.Text type="secondary">
                     {t('auth.dontHaveAccount')}{' '}
-                    <Link to={ROUTES.register} className="auth-screen__link">
+                    <Link to={ROUTES.register} style={{ fontWeight: 600 }}>
                       {t('auth.signUp')}
                     </Link>
-                  </div>
-                </Flex>
-              </Form>
-            </div>
-
-            <Flex justify="space-between" align="center" className="auth-screen__footer">
-              <span>{t('auth.agreeTerms')}</span>
-              <span>© Ship ERP 2026</span>
+                  </Typography.Text>
+                </div>
+              ) : null}
             </Flex>
           </div>
         </div>

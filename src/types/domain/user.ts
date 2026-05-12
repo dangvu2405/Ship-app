@@ -14,19 +14,6 @@ export interface Permission {
   code?: string;
 }
 
-export interface UserPermissionGrant {
-  code?: string;
-  name?: string;
-  module?: string;
-  action?: string;
-  can_view?: boolean;
-  can_create?: boolean;
-  can_edit?: boolean;
-  can_delete?: boolean;
-  can_approve?: boolean;
-  can_export?: boolean;
-}
-
 export interface Role {
   id: number;
   name: string;
@@ -36,15 +23,22 @@ export interface Role {
   updated_at?: string;
 }
 
+export interface UserPermissionGrant {
+  id?: number;
+  name?: string;
+  code?: string;
+  module?: string;
+  action?: string;
+}
+
 export interface User {
   id: number;
   username: string;
   email: string;
   employee_id?: number;
   status: string;
-  role?: string;
   roles?: Role[];
-  user_permissions?: UserPermissionGrant[] | Record<string, boolean>;
+  user_permissions?: UserPermissionGrant[] | Record<string, any>;
   employee?: import('./employee').Employee;
   avatar_url?: string;
   last_login_at?: string;

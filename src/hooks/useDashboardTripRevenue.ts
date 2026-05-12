@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import reportsService from '@/services/reports.service';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/services/api';
+import { ENDPOINTS } from '@/services/endpoints';
+import type { Trip } from '@/types';
 import { getErrorMessage } from '@/utils/errorHandler';
 
 export interface UseDashboardTripRevenueResult {
@@ -7,7 +10,7 @@ export interface UseDashboardTripRevenueResult {
   tripCount: number;
   loading: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: () => Promise<any>;
 }
 
 /** Tổng giá chuyến (price) cho chuyến completed trong tháng/năm, lọc theo company_id nếu có. */
@@ -20,36 +23,43 @@ export function useDashboardTripRevenue(options: {
   const year = options.year ?? new Date().getFullYear();
   const { companyId } = options;
 
-  const [total, setTotal] = useState(0);
-  const [tripCount, setTripCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ['dashboard-trips', { companyId, month, year, status: 'completed' }],
+    queryFn: async ({ signal }) => {
+      const res = await api.get(ENDPOINTS.trips.base, {
+        signal,
+        params: {
+          status: 'completed',
+          month,
+          year,
+          ...(companyId != null ? { company_id: companyId } : {}),
+          per_page: 1000,
+        },
+      });
+      return (res.data?.data?.data ?? []) as Trip[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchRevenue = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await reportsService.getRevenueSummary(companyId, month, year);
-      if (!response.success || !response.data) {
-        throw new Error(response.message || 'Failed to load revenue');
-      }
-      const payload = response.data;
-      const totalCandidate = payload.total_revenue ?? payload.total ?? 0;
-      const tripsCandidate = payload.trips_completed ?? payload.completed ?? 0;
-      setTotal(Number.isFinite(Number(totalCandidate)) ? Number(totalCandidate) : 0);
-      setTripCount(Number.isFinite(Number(tripsCandidate)) ? Number(tripsCandidate) : 0);
-    } catch (e) {
-      setTotal(0);
-      setTripCount(0);
-      setError(getErrorMessage(e) || 'Failed to load revenue');
-    } finally {
-      setLoading(false);
-    }
-  }, [companyId, month, year]);
+  const { total, tripCount } = useMemo(() => {
+    const trips = query.data ?? [];
+    return trips.reduce(
+      (acc, trip) => {
+        const price = typeof trip.price === 'number' ? trip.price : Number(trip.price) || 0;
+        acc.total += price;
+        acc.tripCount += 1;
+        return acc;
+      },
+      { total: 0, tripCount: 0 },
+    );
+  }, [query.data]);
 
-  useEffect(() => {
-    void fetchRevenue();
-  }, [fetchRevenue]);
-
-  return { total, tripCount, loading, error, refetch: fetchRevenue };
+  return {
+    total,
+    tripCount,
+    loading: query.isLoading || query.isFetching,
+    error: query.error ? getErrorMessage(query.error) : null,
+    refetch: query.refetch,
+  };
 }
+

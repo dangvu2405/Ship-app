@@ -73,7 +73,7 @@ export function DebtPage() {
   const [paymentForm] = Form.useForm<PaymentFormValues>();
 
   const { data: aggregate, refetch: refetchAggregate } = useReport<DebtAggregate>('debt', {});
-  const debtFromReport = (aggregate?.customers ?? aggregate?.data ?? []) as DebtRow[];
+  const debtFromReport = useMemo(() => (aggregate?.customers ?? aggregate?.data ?? []) as DebtRow[], [aggregate?.customers, aggregate?.data]);
 
   const overviewQuery = useQuery({
     queryKey: ['debt-overview'] as const,

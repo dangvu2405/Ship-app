@@ -10,9 +10,6 @@ import {
   clearAuthToken,
   clearTenantId,
   getTenantId,
-  hasAuthToken,
-  setAuthToken,
-  setRefreshToken,
   setTenantId,
 } from '@/lib/auth-session';
 
@@ -24,6 +21,8 @@ interface AuthState {
   currentTenantId: number | null;
   /** Danh sách tenant chờ user chọn sau khi login (chỉ có khi user thuộc ≥ 2 tenant). */
   pendingTenants: Tenant[];
+  /** Xóa cache React Query + storage + state auth (không gọi API logout). */
+  clearClientSession: () => void;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   socialLogin: (credentials: { provider: 'google' | 'facebook' | 'apple'; access_token?: string; id_token?: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -66,28 +65,39 @@ const resolveTenantAfterAuth = (
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
       currentTenantId: null,
       pendingTenants: [],
 
-      login: async (email: string, password: string, rememberMe = true) => {
+      clearClientSession: () => {
+        clearAuthToken();
+        queryClient.clear();
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          currentTenantId: null,
+          pendingTenants: [],
+        });
+      },
+
+      login: async (email: string, password: string, rememberMe?: boolean) => {
         try {
           set({ isLoading: true });
-          const response = await authService.login({ email, password });
+          
+          const response = await authService.login({
+            email,
+            password,
+            ...(rememberMe === true ? { remember: true } : {}),
+          });
           if (response.success && response.data?.user) {
-            const accessToken = response.data.access_token || response.data.token;
-            const refreshToken = response.data.refresh_token;
-            if (accessToken) setAuthToken(accessToken, rememberMe);
-            if (refreshToken) {
-              setRefreshToken(refreshToken, rememberMe);
-            } else {
-              console.warn('[Auth] Login response missing refresh_token - token refresh may fail on next request');
-            }
-
-            const user: User = { ...response.data.user, tenants: response.data.tenants ?? response.data.user.tenants ?? [] };
+            const user: User = { 
+              ...response.data.user, 
+              tenants: (response.data as any).tenants ?? response.data.user.tenants ?? [] 
+            };
             const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
 
             set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
@@ -102,18 +112,13 @@ export const useAuthStore = create<AuthState>()(
       socialLogin: async (credentials: { provider: 'google' | 'facebook' | 'apple'; access_token?: string; id_token?: string }) => {
         try {
           set({ isLoading: true });
+
           const response = await authService.socialLogin(credentials);
           if (response.success && response.data?.user) {
-            const accessToken = response.data.access_token || response.data.token;
-            const refreshToken = response.data.refresh_token;
-            if (accessToken) setAuthToken(accessToken);
-            if (refreshToken) {
-              setRefreshToken(refreshToken);
-            } else {
-              console.warn('[Auth] Social login response missing refresh_token - token refresh may fail on next request');
-            }
-
-            const user: User = { ...response.data.user, tenants: response.data.tenants ?? response.data.user.tenants ?? [] };
+            const user: User = { 
+              ...response.data.user, 
+              tenants: (response.data as any).tenants ?? response.data.user.tenants ?? [] 
+            };
             const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, null);
 
             set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
@@ -131,32 +136,26 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // no-op
         } finally {
-          clearAuthToken();
-          set({ user: null, isAuthenticated: false, currentTenantId: null, pendingTenants: [] });
+          get().clearClientSession();
           toast.success('Logged out successfully');
         }
       },
 
       checkAuth: async () => {
-        if (!hasAuthToken()) {
-          set({ user: null, isAuthenticated: false, isLoading: false, currentTenantId: null, pendingTenants: [] });
-          return;
-        }
-
         try {
           set({ isLoading: true });
           const response = await authService.getCurrentUser();
+
           const user = authService.getUserFromMeResponse(response);
           if (response.success && user) {
             const storedTenantId = getTenantId();
             const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, storedTenantId);
             set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
           } else {
-            set({ user: null, isAuthenticated: false, isLoading: false, currentTenantId: null, pendingTenants: [] });
+            get().clearClientSession();
           }
         } catch {
-          clearAuthToken();
-          set({ user: null, isAuthenticated: false, isLoading: false, currentTenantId: null, pendingTenants: [] });
+          get().clearClientSession();
         }
       },
 
@@ -164,8 +163,7 @@ export const useAuthStore = create<AuthState>()(
         set({ user, isAuthenticated: !!user });
       },
 
-      setSession: (user: User, token?: string) => {
-        if (token) setAuthToken(token);
+      setSession: (user: User) => {
         const storedTenantId = getTenantId();
         const { currentTenantId, pendingTenants } = resolveTenantAfterAuth(user, storedTenantId);
         set({ user, isAuthenticated: true, isLoading: false, currentTenantId, pendingTenants });
@@ -191,11 +189,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: STORAGE_KEYS.AUTH_STORAGE,
       storage: createSafeStorage(),
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-        currentTenantId: state.currentTenantId,
-      }),
+      partialize: () => ({}),
     }
   )
 );
