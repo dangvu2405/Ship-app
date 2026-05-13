@@ -22,3 +22,4 @@ export { default as violationService } from './violation.service';
 export { default as workScheduleService } from './work-schedule.service';
 export { default as workforceOpsService } from './workforce-ops.service';
 export { default as dispatchService } from './dispatch.service';
+export { default as transportRequestService } from './transport-request.service';
