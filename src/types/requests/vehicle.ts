@@ -19,6 +19,10 @@ export type UpdateVehicleRequest = Partial<StoreVehicleRequest> & {
   status?: VehicleStatus | string;
 };
 
+export type UpdateVehicleStatusRequest = {
+  status: Extract<VehicleStatus, 'active' | 'maintenance' | 'inactive' | 'broken'>;
+};
+
 export type StoreVehicleDocumentRequest = {
   doc_type: string;
   doc_name: string;

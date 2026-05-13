@@ -19,12 +19,16 @@ const GENERIC_LOGIN_FAIL = 'Invalid email or password.';
 const GENERIC_FORGOT_HINT =
   'If an account exists for this email, you will receive reset instructions.';
 
-const normalizeLoginUser = (response: { data?: { user: User; tenants?: User['tenants'] } }): User => {
+const normalizeLoginUser = (response: { data?: { user: User; tenants?: User['tenants']; permissions?: unknown } }): User => {
   const u = response.data?.user;
   if (!u) throw new Error('Missing user');
+  const tenants = (response.data as { tenants?: User['tenants'] })?.tenants ?? u.tenants ?? [];
+  const permissions = (response.data as { permissions?: unknown })?.permissions ?? (u as User).user_permissions;
+
   return {
     ...u,
-    tenants: (response.data as { tenants?: User['tenants'] })?.tenants ?? u.tenants ?? [],
+    tenants,
+    user_permissions: permissions as User['user_permissions'],
   };
 };
 

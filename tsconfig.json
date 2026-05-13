@@ -28,5 +28,6 @@
     }
   },
   "include": ["src"],
+  "exclude": ["src/services/generated"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

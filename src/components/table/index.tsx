@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Empty, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 
-type DataTableRecord = { id?: string | number };
+type DataTableRecord = { id?: string | number; key?: string | number; code?: string | number };
 
 export type DataTableColumn<T extends DataTableRecord> = {
   key: string;
@@ -37,6 +37,22 @@ export const DataTable = <T extends DataTableRecord>({
   emptyAction,
   pagination,
 }: DataTableProps<T>) => {
+  const getRowKey = (record: T): string | number => {
+    if (typeof record.id === 'string' || typeof record.id === 'number') {
+      return record.id;
+    }
+
+    if (typeof record.key === 'string' || typeof record.key === 'number') {
+      return record.key;
+    }
+
+    if (typeof record.code === 'string' || typeof record.code === 'number') {
+      return record.code;
+    }
+
+    return JSON.stringify(record);
+  };
+
   const tableColumns: TableColumnsType<T> = columns.map((column) => ({
     key: column.key,
     title: column.header,
@@ -54,13 +70,7 @@ export const DataTable = <T extends DataTableRecord>({
 
   return (
     <Table<T>
-      rowKey={(record, index) => {
-        const id = record.id;
-        if (typeof id === 'string' || typeof id === 'number') {
-          return id;
-        }
-        return String(index ?? 0);
-      }}
+      rowKey={getRowKey}
       dataSource={data}
       columns={tableColumns}
       locale={{

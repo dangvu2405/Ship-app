@@ -97,7 +97,7 @@ export function DeductionsPage() {
         description={t('deductions.description')}
         breadcrumb={[
           { label: t('dashboard.title'), path: ROUTES.dashboard },
-          { label: t('sidebar.payrolls'), path: ROUTES.admin.payroll.list },
+          { label: t('sidebar.payrolls'), path: ROUTES.admin.payrolls.list },
           { label: t('deductions.title') },
         ]}
         actions={
@@ -121,6 +121,7 @@ export function DeductionsPage() {
       <Modal
         title={editing ? t('deductions.editDeduction') : t('deductions.createDeduction')}
         open={open}
+        forceRender
         onCancel={() => setOpen(false)}
         onOk={() => form.submit()}
         okText={editing ? t('common.update') : t('common.create')}

@@ -8,6 +8,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Spin,
@@ -27,6 +28,7 @@ import type { Driver } from '@/types';
 import leaveService from '@/services/leave.service';
 import { ENDPOINTS } from '@/services/endpoints';
 import { useResourceListQuery } from '@/hooks/useResourceListQuery';
+import { useLeaveApprove, useLeaveCancel, useLeaveReject } from '@/hooks/useLeaveRequests';
 import { ROUTES } from '@/routes';
 import toast from 'react-hot-toast';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
@@ -42,7 +44,6 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
   const canApproveLeave = LEAVE_APPROVER_ROLES.some((r) => hasRole(r));
   const [current, setCurrent] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const [busyId, setBusyId] = useState<number | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -112,56 +113,67 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
 
   const leaveTypeOptions = useMemo(
     () => leaveTypes.map((lt) => ({
-      label: `${lt.name}${lt.is_paid ? ' (có lương)' : ' (không lương)'}`,
+      label: `${lt.name}${lt.is_paid ? ` (${t('leavePages.paid')})` : ` (${t('leavePages.unpaid')})`}`,
       value: lt.id,
     })),
-    [leaveTypes],
+    [leaveTypes, t],
   );
 
-  const runAction = useCallback(async (id: number, fn: () => Promise<unknown>, successMsg: string) => {
-    setBusyId(id);
-    try {
-      await fn();
-      toast.success(successMsg);
+  const approveMutation = useLeaveApprove({
+    successMessage: t('workforce.leaveApproved'),
+    errorMessage: t('leavePages.actionFailed'),
+    onSuccess: () => void refetch(),
+  });
+  const rejectMutation = useLeaveReject({
+    successMessage: t('workforce.rejected'),
+    errorMessage: t('leavePages.actionFailed'),
+    onSuccess: () => {
+      setRejectOpen(false);
       void refetch();
-    } catch (err) {
-      if (!shouldShowLocalErrorToast(err)) return;
-      toast.error(getErrorMessage(err) ?? 'Thao tác thất bại');
-    } finally {
-      setBusyId(null);
-    }
-  }, [refetch]);
+    },
+  });
+  const cancelMutation = useLeaveCancel({
+    successMessage: t('workforce.leaveCancelled'),
+    errorMessage: t('leavePages.actionFailed'),
+    onSuccess: () => void refetch(),
+  });
+
+  const isActionBusy = useCallback((id: number) => (
+    (approveMutation.isPending && approveMutation.variables?.id === id) ||
+    (rejectMutation.isPending && rejectMutation.variables?.id === id) ||
+    (cancelMutation.isPending && cancelMutation.variables?.id === id)
+  ), [approveMutation.isPending, approveMutation.variables?.id, cancelMutation.isPending, cancelMutation.variables?.id, rejectMutation.isPending, rejectMutation.variables?.id]);
 
   const columns = useMemo<ColumnsType<LeaveRequest>>(() => [
     {
       key: 'driver_id',
-      title: 'Tài xế',
-      render: (_, r) => driverOptions.find((d) => d.value === r.driver_id)?.label ?? `#${r.driver_id}`,
+      title: t('drivers.title'),
+      render: (_, r) => driverOptions.find((d) => d.value === r.driver_id)?.label ?? `${t('drivers.title')} #${r.driver_id}`,
     },
     {
       key: 'leave_type',
-      title: 'Loại phép',
+      title: t('workforce.leaveType'),
       render: (_, r) => leaveTypes.find((lt) => lt.id === r.leave_type_id)?.name ?? `#${r.leave_type_id}`,
     },
     {
       key: 'from_date',
-      title: 'Từ ngày',
+      title: t('workforce.fromDate'),
       render: (_, r) => <DateTimeBadge value={r.from_date} mode="date" />,
     },
     {
       key: 'to_date',
-      title: 'Đến ngày',
+      title: t('workforce.toDate'),
       render: (_, r) => <DateTimeBadge value={r.to_date} mode="date" />,
     },
     {
       key: 'total_days',
-      title: 'Số ngày',
+      title: t('workforce.totalDays'),
       render: (_, r) =>
-        r.total_days != null ? `${Number(r.total_days).toLocaleString('vi-VN')} ngày` : '-',
+        r.total_days != null ? t('leavePages.daysValue', { count: Number(r.total_days).toLocaleString('vi-VN') }) : '-',
     },
     {
       key: 'reason',
-      title: 'Lý do',
+      title: t('common.reason'),
       render: (_, r) => (
         <Typography.Text ellipsis={{ tooltip: r.reason }} style={{ maxWidth: 160 }}>
           {r.reason ?? '-'}
@@ -171,7 +183,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     {
       key: 'status',
       title: t('common.status'),
-      render: (_, r) => <Tag color={leaveStatusColor(r.status)}>{leaveStatusLabel(r.status)}</Tag>,
+      render: (_, r) => <Tag color={leaveStatusColor(r.status)}>{leaveStatusLabel(r.status, t)}</Tag>,
     },
     {
       key: 'actions',
@@ -179,7 +191,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
       fixed: 'right' as const,
       width: 160,
       render: (_, r) => {
-        const isBusy = busyId === r.id;
+        const isBusy = isActionBusy(r.id);
         const canApprove = canApproveLeave && (r.status === 'pending' || r.status === 'submitted');
         const canCancel = r.status === 'pending';
         return (
@@ -187,17 +199,23 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
             {canApprove ? (
               <>
                 <Button size="small" type="primary" loading={isBusy}
-                  onClick={() => void runAction(r.id, () => leaveService.approve(r.id), 'Đã duyệt đơn nghỉ phép')}
-                >Duyệt</Button>
+                  onClick={() => approveMutation.mutate({ id: r.id })}
+                >{t('common.approve')}</Button>
                 <Button size="small" danger
                   onClick={() => { setActiveRecord(r); rejectForm.resetFields(); setRejectOpen(true); }}
-                >Từ chối</Button>
+                >{t('common.reject')}</Button>
               </>
             ) : null}
             {canCancel ? (
-              <Button size="small"
-                onClick={() => void runAction(r.id, () => leaveService.cancel(r.id), 'Đã hủy đơn nghỉ phép')}
-              >Hủy</Button>
+              <Popconfirm
+                title={t('leavePages.cancelConfirmTitle')}
+                description={t('leavePages.cancelConfirmDescription')}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                onConfirm={() => cancelMutation.mutate({ id: r.id })}
+              >
+                <Button size="small" loading={isBusy}>{t('common.cancel')}</Button>
+              </Popconfirm>
             ) : null}
             {r.rejection_reason && r.status === 'rejected' && (
               <Typography.Text type="danger" style={{ fontSize: 12 }}>{r.rejection_reason}</Typography.Text>
@@ -206,7 +224,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
         );
       },
     },
-  ], [t, busyId, canApproveLeave, driverOptions, leaveTypes, rejectForm, runAction]);
+  ], [approveMutation, canApproveLeave, cancelMutation, driverOptions, isActionBusy, leaveTypes, rejectForm, t]);
 
   const selectedDriverId = Form.useWatch('driver_id', createForm);
   const selectedLeaveTypeId = Form.useWatch('leave_type_id', createForm);
@@ -238,15 +256,15 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
     <div className="enterprise-page space-y-4">
       {!embedded && (
         <PageHeader
-          title="Nghỉ phép"
-          description="Quản lý đơn nghỉ phép tài xế — duyệt, từ chối, hủy"
+          title={t('leavePages.title')}
+          description={t('leavePages.description')}
           breadcrumb={[
             { label: t('dashboard.title'), path: ROUTES.dashboard },
-            { label: 'Nghỉ phép' },
+            { label: t('leavePages.title') },
           ]}
           actions={
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
-              Tạo đơn nghỉ phép
+              {t('leavePages.createRequest')}
             </Button>
           }
         />
@@ -254,30 +272,30 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
 
       <Card
         className="enterprise-section-card"
-        title={<Flex align="center" gap={8}><CalendarOutlined /><span>Nghỉ phép ({total})</span></Flex>}
+        title={<Flex align="center" gap={8}><CalendarOutlined /><span>{t('leavePages.title')} ({total})</span></Flex>}
         extra={
           embedded ? (
             <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
-              Tạo đơn
+              {t('common.create')}
             </Button>
           ) : null
         }
       >
         <Flex gap={8} style={{ marginBottom: 16 }} wrap="wrap">
-          <Tag color="blue">Chờ duyệt: {pendingCount}</Tag>
-          <Tag color="green">Đã duyệt: {approvedCount}</Tag>
-          <Tag color="red">Từ chối: {rejectedCount}</Tag>
+          <Tag color="blue">{t('leavePages.pendingCount', { count: pendingCount })}</Tag>
+          <Tag color="green">{t('leavePages.approvedCount', { count: approvedCount })}</Tag>
+          <Tag color="red">{t('leavePages.rejectedCount', { count: rejectedCount })}</Tag>
           <Select
             allowClear
             style={{ width: 200 }}
-            placeholder="Lọc trạng thái"
+            placeholder={t('leavePages.statusFilter')}
             value={statusFilter}
             onChange={(v) => { setCurrent(1); setStatusFilter(v); }}
             options={[
-              { label: 'Chờ duyệt', value: 'pending' },
-              { label: 'Đã duyệt', value: 'approved' },
-              { label: 'Từ chối', value: 'rejected' },
-              { label: 'Đã hủy', value: 'cancelled' },
+              { label: t('leavePages.status.pending'), value: 'pending' },
+              { label: t('leavePages.status.approved'), value: 'approved' },
+              { label: t('leavePages.status.rejected'), value: 'rejected' },
+              { label: t('leavePages.status.cancelled'), value: 'cancelled' },
             ]}
           />
         </Flex>
@@ -309,11 +327,11 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
       </Card>
 
       <Modal
-        title="Tạo đơn nghỉ phép"
+        title={t('leavePages.createRequest')}
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         onOk={() => createForm.submit()}
-        okText="Tạo đơn"
+        okText={t('common.create')}
         cancelText={t('common.cancel')}
       >
         <Form
@@ -322,38 +340,38 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
           onFinish={async (values) => {
             try {
               await leaveService.create(values as Partial<LeaveRequest>);
-              toast.success('Đã tạo đơn nghỉ phép');
+              toast.success(t('workforce.createLeaveSuccess'));
               setCreateOpen(false);
               void refetch();
             } catch (err) {
               if (!shouldShowLocalErrorToast(err)) return;
-              toast.error(getErrorMessage(err) ?? 'Tạo đơn thất bại');
+              toast.error(getErrorMessage(err) ?? t('leavePages.createFailed'));
             }
           }}
         >
-          <Form.Item name="driver_id" label="Tài xế" rules={[{ required: true, message: 'Chọn tài xế' }]}>
-            <Select showSearch placeholder="Chọn tài xế" options={driverOptions}
+          <Form.Item name="driver_id" label={t('drivers.title')} rules={[{ required: true, message: t('validation.required', { field: t('drivers.title') }) }]}>
+            <Select showSearch placeholder={t('dispatch.selectDriver')} options={driverOptions}
               filterOption={(inp, opt) => String(opt?.label ?? '').toLowerCase().includes(inp.toLowerCase())} />
           </Form.Item>
-          <Form.Item name="leave_type_id" label="Loại nghỉ phép" rules={[{ required: true, message: 'Chọn loại phép' }]}>
-            <Select placeholder="Chọn loại nghỉ phép" options={leaveTypeOptions} />
+          <Form.Item name="leave_type_id" label={t('workforce.leaveType')} rules={[{ required: true, message: t('validation.required', { field: t('workforce.leaveType') }) }]}>
+            <Select placeholder={t('leavePages.selectLeaveType')} options={leaveTypeOptions} />
           </Form.Item>
           <Space style={{ width: '100%' }}>
-            <Form.Item name="from_date" label="Từ ngày" rules={[{ required: true, message: 'Nhập ngày bắt đầu' }]}>
+            <Form.Item name="from_date" label={t('workforce.fromDate')} rules={[{ required: true, message: t('validation.required', { field: t('workforce.fromDate') }) }]}>
               <Input type="date" />
             </Form.Item>
             <Form.Item
               name="to_date"
-              label="Đến ngày"
+              label={t('workforce.toDate')}
               dependencies={['from_date']}
               rules={[
-                { required: true, message: 'Nhập ngày kết thúc' },
+                { required: true, message: t('validation.required', { field: t('workforce.toDate') }) },
                 ({ getFieldValue }) => ({
                   validator(_, value) {
                     const from = getFieldValue('from_date') as string | undefined;
                     if (!value || !from) return Promise.resolve();
                     if (value < from) {
-                      return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
+                      return Promise.reject(new Error(t('leavePages.endDateInvalid')));
                     }
                     return Promise.resolve();
                   },
@@ -366,7 +384,7 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
 
           {isLoadingBalance && selectedDriverId && selectedLeaveTypeId && (
             <div style={{ marginBottom: 16 }}>
-              <Spin size="small" /> <Typography.Text type="secondary">Đang tải số dư phép…</Typography.Text>
+              <Spin size="small" /> <Typography.Text type="secondary">{t('leavePages.balanceLoading')}</Typography.Text>
             </div>
           )}
           {balanceData && (
@@ -374,68 +392,69 @@ export function LeaveList({ companyId, officeId, embedded = false }: LeaveListPr
               type={balanceData.available > 0 ? 'info' : 'error'}
               showIcon
               style={{ marginBottom: 16 }}
-              message={`Số dư quỹ phép: còn ${balanceData.available} ngày`}
-              description={`Tổng: ${balanceData.total} | Đã dùng: ${balanceData.used} | Đang chờ duyệt: ${balanceData.pending}`}
+              message={t('leavePages.balanceMessage', { count: balanceData.available })}
+              description={t('leavePages.balanceDescription', {
+                total: balanceData.total,
+                used: balanceData.used,
+                pending: balanceData.pending,
+              })}
             />
           )}
 
           <Form.Item
             name="total_days"
-            label="Số ngày nghỉ"
+            label={t('workforce.totalDays')}
             rules={[
-              { required: true, message: 'Nhập số ngày' },
-              { type: 'number', min: 0.5, message: 'Tối thiểu 0.5 ngày' },
+              { required: true, message: t('validation.required', { field: t('workforce.totalDays') }) },
+              { type: 'number', min: 0.5, message: t('leavePages.minHalfDay') },
               () => ({
                 validator(_, value) {
                   if (value && balanceData && value > balanceData.available) {
-                    return Promise.reject(new Error(`Vượt quá số phép còn lại (${balanceData.available} ngày)`));
+                    return Promise.reject(new Error(t('leavePages.exceedBalance', { count: balanceData.available })));
                   }
                   return Promise.resolve();
                 },
               }),
             ]}
           >
-            <InputNumber style={{ width: '100%' }} step={0.5} min={0.5} addonAfter="ngày" />
+            <InputNumber style={{ width: '100%' }} step={0.5} min={0.5} addonAfter={t('leavePages.dayUnit')} />
           </Form.Item>
-          <Form.Item name="reason" label="Lý do">
-            <Input.TextArea rows={2} placeholder="Lý do nghỉ phép..." maxLength={1000} />
+          <Form.Item name="reason" label={t('common.reason')}>
+            <Input.TextArea rows={2} placeholder={t('common.reasonPlaceholder')} maxLength={1000} />
           </Form.Item>
-          <Form.Item name="attachment_urls" label="Tài liệu đính kèm (nếu có)">
-            <FileUploader buttonText="Tải lên minh chứng" accept=".pdf,image/*" maxCount={3} />
+          <Form.Item name="attachment_urls" label={t('leavePages.attachments')}>
+            <FileUploader buttonText={t('leavePages.uploadProof')} accept=".pdf,image/*" maxCount={3} />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title="Từ chối đơn nghỉ phép"
+        title={t('workforce.rejectLeave')}
         open={rejectOpen}
         onCancel={() => setRejectOpen(false)}
         onOk={() => rejectForm.submit()}
-        okText="Từ chối"
-        okButtonProps={{ danger: true }}
+        okText={t('common.reject')}
+        okButtonProps={{ danger: true, loading: rejectMutation.isPending }}
         cancelText={t('common.cancel')}
       >
         <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-          Tài xế #{activeRecord?.driver_id} · {activeRecord?.from_date} → {activeRecord?.to_date} ({activeRecord?.total_days} ngày)
+          {t('leavePages.rejectSummary', {
+            driver: activeRecord?.driver_id ?? '',
+            from: activeRecord?.from_date ?? '',
+            to: activeRecord?.to_date ?? '',
+            days: activeRecord?.total_days ?? '',
+          })}
         </Typography.Text>
         <Form
           form={rejectForm}
           layout="vertical"
           onFinish={async (values) => {
             if (!activeRecord) return;
-            try {
-              await leaveService.reject(activeRecord.id, values.rejection_reason as string);
-              toast.success('Đã từ chối đơn nghỉ phép');
-              setRejectOpen(false);
-              void refetch();
-            } catch (err) {
-              if (!shouldShowLocalErrorToast(err)) return;
-              toast.error(getErrorMessage(err) ?? 'Từ chối thất bại');
-            }
+            await rejectMutation.mutateAsync({ id: activeRecord.id, rejection_reason: values.rejection_reason as string });
           }}
         >
-          <Form.Item name="rejection_reason" label="Lý do từ chối" rules={[{ required: true, message: 'Nhập lý do' }]}>
-            <Input.TextArea rows={3} placeholder="Nêu lý do không duyệt..." maxLength={500} />
+          <Form.Item name="rejection_reason" label={t('common.reason')} rules={[{ required: true, message: t('validation.required', { field: t('common.reason') }) }]}>
+            <Input.TextArea rows={3} placeholder={t('workforce.rejectReasonPlaceholder')} maxLength={500} />
           </Form.Item>
         </Form>
       </Modal>

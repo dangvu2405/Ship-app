@@ -9,7 +9,7 @@ function parsePagedList<T>(body: unknown): { data: T[]; total: number } {
   throwIfEnvelopeFailed(body);
   const envelopeData = unwrapEnvelope<unknown>(body) as
     | T[]
-    | { data?: T[]; meta?: { total?: number } }
+    | { data?: T[]; meta?: { total?: number }; total?: number }
     | null
     | undefined;
 
@@ -19,10 +19,10 @@ function parsePagedList<T>(body: unknown): { data: T[]; total: number } {
     return { data: envelopeData, total: metaTotal ?? envelopeData.length };
   }
   if (envelopeData && typeof envelopeData === 'object' && Array.isArray((envelopeData as { data: T[] }).data)) {
-    const inner = envelopeData as { data: T[]; meta?: { total?: number } };
+    const inner = envelopeData as { data: T[]; meta?: { total?: number }; total?: number };
     return {
       data: inner.data,
-      total: inner.meta?.total ?? metaTotal ?? inner.data.length,
+      total: inner.meta?.total ?? inner.total ?? metaTotal ?? inner.data.length,
     };
   }
   return { data: [], total: 0 };

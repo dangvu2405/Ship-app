@@ -108,7 +108,7 @@ export function AllowancesPage() {
         description={t('allowances.description')}
         breadcrumb={[
           { label: t('dashboard.title'), path: ROUTES.dashboard },
-          { label: t('sidebar.payrolls'), path: ROUTES.admin.payroll.list },
+          { label: t('sidebar.payrolls'), path: ROUTES.admin.payrolls.list },
           { label: t('allowances.title') },
         ]}
         actions={
@@ -132,6 +132,7 @@ export function AllowancesPage() {
       <Modal
         title={editing ? t('allowances.editAllowance') : t('allowances.createAllowance')}
         open={open}
+        forceRender
         onCancel={() => setOpen(false)}
         onOk={() => form.submit()}
         okText={editing ? t('common.update') : t('common.create')}

@@ -3,7 +3,7 @@ import { useNavigation } from '@refinedev/core';
 import { useListFilters } from '@/hooks/useListFilters';
 import { useTable } from '@refinedev/antd';
 import type { CrudFilter } from '@refinedev/core';
-import { Button, Card, Flex, Input, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { Button, Card, Dropdown, Flex, Input, Select, Space, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CarOutlined,
@@ -11,6 +11,7 @@ import {
   DownloadOutlined,
   EditOutlined,
   EyeOutlined,
+  MoreOutlined,
   PlusOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
@@ -26,9 +27,12 @@ import { ROUTES } from '@/routes';
 import { shouldShowLocalErrorToast } from '@/utils/errorHandler';
 import { useSafeRefetch } from '@/hooks/useSafeRefetch';
 import { useResourceDeleteMutation } from '@/hooks/useResourceDeleteMutation';
+import { useVehicleStatusUpdate } from '@/hooks/useVehicles';
+import type { UpdateVehicleStatusRequest } from '@/types/requests/vehicle';
 
 
 const VEHICLE_TYPE_OPTIONS = ['truck', 'van', 'car', 'motorcycle'] as const;
+const VEHICLE_STATUS_OPTIONS: UpdateVehicleStatusRequest['status'][] = ['active', 'maintenance', 'inactive', 'broken'];
 
 function vehicleStatusColor(status: string): string {
   switch (status) {
@@ -85,6 +89,10 @@ export function VehiclesList() {
   });
 
   const safeRefetch = useSafeRefetch('vehicles-vehicleslist', tableQuery.refetch);
+  const statusMutation = useVehicleStatusUpdate({
+    successMessage: t('vehicles.statusUpdateSuccess'),
+    errorMessage: t('vehicles.statusUpdateError'),
+  });
 
   const clearFilters = () => {
     clearFiltersBase();
@@ -238,6 +246,30 @@ export function VehiclesList() {
               aria-label={t('common.edit')}
               onClick={() => handleOpenDialog('edit', row.id)}
             />
+            <Dropdown
+              menu={{
+                items: VEHICLE_STATUS_OPTIONS.map((status) => ({
+                  key: status,
+                  label: t(`vehicles.status.${status}`),
+                  disabled: row.status === status,
+                })),
+                onClick: ({ key }) => {
+                  statusMutation.mutate(
+                    { id: row.id, payload: { status: key as UpdateVehicleStatusRequest['status'] } },
+                    { onSuccess: () => void safeRefetch(true) },
+                  );
+                },
+              }}
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+                size="small"
+                loading={statusMutation.isPending && statusMutation.variables?.id === row.id}
+                icon={<MoreOutlined aria-hidden />}
+                aria-label={t('vehicles.changeStatus')}
+              />
+            </Dropdown>
             <Button
               type="text"
               size="small"
@@ -250,7 +282,7 @@ export function VehiclesList() {
         ),
       },
     ],
-    [show, t],
+    [safeRefetch, show, statusMutation, t],
   );
 
   if (tableQuery.isError) {

@@ -17,13 +17,13 @@ export function leaveStatusColor(status: string): string {
   }
 }
 
-export function leaveStatusLabel(status: string): string {
+export function leaveStatusLabel(status: string, t: (key: string) => string): string {
   const map: Record<string, string> = {
-    pending: 'Chờ duyệt',
-    submitted: 'Đã nộp',
-    approved: 'Đã duyệt',
-    rejected: 'Từ chối',
-    cancelled: 'Đã hủy',
+    pending: 'leavePages.status.pending',
+    submitted: 'leavePages.status.submitted',
+    approved: 'leavePages.status.approved',
+    rejected: 'leavePages.status.rejected',
+    cancelled: 'leavePages.status.cancelled',
   };
-  return map[status] ?? status;
+  return map[status] ? t(map[status]) : status;
 }

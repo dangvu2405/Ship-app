@@ -12,7 +12,7 @@ const createCrudRoutes = (segment: string) => ({
 } as const);
 
 const ordersCrudRoutes = createCrudRoutes('orders');
-const tripsCrudRoutes = ordersCrudRoutes;
+const tripsCrudRoutes = createCrudRoutes('trips');
 
 export const ROUTES = {
   root: '/',
@@ -38,9 +38,7 @@ export const ROUTES = {
       board: `${ADMIN_PREFIX}/dispatch`,
       today: `${ADMIN_PREFIX}/dispatch/today`,
     },
-    vehicleAssignments: createCrudRoutes('vehicles/assignments'),
     vehicle_assignments: createCrudRoutes('vehicles/assignments'),
-    vehicleExpenses: createCrudRoutes('vehicles/expenses'),
     vehicle_expenses: createCrudRoutes('vehicles/expenses'),
     orders: {
       list: ordersCrudRoutes.list,
@@ -57,13 +55,6 @@ export const ROUTES = {
     violations: `${ADMIN_PREFIX}/violations`,
     overtime: `${ADMIN_PREFIX}/overtime`,
     leave: `${ADMIN_PREFIX}/leave`,
-    tripBonusRules: `${ADMIN_PREFIX}/trip-bonus-rules`,
-    payroll: {
-      list: `${ADMIN_PREFIX}/payroll`,
-      adjustments: createCrudRoutes('payroll/adjustments'),
-      allowances: createCrudRoutes('payroll/allowances'),
-      deductions: createCrudRoutes('payroll/deductions'),
-    },
     payroll_adjustments: createCrudRoutes('payroll/adjustments'),
     allowances: createCrudRoutes('payroll/allowances'),
     deductions: createCrudRoutes('payroll/deductions'),
@@ -112,6 +103,20 @@ const RESOURCE_ALIASES = {
   invoices: 'invoices',
   user: 'users',
   users: 'users',
+  payroll: 'payrolls',
+  payrolls: 'payrolls',
+  vehicle_assignment: 'vehicle_assignments',
+  vehicle_assignments: 'vehicle_assignments',
+  vehicle_expense: 'vehicle_expenses',
+  vehicle_expenses: 'vehicle_expenses',
+  trip_bonus_rule: 'trip_bonus_rules',
+  trip_bonus_rules: 'trip_bonus_rules',
+  allowance: 'allowances',
+  allowances: 'allowances',
+  deduction: 'deductions',
+  deductions: 'deductions',
+  payroll_adjustment: 'payroll_adjustments',
+  payroll_adjustments: 'payroll_adjustments',
 } as const;
 
 const RESOURCE_ROUTE_GROUPS = {
@@ -122,6 +127,13 @@ const RESOURCE_ROUTE_GROUPS = {
   drivers: ROUTES.admin.drivers,
   invoices: ROUTES.admin.invoices,
   users: ROUTES.admin.users,
+  payrolls: ROUTES.admin.payrolls,
+  vehicle_assignments: ROUTES.admin.vehicle_assignments,
+  vehicle_expenses: ROUTES.admin.vehicle_expenses,
+  trip_bonus_rules: ROUTES.admin.trip_bonus_rules,
+  allowances: ROUTES.admin.allowances,
+  deductions: ROUTES.admin.deductions,
+  payroll_adjustments: ROUTES.admin.payroll_adjustments,
 } as const;
 
 type ResourceAliasKey = keyof typeof RESOURCE_ALIASES;

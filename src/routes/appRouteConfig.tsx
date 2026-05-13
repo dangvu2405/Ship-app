@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from 'react';
 import { lazyWithMinDelay } from '@/utils/lazyWithMinDelay';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
 import { ROUTES } from '@/routes';
 
 type CrudRouteGroup = {
@@ -26,8 +27,6 @@ type SingleRouteConfig = {
   Component: ComponentType<Record<string, unknown>>;
   requiredRole?: 'admin';
 };
-
-import { AppLoadingSpin } from '@/components/common/AppLoadingSpin';
 
 const ProtectedRoute = ({ children, requiredRole }: { children: ReactNode; requiredRole: string }) => {
   const { isAuthenticated, isLoading, hasRole } = useAuth();

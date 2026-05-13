@@ -14,13 +14,13 @@ const normalizeApiPath = (path: string): string => {
 /** Cấu hình forgot-password endpoint (backend có thể mở sau). */
 export const AUTH_FORGOT_PASSWORD = {
   sendEnabled: import.meta.env.VITE_AUTH_FORGOT_PASSWORD_SEND_ENABLED !== 'false',
-  verifyEnabled: import.meta.env.VITE_AUTH_FORGOT_PASSWORD_VERIFY_ENABLED === 'true',
+  verifyEnabled: import.meta.env.VITE_AUTH_FORGOT_PASSWORD_VERIFY_ENABLED !== 'false',
   sendPath: normalizeApiPath(import.meta.env.VITE_AUTH_FORGOT_PASSWORD_PATH || '/auth/forgot-password'),
   verifyPath: normalizeApiPath(import.meta.env.VITE_AUTH_FORGOT_PASSWORD_VERIFY_PATH || '/auth/reset-password'),
 } as const;
 
-/** Bật UI chat khi backend triển khai đầy đủ (mặc định tắt — API trả 501). */
-export const CHAT_ENABLED = import.meta.env.VITE_CHAT_ENABLED === 'true';
+/** Bật UI chat khi backend triển khai đầy đủ. */
+export const CHAT_ENABLED = import.meta.env.VITE_CHAT_ENABLED !== 'false';
 
 /** `POST /auth/register` — bật khi backend có route đăng ký public. */
 export const REGISTER_ENABLED = import.meta.env.VITE_REGISTER_ENABLED === 'true';

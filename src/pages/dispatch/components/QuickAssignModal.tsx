@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Alert, Form, Modal, Select, Spin } from 'antd';
 import type { BaseRecord } from '@refinedev/core';
 import { useCustom } from '@refinedev/core';
 import dayjs from 'dayjs';
+import { z } from 'zod';
 import { ENDPOINTS } from '@/services/endpoints';
-import tripService from '@/services/trip.service';
 import type { Driver, Vehicle } from '@/types';
 import type { DispatchTrip } from '@/types/api/dispatch';
 import { vehicleHasInTransitOverlap } from '@/pages/dispatch/dispatch-utils';
-import { useAppFeedback } from '@/hooks/useAppFeedback';
-import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
+import { useTripAssign } from '@/hooks/useTrips';
+import { useTranslation } from '@/hooks/useTranslation';
+
+const assignTripSchema = z.object({
+  driver_id: z.number(),
+  vehicle_id: z.number(),
+});
 
 function normalizeResourceList<T>(raw: unknown): T[] {
   if (raw == null) return [];
@@ -43,9 +48,16 @@ export function QuickAssignModal({
   onClose,
   onSuccess,
 }: QuickAssignModalProps) {
+  const { t } = useTranslation();
   const [form] = Form.useForm<{ driver_id: number; vehicle_id: number }>();
-  const [submitting, setSubmitting] = useState(false);
-  const feedback = useAppFeedback();
+  const assignMutation = useTripAssign({
+    successMessage: t('dispatch.assignSuccess'),
+    errorMessage: t('dispatch.assignFailed'),
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
+  });
 
   const { data: driversPayload, isFetching: loadingDrivers } = useCustom<BaseRecord>({
     url: ENDPOINTS.drivers.available,
@@ -76,8 +88,8 @@ export function QuickAssignModal({
           d.expired_date != null &&
           d.expired_date !== '' &&
           dayjs(d.expired_date).isBefore(dayjs(), 'day');
-        const base = d.name ?? d.code ?? `Tài xế #${d.id}`;
-        const label = expired ? `${base} (GPLX hết hạn — vẫn gán được)` : base;
+        const base = d.name ?? d.code ?? `${t('drivers.title')} #${d.id}`;
+        const label = expired ? `${base} (${t('dispatch.driverLicenseExpiredAssignable')})` : base;
         return { label, value: d.id, driver: d };
       });
 
@@ -102,40 +114,33 @@ export function QuickAssignModal({
     if (!trip) return;
     try {
       const values = await form.validateFields();
-      setSubmitting(true);
-      const assignRes = await tripService.assign(trip.id, { driver_id: values.driver_id, vehicle_id: values.vehicle_id });
-      if (!assignRes.success) {
-        feedback.error(assignRes.message || 'Phân công thất bại');
-        return;
-      }
-      const metaWarnings = assignRes.meta?.warnings ?? [];
+      const payload = assignTripSchema.parse(values);
       const d = driversRaw.find((x) => x.id === values.driver_id);
       if (d?.expired_date && dayjs(d.expired_date).isBefore(dayjs(), 'day')) {
         console.warn('[dispatch] Assigned trip with expired license', { tripId: trip.id, driverId: d.id, expired_date: d.expired_date });
       }
-      if (metaWarnings.length > 0) {
-        feedback.warning(metaWarnings.join('\n'));
-      }
-      feedback.success('Đã phân công chuyến');
-      onSuccess();
-      onClose();
+      await assignMutation.mutateAsync({ id: trip.id, payload });
     } catch (e) {
-      if (!shouldShowLocalErrorToast(e)) return;
-      feedback.error(getErrorMessage(e) ?? 'Phân công thất bại');
-    } finally {
-      setSubmitting(false);
+      if (e instanceof z.ZodError) {
+        form.setFields(
+          e.issues.map((issue) => ({
+            name: [issue.path[0] === 'vehicle_id' ? 'vehicle_id' : 'driver_id'],
+            errors: [t('validation.required', { field: String(issue.path[0] ?? '') })],
+          })),
+        );
+      }
     }
   };
 
   return (
     <Modal
-      title="Phân công nhanh"
+      title={t('dispatch.quickAssignTitle')}
       open={open}
       onCancel={onClose}
       onOk={() => void handleOk()}
-      confirmLoading={submitting}
-      okText="Gán"
-      cancelText="Hủy"
+      confirmLoading={assignMutation.isPending}
+      okText={t('dispatch.assign')}
+      cancelText={t('common.cancel')}
       destroyOnHidden
     >
       {trip ? (
@@ -151,32 +156,32 @@ export function QuickAssignModal({
         type="info"
         showIcon
         className="mb-3"
-        message="Danh sách gợi ý đã lọc theo quy tắc: không xe bảo dưỡng/hỏng; không xe đang in_transit trùng giờ; tài xế nghỉ phép đã duyệt trong ngày được loại ở bước trước."
+        message={t('dispatch.assignInfo')}
       />
 
       <Spin spinning={loadingDrivers || loadingVehicles}>
         <Form name="quick-assign-form" form={form} layout="vertical">
           <Form.Item
             name="driver_id"
-            label="Tài xế"
-            rules={[{ required: true, message: 'Chọn tài xế' }]}
+            label={t('drivers.title')}
+            rules={[{ required: true, message: t('validation.required', { field: t('drivers.title') }) }]}
           >
             <Select
               showSearch
               optionFilterProp="label"
-              placeholder="Chọn tài xế"
+              placeholder={t('dispatch.selectDriver')}
               options={driverOptions.map((o) => ({ label: o.label, value: o.value }))}
             />
           </Form.Item>
           <Form.Item
             name="vehicle_id"
-            label="Xe"
-            rules={[{ required: true, message: 'Chọn xe' }]}
+            label={t('vehicles.title')}
+            rules={[{ required: true, message: t('validation.required', { field: t('vehicles.title') }) }]}
           >
             <Select
               showSearch
               optionFilterProp="label"
-              placeholder="Chọn xe"
+              placeholder={t('dispatch.selectVehicle')}
               options={vehicleOptions}
             />
           </Form.Item>

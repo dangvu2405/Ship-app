@@ -2,7 +2,7 @@ import api from './api';
 import { ENDPOINTS } from './endpoints';
 import type { ApiResponse } from '@/types';
 import type { TripListParams, TripListResponse, TripMutationResponse, TripDetailResponse } from '@/types/api/trip';
-import type { CancelTripRequest, StoreTripRequest, UpdateTripRequest } from '@/types/requests/trip';
+import type { AssignTripRequest, CancelTripRequest, StoreTripRequest, UpdateTripRequest } from '@/types/requests/trip';
 import type { TripStatus } from '@/utils/tripStatus';
 
 class TripService {
@@ -32,7 +32,7 @@ class TripService {
   }
 
   /** Gán tài xế + xe cho chuyến (pending → assigned). */
-  async assign(id: number, data?: { driver_id?: number; vehicle_id?: number }): Promise<TripMutationResponse> {
+  async assign(id: number, data: AssignTripRequest): Promise<TripMutationResponse> {
     const response = await api.patch<TripMutationResponse>(ENDPOINTS.trips.assign(id), data);
     return response.data;
   }
@@ -161,7 +161,11 @@ class TripService {
     payload?: { reason?: string; vehicle_id?: number; driver_id?: number },
   ): Promise<TripMutationResponse> {
     switch (action) {
-      case 'assign':    return this.assign(id);
+      case 'assign':
+        if (payload?.driver_id == null || payload?.vehicle_id == null) {
+          throw new Error('assign requires driver_id and vehicle_id');
+        }
+        return this.assign(id, { driver_id: Number(payload.driver_id), vehicle_id: Number(payload.vehicle_id) });
       case 'accept':    return this.accept(id);
       case 'start':     return this.start(id);
       case 'pickup':    return this.pickup(id);

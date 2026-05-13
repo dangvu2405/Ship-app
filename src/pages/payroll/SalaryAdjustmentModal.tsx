@@ -42,6 +42,7 @@ export function SalaryAdjustmentModal({
       okText={t('common.submit')}
       cancelText={t('common.cancel')}
       confirmLoading={loading}
+      forceRender
       onCancel={() => {
         form.resetFields();
         onClose();

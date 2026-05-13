@@ -1,4 +1,4 @@
-import { Flex, Space, Spin, Tag, Typography, Button, theme, Card } from 'antd';
+import { Avatar, Button, Card, Flex, Space, Spin, Tag, Typography, theme } from 'antd';
 import { RobotOutlined, UserOutlined, LoadingOutlined, ReloadOutlined, BarChartOutlined, CarOutlined, FileSearchOutlined, TeamOutlined } from '@ant-design/icons';
 import { MessageRenderer } from './MessageRenderer';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -58,9 +58,9 @@ export const ChatMessageList = ({
 
   if (messages.length === 0) {
     return (
-      <Flex vertical align="center" justify="center" style={{ height: '100%', minHeight: 300 }}>
+      <Flex vertical align="center" justify="center" style={{ flex: 1, height: '100%', minHeight: 300 }}>
         <Flex vertical align="center" gap="middle" style={{ marginBlockEnd: token.marginXL }}>
-          <RobotOutlined style={{ fontSize: 48, color: token.colorPrimary }} />
+          <Avatar size={56} icon={<RobotOutlined />} style={{ background: token.colorPrimary }} />
           <Typography.Title level={4} style={{ margin: 0 }}>
             Tôi có thể giúp gì cho bạn?
           </Typography.Title>
@@ -77,7 +77,8 @@ export const ChatMessageList = ({
                 hoverable
                 size="small"
                 style={{
-                  width: `calc(50% - ${token.marginSM / 2}px)`,
+                  flex: '1 1 220px',
+                  maxWidth: 280,
                   borderRadius: token.borderRadiusLG,
                   border: `1px solid ${token.colorBorderSecondary}`,
                 }}
@@ -117,23 +118,35 @@ export const ChatMessageList = ({
               ? token.colorErrorBg
               : token.colorFillSecondary;
           const bubbleFg = isUser ? token.colorTextLightSolid : token.colorText;
+          const avatar = isUser ? <UserOutlined /> : <RobotOutlined />;
 
           return (
-            <Flex key={message.id} justify={isUser ? 'flex-end' : 'flex-start'}>
+            <Flex key={message.id} justify={isUser ? 'flex-end' : 'flex-start'} align="flex-end" gap="small">
+              {!isUser && (
+                <Avatar
+                  size={32}
+                  icon={avatar}
+                  style={{ background: isAssistantError ? token.colorError : token.colorTextTertiary, flex: '0 0 auto' }}
+                />
+              )}
               <div
                 style={{
-                  maxWidth: '85%',
-                  borderRadius: token.borderRadiusLG,
+                  maxWidth: 'min(76%, 720px)',
+                  minWidth: message.isPending ? 180 : undefined,
+                  borderRadius: isUser
+                    ? `${token.borderRadiusLG}px ${token.borderRadiusLG}px ${token.borderRadiusXS}px ${token.borderRadiusLG}px`
+                    : `${token.borderRadiusLG}px ${token.borderRadiusLG}px ${token.borderRadiusLG}px ${token.borderRadiusXS}px`,
                   paddingBlock: token.paddingSM,
                   paddingInline: token.padding,
                   background: bubbleBg,
                   color: bubbleFg,
                   border: isAssistantError ? `1px solid ${token.colorErrorBorder}` : undefined,
                   boxShadow: token.boxShadowTertiary,
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'break-word',
                 }}
               >
                 <Flex align="center" gap="small" style={{ marginBlockEnd: token.marginXXS, fontSize: token.fontSizeSM, opacity: 0.8 }}>
-                  {isUser ? <UserOutlined /> : <RobotOutlined />}
                   <Typography.Text strong style={{ color: 'inherit', fontSize: token.fontSizeSM }}>
                     {isUser ? t('notificationCenter.chat.you') : t('notificationCenter.chat.assistant')}
                   </Typography.Text>
@@ -192,6 +205,13 @@ export const ChatMessageList = ({
                   </div>
                 ) : null}
               </div>
+              {isUser && (
+                <Avatar
+                  size={32}
+                  icon={avatar}
+                  style={{ background: token.colorPrimary, flex: '0 0 auto' }}
+                />
+              )}
             </Flex>
           );
         })}

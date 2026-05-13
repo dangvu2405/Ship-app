@@ -30,7 +30,7 @@ const resolveApiResource = (resource: string) => {
   return alias.replace(/_/g, '-');
 };
 
-const isUnavailableStatus = (status?: number) => status === 403 || status === 404;
+const isUnavailableStatus = (status?: number) => status === 403 || status === 404 || status === 501;
 
 const buildListQueryParams = (
   current: number,
@@ -76,10 +76,10 @@ const parseEnvelopeList = <TData extends BaseRecord>(resource: string, body: Env
   }
 
   if (envelopeData && typeof envelopeData === 'object' && Array.isArray((envelopeData as { data?: unknown }).data)) {
-    const nested = envelopeData as { data: TData[]; meta?: { total?: number } };
+    const nested = envelopeData as { data: TData[]; meta?: { total?: number }; total?: number };
     return {
       data: nested.data,
-      total: nested.meta?.total ?? body.meta?.total ?? nested.data.length,
+      total: nested.meta?.total ?? nested.total ?? body.meta?.total ?? nested.data.length,
     };
   }
 

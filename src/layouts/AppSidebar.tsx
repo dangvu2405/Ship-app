@@ -144,72 +144,68 @@ export const AppSidebarContent = memo(function AppSidebarContent({
   const navigate = useNavigate();
 
 
-  const isAdmin = true; // Luôn hiển thị như admin
-  const hasAccounting = true;
-  const canViewUsers = true;
-  const canViewCompanySettings = true;
-  const canViewPriceList = true;
-
   // ── Build menu items ──────────────────────────────────────────────────────
   const menuItems = useMemo<AntMenuItem[]>(() => {
+    const resolveRoute = (route: any, subKey?: string) => {
+      try {
+        if (!route) return ROUTES.dashboard;
+        if (typeof route === 'string') return route;
+        if (subKey && typeof route[subKey] === 'string') return route[subKey];
+        if (typeof route.list === 'string') return route.list;
+        if (typeof route.root === 'string') return route.root;
+      } catch {
+        // fallthrough
+      }
+      return ROUTES.dashboard;
+    };
+
     const items: AntMenuItem[] = [
       leaf(ROUTES.dashboard, t('sidebar.dashboard'), <DashboardOutlined />),
       section('sec-org', 'TỔ CHỨC', [
-        leaf(ROUTES.admin.companies.list, 'Công ty', <BankOutlined />),
+        leaf(resolveRoute(ROUTES.admin.companies, 'list'), 'Công ty', <BankOutlined />),
       ]),
       section('sec-fleet', 'ĐỘI XE', [
-        leaf(ROUTES.admin.vehicles.list, 'Quản lý xe', <CarOutlined />),
-        leaf(ROUTES.admin.vehicleMaintenance, 'Bảo dưỡng xe', <SafetyOutlined />),
-        leaf(ROUTES.admin.vehicleAssignments.list, 'Phân công xe', <DeploymentUnitOutlined />),
-        leaf(ROUTES.admin.vehicleExpenses.list, 'Chi phí xe', <DollarOutlined />),
-        leaf(ROUTES.admin.dispatch.board, 'Bảng điều phối', <AppstoreOutlined />),
+        leaf(resolveRoute(ROUTES.admin.vehicles, 'list'), 'Quản lý xe', <CarOutlined />),
+        leaf(resolveRoute(ROUTES.admin.vehicle_assignments, 'list'), 'Phân công xe', <DeploymentUnitOutlined />),
+        leaf(resolveRoute(ROUTES.admin.vehicle_expenses, 'list'), 'Chi phí xe', <DollarOutlined />),
+        leaf(resolveRoute(ROUTES.admin.dispatch, 'board'), 'Bảng điều phối', <AppstoreOutlined />),
       ]),
       section('sec-hr', 'NHÂN SỰ', [
-        leaf(ROUTES.admin.drivers.list, 'Tài xế', <UserOutlined />),
-        leaf(ROUTES.admin.driversSchedule, 'Lịch làm việc', <ScheduleOutlined />),
-        leaf(ROUTES.admin.driversScheduleBulk, 'Lịch hàng loạt', <ScheduleOutlined />),
-        leaf(ROUTES.admin.leave, 'Nghỉ phép', <MinusCircleOutlined />),
-        leaf(ROUTES.admin.overtime, 'Tăng ca', <PlusOutlined />),
-        leaf(ROUTES.admin.violations, 'Vi phạm', <SafetyOutlined />),
+        leaf(resolveRoute(ROUTES.admin.drivers, 'list'), 'Tài xế', <UserOutlined />),
+        leaf(resolveRoute(ROUTES.admin.driversSchedule), 'Lịch làm việc', <ScheduleOutlined />),
+        leaf(resolveRoute(ROUTES.admin.driversScheduleBulk), 'Lịch hàng loạt', <ScheduleOutlined />),
+        leaf(resolveRoute(ROUTES.admin.leave), 'Nghỉ phép', <MinusCircleOutlined />),
+        leaf(resolveRoute(ROUTES.admin.overtime), 'Tăng ca', <PlusOutlined />),
+        leaf(resolveRoute(ROUTES.admin.violations), 'Vi phạm', <SafetyOutlined />),
       ]),
       section('sec-ops', 'VẬN HÀNH', [
-        leaf(ROUTES.admin.trips.list, 'Chuyến xe', <TruckOutlined />),
-        leaf(ROUTES.admin.orders.pool, 'Chuyến chờ phân công', <DeploymentUnitOutlined />),
-        leaf(ROUTES.admin.tripBonusRules, 'Quy tắc thưởng', <WalletOutlined />),
+        leaf(resolveRoute(ROUTES.admin.trips, 'list'), 'Chuyến xe', <TruckOutlined />),
+        leaf(resolveRoute(ROUTES.admin.trip_bonus_rules, 'list'), 'Quy tắc thưởng', <WalletOutlined />),
       ]),
       section('sec-fin', 'TÀI CHÍNH', [
-        leaf(ROUTES.admin.customers.list, 'Khách hàng', <SolutionOutlined />),
-        leaf(ROUTES.admin.invoices.list, 'Hóa đơn', <FileTextOutlined />),
-        leaf(ROUTES.admin.payroll.list, 'Bảng lương', <DollarOutlined />),
-        leaf(ROUTES.admin.payroll.adjustments.list, 'Điều chỉnh lương', <LineChartOutlined />),
-        leaf(ROUTES.admin.payroll.allowances.list, 'Phụ cấp', <PlusOutlined />),
-        leaf(ROUTES.admin.payroll.deductions.list, 'Khấu trừ', <MinusCircleOutlined />),
+        leaf(resolveRoute(ROUTES.admin.customers, 'list'), 'Khách hàng', <SolutionOutlined />),
+        leaf(resolveRoute(ROUTES.admin.invoices, 'list'), 'Hóa đơn', <FileTextOutlined />),
+        leaf(resolveRoute(ROUTES.admin.payrolls, 'list'), 'Bảng lương', <DollarOutlined />),
+        leaf(resolveRoute(ROUTES.admin.payroll_adjustments, 'list'), 'Điều chỉnh lương', <LineChartOutlined />),
+        leaf(resolveRoute(ROUTES.admin.allowances, 'list'), 'Phụ cấp', <PlusOutlined />),
+        leaf(resolveRoute(ROUTES.admin.deductions, 'list'), 'Khấu trừ', <MinusCircleOutlined />),
       ]),
-      ...(canViewPriceList ? [section('sec-customer', 'KHÁCH HÀNG', [leaf(ROUTES.admin.customerPriceList, t('sidebar.priceList'), <AppstoreOutlined />)])] : []),
-      ...(hasAccounting
-        ? [
-            section('sec-accounting', 'KẾ TOÁN', [
-              leaf(ROUTES.admin.accounting.revenue, 'Doanh thu', <BarChartOutlined />),
-              leaf(ROUTES.admin.accounting.approvals, t('sidebar.costApprovals'), <DollarOutlined />),
-              leaf(ROUTES.admin.accounting.reconciliation, 'Đối soát', <DeploymentUnitOutlined />),
-              leaf(ROUTES.admin.accounting.debt, t('sidebar.debt'), <DollarOutlined />),
-            ]),
-          ]
-        : []),
+      section('sec-accounting', 'KẾ TOÁN', [
+        leaf(resolveRoute(ROUTES.admin.accounting, 'revenue'), 'Doanh thu', <BarChartOutlined />),
+        leaf(resolveRoute(ROUTES.admin.accounting, 'costs'), 'Chi phí', <DollarOutlined />),
+        leaf(resolveRoute(ROUTES.admin.accounting, 'reconciliation'), 'Đối soát', <DeploymentUnitOutlined />),
+        leaf(resolveRoute(ROUTES.admin.accounting, 'debt'), t('sidebar.debt'), <DollarOutlined />),
+      ]),
       section('sec-reports', 'BÁO CÁO', [leaf(ROUTES.admin.reports.list, t('sidebar.reports'), <BarChartOutlined />)]),
-      ...(canViewUsers || canViewCompanySettings
-        ? [
-            group('grp-settings', <SettingOutlined />, t('sidebar.settings'), [
-              ...(canViewCompanySettings ? [leaf(ROUTES.admin.settings.categories, t('sidebar.categories'))] : []), 
-              ...(canViewUsers ? [leaf(ROUTES.admin.settings.users, t('sidebar.users'))] : []),
-              ...(canViewCompanySettings ? [leaf(ROUTES.admin.settings.company, t('sidebar.companyConfig'))] : []),
-            ]),
-          ]
-        : []),
+      group('grp-settings', <SettingOutlined />, t('sidebar.settings'), [
+        leaf(resolveRoute(ROUTES.admin.settings, 'root'), t('sidebar.settings')),
+        leaf(resolveRoute(ROUTES.admin.users, 'list'), t('sidebar.users')),
+        leaf(resolveRoute(ROUTES.admin.systemUsers), 'System Users'),
+      ]),
     ];
 
     return items;
-  }, [t, hasAccounting, canViewCompanySettings, canViewPriceList, canViewUsers, isAdmin]);
+  }, [t]);
 
   const flatMenuMap = useMemo(() => flattenMenuItems(menuItems), [menuItems]);
 

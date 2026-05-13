@@ -18,6 +18,38 @@ export interface RevenueSummaryData {
   completed?: number;
 }
 
+export interface CostsReportRow {
+  id: number;
+  trip_id: number;
+  trip_code?: string | null;
+  vehicle_id?: number | null;
+  vehicle_plate_number?: string | null;
+  driver_id?: number | null;
+  driver_name?: string | null;
+  cost_category_id: number;
+  cost_category_name?: string | null;
+  amount: number;
+  norm_amount?: number | null;
+  incurred_date: string;
+  status: 'pending' | 'approved' | 'rejected' | string;
+  approval_required?: boolean;
+  description?: string | null;
+  notes?: string | null;
+  created_at?: string | null;
+}
+
+export interface CostsReportData {
+  type: 'costs';
+  total_costs: number;
+  costs_count: number;
+  approved_costs: number;
+  pending_costs: number;
+  rejected_costs?: number;
+  rows: CostsReportRow[];
+  date_from?: string | null;
+  date_to?: string | null;
+}
+
 function sumPayrollNet(details: Payroll['details']): number {
   return (details ?? []).reduce((total, detail) => total + Number(detail.net_salary ?? 0), 0);
 }

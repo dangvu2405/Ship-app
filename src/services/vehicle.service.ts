@@ -17,6 +17,7 @@ import type {
   StoreMaintenanceRecordRequest,
   StoreVehicleAssignmentNestedRequest,
   StoreVehicleDocumentRequest,
+  UpdateVehicleStatusRequest,
 } from '@/types/requests/vehicle';
 
 function parsePagedList<T>(body: unknown): { data: T[]; total: number } {
@@ -164,6 +165,15 @@ const vehicleService = {
     const response = await api.get(ENDPOINTS.drivers.available, { params: listParams });
     const { data, total } = parsePagedList<Driver>(response.data);
     return { success: true, data: { data, total } };
+  },
+
+  async updateStatus(
+    vehicleId: number,
+    payload: UpdateVehicleStatusRequest,
+  ): Promise<{ success: true; data: Vehicle }> {
+    const response = await api.patch(ENDPOINTS.vehicles.status(vehicleId), payload);
+    throwIfEnvelopeFailed(response.data);
+    return { success: true, data: unwrapEnvelope<Vehicle>(response.data) };
   },
 };
 

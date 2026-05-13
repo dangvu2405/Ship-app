@@ -2,6 +2,7 @@ import api from './api';
 import { ApiResponse, User } from '@/types';
 import { ENDPOINTS } from './endpoints';
 import { AUTH_FORGOT_PASSWORD } from '@/utils/constants';
+import type { LoginResponse } from '@/types/api/auth';
 
 export interface LoginCredentials {
   email: string;
@@ -24,6 +25,22 @@ export interface RegisterData {
 }
 
 class AuthService {
+  private normalizeAuthResponse<T extends LoginResponse>(response: ApiResponse<T>): ApiResponse<T> {
+    if (!response.data) return response;
+
+    const refreshToken = response.data.refreshToken ?? response.data.refresh_token;
+    const token = response.data.token ?? response.data.access_token;
+
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        ...(token ? { token, access_token: token } : {}),
+        ...(refreshToken ? { refreshToken, refresh_token: refreshToken } : {}),
+      },
+    };
+  }
+
   /**
    * Lấy CSRF token trước các tác vụ POST nếu chưa tồn tại trong session cookie.
    */
@@ -64,31 +81,14 @@ class AuthService {
 
   async login(
     credentials: LoginCredentials,
-  ): Promise<
-    ApiResponse<{
-      user: User;
-      // Backend variants
-      token?: string;
-      refreshToken?: string;
-      access_token?: string;
-      refresh_token?: string;
-    }>
-  > {
+  ): Promise<ApiResponse<LoginResponse>> {
     await this.ensureCsrfCookie();
 
-    const response = await api.post<
-      ApiResponse<{
-        user: User;
-        token?: string;
-        refreshToken?: string;
-        access_token?: string;
-        refresh_token?: string;
-      }>
-    >(ENDPOINTS.auth.login, credentials, {
+    const response = await api.post<ApiResponse<LoginResponse>>(ENDPOINTS.auth.login, credentials, {
       skipErrorToast: true,
       errorMode: 'silent'
     });
-    return response.data;
+    return this.normalizeAuthResponse(response.data);
   }
 
   async socialLogin(credentials: SocialLoginCredentials): Promise<ApiResponse<{ user: User }>> {

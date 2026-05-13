@@ -20,7 +20,7 @@ export const HeaderChatCommand = () => {
   useEffect(() => {
     if (!isVisible) return;
     const onShortcut = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.altKey) && event.key.toLowerCase() === 'k') {
+      if ((event.ctrlKey || event.altKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setOpen(true);
         requestAnimationFrame(() => inputRef.current?.focus());
@@ -33,11 +33,9 @@ export const HeaderChatCommand = () => {
 
   if (!isVisible) return null;
 
-
-
   const popoverContent = (
-    <div style={{ width: 480, height: 600 }}>
-      <ChatAssistantPanel compact style={{ height: '100%', border: 'none' }} />
+    <div style={{ width: 'min(92vw, 860px)', height: 'min(78vh, 720px)' }}>
+      <ChatAssistantPanel style={{ height: '100%', minHeight: 0, border: 'none' }} />
     </div>
   );
 
@@ -67,7 +65,7 @@ export const HeaderChatCommand = () => {
             <RobotOutlined style={{ color: token.colorPrimary }} />
           </Badge>
         }
-        placeholder="Hoi AI hoac nhap lenh dieu phoi..."
+        placeholder={t('notificationCenter.chat.placeholder', { defaultValue: 'Hỏi AI hoặc nhập lệnh điều phối...' })}
         style={{ background: token.colorFillTertiary, borderRadius: token.borderRadiusLG }}
       />
     </Popover>

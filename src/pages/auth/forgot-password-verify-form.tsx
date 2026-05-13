@@ -17,7 +17,7 @@ const extractResetToken = (body: ApiResponse<unknown>): string | null => {
   if (!payload || typeof payload !== 'object') return null;
   const o = payload as Record<string, unknown>;
   const nested = o.data && typeof o.data === 'object' ? (o.data as Record<string, unknown>) : o;
-  const t = nested.token ?? nested.reset_token ?? nested.password_reset_token;
+  const t = nested.otp_token ?? nested.token ?? nested.reset_token ?? nested.password_reset_token;
   return typeof t === 'string' && t.trim() ? t.trim() : null;
 };
 
@@ -84,15 +84,11 @@ export function ForgotPasswordVerifyForm() {
       }
 
       const tok = extractResetToken(response as ApiResponse<unknown>);
-      if (tok) {
-        setResetToken(tok);
-      } else {
-        // Fallback: backend did not return a dedicated reset token in the check-otp response,
-        // so we use the OTP code itself as the token passed to reset-password.
-        // TODO: confirm with Laravel whether the reset endpoint expects the OTP string or a
-        // separate token field; remove this branch once the contract is settled.
-        setResetToken(code);
+      if (!tok) {
+        toast.error(t('auth.forgotPasswordOtpInvalid'));
+        return;
       }
+      setResetToken(tok);
       setPhase('password');
       toast.success(t('auth.forgotPasswordOtpVerified'));
     } catch (error) {
@@ -124,7 +120,7 @@ export function ForgotPasswordVerifyForm() {
       setIsSubmitting(true);
       const response = await authService.resetForgotPassword({
         email,
-        token: resetToken,
+        otp_token: resetToken,
         password: parsed.data.password,
         password_confirmation: parsed.data.password_confirmation,
       });

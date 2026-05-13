@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
-import { Button, Card, Flex, Input, Layout, Modal, Space, Typography, theme } from 'antd';
+import { Avatar, Badge, Button, Card, Drawer, Flex, Grid, Input, Layout, Modal, Space, Tooltip, Typography, theme } from 'antd';
 import {
   AudioOutlined,
   HistoryOutlined,
   LoadingOutlined,
-  MessageOutlined,
+  MenuOutlined,
   PaperClipOutlined,
+  PlusOutlined,
+  RobotOutlined,
   SendOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
@@ -48,11 +50,14 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
   const tRef = useRef(t);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { token } = theme.useToken();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   const [chatMessage, setChatMessage] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [sourceDetail, setSourceDetail] = useState<ChatSource | null>(null);
   const [showHistory, setShowHistory] = useState(!compact);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
 
   const model = DEFAULT_MODEL;
   const task: ChatTask = 'chat';
@@ -99,6 +104,17 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
     shouldAutoScrollRef.current = distanceToBottom <= 120;
   };
 
+  const handleNewChat = () => {
+    setChatMessages([]);
+    setChatSessionId('');
+    setChatMessage('');
+  };
+
+  const handleSelectHistory = (item: string) => {
+    setChatMessage(item);
+    setMobileHistoryOpen(false);
+  };
+
   const handleSendChat = async (overrideMessage?: string) => {
     if (sendingMessage) return;
 
@@ -128,37 +144,120 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
     setHistory((prev) => [sanitizedMessage, ...prev.filter((h) => h !== sanitizedMessage)].slice(0, 20));
   };
 
+  const activeHistoryItem = history[0];
+  const shouldShowDesktopHistory = !isMobile && !compact && showHistory;
+
   return (
     <Card
       className={className}
-      style={{ minHeight: compact ? undefined : 760, height: compact ? '100%' : '80vh', overflow: 'hidden', ...style }}
+      style={{
+        minHeight: compact ? undefined : 720,
+        height: compact ? '100%' : '82vh',
+        overflow: 'hidden',
+        borderRadius: compact ? 0 : token.borderRadiusLG,
+        ...style,
+      }}
       styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', padding: 0 } }}
-      title={compact ? null : (
-        <Flex justify="space-between" align="center">
-          <Space><MessageOutlined /> <span>{t('notificationCenter.chat.title')}</span></Space>
-          <Button type="text" icon={<HistoryOutlined />} onClick={() => setShowHistory(!showHistory)} style={{ color: showHistory ? token.colorPrimary : undefined }} />
-        </Flex>
-      )}
+      title={null}
       variant={compact ? 'borderless' : 'outlined'}
     >
-      <Layout style={{ height: '100%', background: token.colorBgContainer }}>
-        {!compact && showHistory && (
-          <ChatHistorySider history={history} onSelect={setChatMessage} onClear={() => setHistory([])} />
+      <Layout style={{ height: '100%', background: token.colorBgLayout }}>
+        {shouldShowDesktopHistory && (
+          <ChatHistorySider
+            history={history}
+            activeItem={activeHistoryItem}
+            onSelect={handleSelectHistory}
+            onClear={() => setHistory([])}
+            onNewChat={handleNewChat}
+          />
         )}
 
-        <Content style={{ display: 'flex', flexDirection: 'column', padding: compact ? 12 : 24, minHeight: 0 }}>
-          <ChatMessageList
-            messages={chatMessages}
-            onSend={(msg) => void handleSendChat(msg)}
-            sendingMessage={sendingMessage}
-            onShowSource={setSourceDetail}
-            messagesContainerRef={messagesContainerRef}
-            messagesEndRef={messagesEndRef}
-            onScroll={handleMessagesScroll}
+        <Drawer
+          title={null}
+          placement="left"
+          open={mobileHistoryOpen}
+          onClose={() => setMobileHistoryOpen(false)}
+          width={336}
+          styles={{ body: { padding: 0 } }}
+        >
+          <ChatHistorySider
+            history={history}
+            activeItem={activeHistoryItem}
+            onSelect={handleSelectHistory}
+            onClear={() => setHistory([])}
+            onNewChat={handleNewChat}
           />
+        </Drawer>
 
-          <div style={{ marginTop: 'auto' }}>
-            <Space wrap style={{ marginBottom: 12 }}>
+        <Content style={{ display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, background: token.colorBgContainer }}>
+          <Flex
+            align="center"
+            justify="space-between"
+            gap="middle"
+            style={{
+              paddingBlock: compact ? token.paddingSM : token.padding,
+              paddingInline: compact ? token.paddingSM : token.paddingLG,
+              borderBlockEnd: `1px solid ${token.colorSplit}`,
+              background: token.colorBgContainer,
+            }}
+          >
+            <Space size="middle">
+              {(isMobile || compact || !showHistory) && (
+                <Tooltip title={t('notificationCenter.chat.history')}>
+                  <Button
+                    type="text"
+                    icon={<MenuOutlined />}
+                    onClick={() => setMobileHistoryOpen(true)}
+                  />
+                </Tooltip>
+              )}
+              <Badge status={sendingMessage ? 'processing' : 'success'}>
+                <Avatar size={40} icon={<RobotOutlined />} style={{ background: token.colorPrimary }} />
+              </Badge>
+              <Flex vertical gap={0}>
+                <Typography.Text strong>{t('notificationCenter.chat.title')}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                  Trợ lý vận hành đội xe và nhân sự
+                </Typography.Text>
+              </Flex>
+            </Space>
+
+            <Space size="small">
+              <Tooltip title="Tạo hội thoại mới">
+                <Button type="text" icon={<PlusOutlined />} onClick={handleNewChat} />
+              </Tooltip>
+              {!compact && !isMobile && (
+                <Tooltip title={t('notificationCenter.chat.history')}>
+                  <Button
+                    type={showHistory ? 'primary' : 'text'}
+                    icon={<HistoryOutlined />}
+                    onClick={() => setShowHistory(!showHistory)}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+          </Flex>
+
+          <Flex vertical flex={1} style={{ minHeight: 0, padding: compact ? token.paddingSM : token.paddingLG }}>
+            <ChatMessageList
+              messages={chatMessages}
+              onSend={(msg) => void handleSendChat(msg)}
+              sendingMessage={sendingMessage}
+              onShowSource={setSourceDetail}
+              messagesContainerRef={messagesContainerRef}
+              messagesEndRef={messagesEndRef}
+              onScroll={handleMessagesScroll}
+            />
+
+          <div
+            style={{
+              marginTop: 'auto',
+              paddingBlockStart: token.paddingSM,
+              borderBlockStart: `1px solid ${token.colorSplit}`,
+              background: token.colorBgContainer,
+            }}
+          >
+            <Space wrap style={{ marginBottom: token.marginSM }}>
               {QUICK_COMMANDS.map((cmd) => (
                 <Button key={cmd} size="small" shape="round" onClick={() => void handleSendChat(cmd)} disabled={sendingMessage}>
                   {cmd}
@@ -166,16 +265,24 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
               ))}
             </Space>
 
-            <div style={{ background: token.colorFillAlter, borderRadius: 16, padding: '8px 12px', border: `1px solid ${token.colorBorderSecondary}`, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <div
+              style={{
+                background: token.colorFillAlter,
+                borderRadius: token.borderRadiusLG,
+                padding: token.paddingSM,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                boxShadow: token.boxShadowTertiary,
+              }}
+            >
               <Input.TextArea
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
                 onPressEnter={(e) => { if (e.shiftKey) return; e.preventDefault(); if (!sendingMessage && chatMessage.trim()) void handleSendChat(); }}
                 placeholder="Hỏi trợ lý về doanh thu, tài xế hoặc đơn hàng..."
                 autoSize={{ minRows: 1, maxRows: 6 }}
-                style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: '4px 0', fontSize: 14 }}
+                style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}
               />
-              <Flex justify="space-between" align="center" style={{ marginTop: 4 }}>
+              <Flex justify="space-between" align="center" style={{ marginTop: token.marginXS }}>
                 <Space size={4}>
                   <Button type="text" size="small" icon={<PaperClipOutlined />} />
                   <Button type="text" size="small" icon={<AudioOutlined />} />
@@ -188,6 +295,7 @@ export const ChatAssistantPanel = ({ className, compact = false, style }: ChatAs
               AI có thể nhầm lẫn. Hãy kiểm tra lại thông tin quan trọng.
             </Typography.Text>
           </div>
+          </Flex>
         </Content>
       </Layout>
 

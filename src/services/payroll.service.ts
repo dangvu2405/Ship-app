@@ -22,7 +22,7 @@ class PayrollService {
   }
 
   async generatePayroll(params: { month: number; year: number; company_id?: number }): Promise<ApiResponse<Payroll>> {
-    const response = await api.post(ENDPOINTS.payrolls.base, params);
+    const response = await api.post(ENDPOINTS.payrolls.generate, params);
     return response.data;
   }
 

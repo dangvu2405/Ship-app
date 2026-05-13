@@ -161,7 +161,7 @@ export function PayrollAdjustmentsList() {
         description="Quản lý các khoản phụ cấp và khấu trừ chờ duyệt"
         breadcrumb={[
           { label: t('dashboard.title'), path: ROUTES.dashboard },
-          { label: t('sidebar.payrolls'), path: ROUTES.admin.payroll.list },
+          { label: t('sidebar.payrolls'), path: ROUTES.admin.payrolls.list },
           { label: 'Điều chỉnh lương' },
         ]}
       />
@@ -199,6 +199,7 @@ export function PayrollAdjustmentsList() {
       <Modal
         title="Từ chối điều chỉnh"
         open={rejectOpen}
+        forceRender
         onCancel={() => setRejectOpen(false)}
         onOk={() => rejectForm.submit()}
         okText="Từ chối"

@@ -33,7 +33,7 @@ const CsvUploader: React.FC<CsvUploaderProps> = ({ onUpload }) => {
         worker: true,
         header: true,
         skipEmptyLines: true,
-        step: (results, _parser) => {
+        step: (results) => {
           // For progress calculation, we need the total size of the file.
           // This is a simplified progress, real progress is harder with streaming.
           setProgress(

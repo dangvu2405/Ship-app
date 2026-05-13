@@ -45,7 +45,7 @@ export type UpdateTripRequest = Partial<StoreTripRequest>;
 
 export type AssignTripRequest = {
   driver_id: number;
-  vehicle_id?: number | null;
+  vehicle_id: number;
 };
 
 export type CancelTripRequest = {

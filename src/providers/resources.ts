@@ -77,6 +77,6 @@ export const resources: ResourceProps[] = [
   },
   {
     name: 'payroll-driver-lines',
-    list: ROUTES.admin.payroll.list,
+    list: ROUTES.admin.payrolls.list,
   },
 ];
