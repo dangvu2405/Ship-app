@@ -15,7 +15,7 @@ export function AppLayout() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'b' && (e.metaKey || e.ctrlKey)) {
+      if (e.key.toLowerCase() === 'b' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         toggleSidebar();
       }

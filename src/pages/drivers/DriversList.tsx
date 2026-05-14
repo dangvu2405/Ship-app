@@ -204,7 +204,6 @@ export function DriversList() {
         dataIndex: 'code',
         key: 'code',
         width: 120,
-        fixed: 'left',
         render: (code: string | undefined, row) => (
           <Button type="link" style={{ padding: 0 }} onClick={() => show('drivers', row.id)}>
             {code ?? `#${row.id}`}
@@ -273,7 +272,6 @@ export function DriversList() {
       {
         title: t('common.actions'),
         key: 'actions',
-        fixed: 'right',
         width: 132,
         render: (_, row) => (
           <Space size={4}>

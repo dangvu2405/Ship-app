@@ -27,6 +27,7 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
   const [googleUnavailable, setGoogleUnavailable] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const isBusy = isSubmitting || isSocialSubmitting;
 
@@ -99,6 +100,7 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
     lastSubmitAt.current = now;
 
     try {
+      setLoginError(null);
       setIsSubmitting(true);
       await login(values.email.trim(), values.password, values.rememberMe ?? false);
       navigateAfterLogin();
@@ -116,10 +118,14 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
       }
       const status = getErrorStatus(err);
       if (status === 401) {
-        antdUtils.getMessage().error(t('auth.loginInvalidCredentials'));
+        const message = t('auth.loginInvalidCredentials');
+        setLoginError(message);
+        antdUtils.getMessage().error(message);
         return;
       }
-      antdUtils.getMessage().error(t('auth.loginFailed'));
+      const message = t('auth.loginFailed');
+      setLoginError(message);
+      antdUtils.getMessage().error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -202,6 +208,8 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
                 <Typography.Title level={3} style={{ margin: 0, fontWeight: 700 }}>{t('auth.welcomeBack')}</Typography.Title>
                 <Typography.Text type="secondary">{t('auth.loginSubtitle') || 'Đăng nhập để tiếp tục quản lý đội xe của bạn.'}</Typography.Text>
               </div>
+
+              {loginError ? <Alert type="error" showIcon message={loginError} /> : null}
 
               <Form form={form} layout="vertical" requiredMark={false} onFinish={onFinish}>
                 <Form.Item

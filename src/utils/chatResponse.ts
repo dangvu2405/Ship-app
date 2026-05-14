@@ -137,6 +137,8 @@ export const normalizeSendMessagePayload = (payload: unknown): {
   model?: string;
   cached?: boolean;
   guarded?: boolean;
+  confidence?: string;
+  error_code?: string;
   sources?: ChatResultSource[];
   citations?: ChatResultSource[];
   knowledge_refs?: ChatResultSource[];
@@ -170,6 +172,8 @@ export const normalizeSendMessagePayload = (payload: unknown): {
     model,
     cached: typeof data.cached === 'boolean' ? data.cached : undefined,
     guarded: typeof data.guarded === 'boolean' ? data.guarded : undefined,
+    confidence: getString(data, 'confidence'),
+    error_code: getString(data, 'error_code'),
     sources: resolveSources(data),
   };
 };
@@ -182,6 +186,8 @@ export const normalizeSendMessageDonePayload = (payload: unknown): {
   model?: string;
   cached?: boolean;
   guarded?: boolean;
+  confidence?: string;
+  error_code?: string;
   sources?: ChatResultSource[];
   citations?: ChatResultSource[];
   knowledge_refs?: ChatResultSource[];
@@ -255,6 +261,16 @@ export const normalizeSendMessageDonePayload = (payload: unknown): {
       (resultData ? getBoolean(resultData, 'guarded') : undefined) ??
       (data ? getBoolean(data, 'guarded') : undefined) ??
       base.guarded,
+    confidence:
+      getString(payload, 'confidence') ??
+      (resultData ? getString(resultData, 'confidence') : undefined) ??
+      (data ? getString(data, 'confidence') : undefined) ??
+      base.confidence,
+    error_code:
+      getString(payload, 'error_code') ??
+      (resultData ? getString(resultData, 'error_code') : undefined) ??
+      (data ? getString(data, 'error_code') : undefined) ??
+      base.error_code,
     sources: resolveSources(payload, resultData, data) || base.sources,
   };
 };

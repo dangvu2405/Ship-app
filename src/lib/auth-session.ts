@@ -5,9 +5,21 @@ import { STORAGE_KEYS } from '@/utils/constants';
 let rememberRefresh = false;
 
 const refreshStorage = () => (rememberRefresh ? localStorage : sessionStorage);
+const E2E_LOCAL_STORAGE_AUTH_MARKER = 'e2e-auth-local-storage:v1';
+
+const getE2ELocalStorageAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    if (localStorage.getItem(E2E_LOCAL_STORAGE_AUTH_MARKER) !== 'true') return null;
+    return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  } catch {
+    return null;
+  }
+};
 
 export const getAuthToken = (): string | null => {
-  return sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  return sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) ?? getE2ELocalStorageAuthToken();
 };
 
 export const getRefreshToken = (): string | null => {

@@ -27,6 +27,7 @@ export interface ChatResultSource {
   title?: string;
   name?: string;
   category?: string;
+  section?: string;
   content?: string;
   body?: string;
   content_preview?: string;
@@ -43,6 +44,8 @@ export interface SendChatMessageResult {
   model?: string;
   cached?: boolean;
   guarded?: boolean;
+  confidence?: 'high' | 'medium' | 'low' | 'none' | string;
+  error_code?: string;
   sources?: ChatResultSource[];
   citations?: ChatResultSource[];
   knowledge_refs?: ChatResultSource[];

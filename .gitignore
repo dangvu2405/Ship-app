@@ -35,3 +35,10 @@ dist-ssr
 # Test artifacts (keep in CI logs, not git)
 TEST_RESULTS.md
 .gitnexus
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
