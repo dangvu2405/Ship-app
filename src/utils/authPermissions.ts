@@ -4,6 +4,25 @@ const normalize = (r: string) => r.trim().toLowerCase();
 
 type PermissionGrant = UserPermissionGrant | string;
 
+const ADMIN_ROLE_ALIASES = new Set(['admin', 'super_admin', 'company_admin', 'admin_company']);
+const FULL_ACCESS_MODULES = ['orders', 'vehicles', 'drivers', 'accounting', 'reports', 'settings'] as const;
+const FULL_ACCESS_ACTIONS = ['view', 'create', 'edit', 'delete', 'approve', 'export'] as const;
+
+const roleMatches = (actual: string, expected: string): boolean => {
+  const actualRole = normalize(actual);
+  const expectedRole = normalize(expected);
+
+  if (actualRole === expectedRole) return true;
+
+  // Backend uses legacy `users.role` while some frontend pages still use
+  // admin_company/company_admin naming. Treat these as the same admin family.
+  if (ADMIN_ROLE_ALIASES.has(expectedRole)) {
+    return ADMIN_ROLE_ALIASES.has(actualRole);
+  }
+
+  return false;
+};
+
 const matchesPermissionGrant = (grant: PermissionGrant, permission: string): boolean => {
   const expected = normalize(permission);
 
@@ -73,15 +92,32 @@ const hasUserPermissions = (user: User | null, permission: string): boolean => {
 };
 
 export const userHasRole = (user: User | null, role: string): boolean => {
-  const expected = normalize(role);
-  return Boolean(user?.roles?.some((r) => {
+  if (!user) return false;
+
+  if (user.role && roleMatches(user.role, role)) {
+    return true;
+  }
+
+  return Boolean(user.roles?.some((r) => {
     const roleCode = (r as { code?: string }).code ?? r.name;
-    return normalize(roleCode) === expected || normalize(r.name) === expected;
+    return roleMatches(roleCode, role) || roleMatches(r.name, role);
   }));
 };
 
+export const userHasFullAccess = (user: User | null): boolean => {
+  if (!user) return false;
+
+  if (userHasRole(user, 'admin') || userHasRole(user, 'super_admin')) {
+    return true;
+  }
+
+  return FULL_ACCESS_MODULES.every((module) =>
+    FULL_ACCESS_ACTIONS.every((action) => hasUserPermissions(user, `${module}.${action}`)),
+  );
+};
+
 export const userHasPermission = (user: User | null, permission: string): boolean => {
-  if (userHasRole(user, 'admin') || userHasRole(user, 'super_admin') || userHasRole(user, 'admin_company')) {
+  if (userHasFullAccess(user) || userHasRole(user, 'admin_company') || userHasRole(user, 'company_admin')) {
     return true;
   }
 

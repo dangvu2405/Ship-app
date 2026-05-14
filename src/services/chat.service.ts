@@ -15,8 +15,9 @@ import {
   normalizeSendMessageDonePayload,
   normalizeSendMessagePayload,
 } from '@/utils/chatResponse';
-import { getTenantId } from '@/lib/auth-session';
+import { getAuthToken, getTenantId } from '@/lib/auth-session';
 import { buildApiUrl } from '@/config/env';
+import { refreshAuthSession } from '@/lib/axios';
 
 // Internal types — chỉ dùng trong file này, không export ra ngoài
 // Dùng "type" thay vì "interface" để báo hiệu đây là nội bộ
@@ -59,22 +60,45 @@ class ChatService {
   }
 
   async sendMessageStream(payload: SendChatMessagePayload, handlers: ChatStreamHandlers = {}, signal?: AbortSignal): Promise<StreamDoneEvent | undefined> {
-    const tenantId = getTenantId();
-    const response = await fetch(buildApiUrl(ENDPOINTS.chat.messagesStream), {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-        ...(tenantId ? { 'X-Tenant-ID': String(tenantId) } : {}),
-      },
-      body: JSON.stringify(this.toApiPayload(payload)),
-      signal,
-    });
+    // 90-second timeout for the initial connection; the stream itself can run longer.
+    const timeoutSignal = AbortSignal.timeout(90_000);
+    const combinedSignal = signal
+      ? AbortSignal.any([signal, timeoutSignal])
+      : timeoutSignal;
+
+    const requestStream = () => {
+      const tenantId = getTenantId();
+      const token = getAuthToken();
+
+      return fetch(buildApiUrl(ENDPOINTS.chat.messagesStream), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(tenantId ? { 'X-Tenant-ID': String(tenantId) } : {}),
+        },
+        body: JSON.stringify(this.toApiPayload(payload)),
+        signal: combinedSignal,
+      });
+    };
+
+    let response = await requestStream();
+    if (response.status === 401 && await refreshAuthSession()) {
+      response = await requestStream();
+    }
 
     if (!response.ok || !response.body) {
       const text = await response.text();
-      throw new Error(text || `HTTP ${response.status}`);
+      let message = text || `HTTP ${response.status}`;
+      try {
+        const data = JSON.parse(text) as { message?: string };
+        message = data.message || message;
+      } catch {
+        // Keep the raw response text when the backend did not return JSON.
+      }
+      throw new Error(message);
     }
 
     const reader = response.body.getReader();
@@ -121,22 +145,30 @@ class ChatService {
       }
     };
 
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
+    try {
+      for (;;) {
+        if (signal?.aborted) break;
+        const { value, done } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split(/\r?\n\r?\n/);
-      buffer = events.pop() || '';
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() || '';
 
-      for (const rawEvent of events) {
-        processRawEvent(rawEvent);
+        for (const rawEvent of events) {
+          processRawEvent(rawEvent);
+        }
       }
-    }
 
-    buffer += decoder.decode();
-    if (buffer.trim()) {
-      processRawEvent(buffer);
+      if (!signal?.aborted) {
+        buffer += decoder.decode();
+        if (buffer.trim()) processRawEvent(buffer);
+      }
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return undefined;
+      throw err;
+    } finally {
+      reader.releaseLock();
     }
 
     return donePayload;

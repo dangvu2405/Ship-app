@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import chatService from '@/services/chat.service';
 import type { ChatTask } from '@/utils/chatPrompt';
@@ -13,7 +13,7 @@ import {
 } from '@/components/common/chat/chatUtils';
 import type { ChatMessageView } from '@/components/common/chat/ChatMessageList';
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'openai/gpt-oss-20b';
 
 interface UseChatAssistantOptions {
   model?: string;
@@ -37,6 +37,13 @@ export function useChatAssistant({
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
 
   const sendMessage = useCallback(async (content: string) => {
     if (sending) return;
@@ -235,7 +242,9 @@ export function useChatAssistant({
         )
       );
       
+      const isTimeout = (error as { name?: string })?.name === 'TimeoutError';
       if (status === 429) toast.error(t('notificationCenter.chat.rateLimited'));
+      else if (isTimeout) toast.error(t('notificationCenter.chat.timeout'));
       else toast.error(getErrorMessage(error) || t('notificationCenter.chat.sendError'));
       
       onError?.(error);

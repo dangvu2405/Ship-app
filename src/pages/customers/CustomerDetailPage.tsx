@@ -70,7 +70,7 @@ export function CustomerDetailPage() {
     createPayment(
       {
         amount: values.amount,
-        payment_method: values.payment_method as 'cash' | 'bank_transfer' | 'credit' | undefined,
+        payment_method: values.payment_method as 'cash' | 'bank_transfer' | 'check' | undefined,
         payment_date: values.payment_date,
         note: values.note,
       },
@@ -283,7 +283,7 @@ export function CustomerDetailPage() {
               options={[
                 { label: 'Tiền mặt', value: 'cash' },
                 { label: 'Chuyển khoản', value: 'bank_transfer' },
-                { label: 'Công nợ', value: 'credit' },
+                { label: 'Séc', value: 'check' },
               ]}
             />
           </Form.Item>

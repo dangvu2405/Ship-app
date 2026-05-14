@@ -11,7 +11,16 @@ export const extractChatSources = (payload: unknown): ChatSource[] | undefined =
     const o = item as Record<string, unknown>;
     const id = String(o.id ?? o.article_id ?? o.slug ?? i);
     const title = String(o.title ?? o.name ?? o.slug ?? `Ref ${i + 1}`);
-    const content = typeof o.content === 'string' ? o.content : typeof o.body === 'string' ? o.body : undefined;
+    const content =
+      typeof o.content === 'string'
+        ? o.content
+        : typeof o.body === 'string'
+          ? o.body
+          : typeof o.content_preview === 'string'
+            ? o.content_preview
+            : typeof o.snippet === 'string'
+              ? o.snippet
+              : undefined;
     out.push({ id, title, content });
   });
   return out.length ? out : undefined;

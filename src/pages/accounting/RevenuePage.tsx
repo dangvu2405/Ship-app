@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Row, Select, Space, Statistic, Table, Tag, theme } from 'antd';
+import { App, Button, Card, Col, DatePicker, Empty, Row, Select, Space, Statistic, Table, Tag, theme } from 'antd';
 import { ArrowUpOutlined, DollarOutlined, ExportOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -129,6 +129,11 @@ export function RevenuePage() {
           loading={isLoading}
           rowKey="id"
           size="small"
+          locale={{
+            emptyText: isLoading
+              ? t('common.loading')
+              : <Empty description="Không có doanh thu trong kỳ này" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+          }}
           pagination={{
             pageSize: 20,
             size: 'small',

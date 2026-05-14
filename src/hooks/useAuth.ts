@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes';
-import { userHasRole, userHasPermission } from '@/utils/authPermissions';
+import { userHasRole, userHasPermission, userHasFullAccess } from '@/utils/authPermissions';
 
 export const useAuth = () => {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
@@ -24,6 +24,7 @@ export const useAuth = () => {
 
   const hasRole = (role: string): boolean => userHasRole(user, role);
   const hasPermission = (permission: string): boolean => userHasPermission(user, permission);
+  const hasFullAccess = (): boolean => userHasFullAccess(user);
 
   return {
     user,
@@ -32,5 +33,6 @@ export const useAuth = () => {
     requireAuth,
     hasRole,
     hasPermission,
+    hasFullAccess,
   };
 };

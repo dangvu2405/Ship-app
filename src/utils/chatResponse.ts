@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ChatMessage, ChatSession } from '@/types';
+import type { ChatMessage, ChatResultSource, ChatSession } from '@/types';
 
 const anyObject = z.record(z.string(), z.unknown());
 
@@ -51,6 +51,28 @@ const getBoolean = (obj: Record<string, unknown>, key: string): boolean | undefi
 const getObject = (obj: Record<string, unknown>, key: string): Record<string, unknown> | undefined => {
   const value = obj[key];
   return isRecord(value) ? value : undefined;
+};
+
+const getSourceArray = (obj: Record<string, unknown>, key: string): ChatResultSource[] | undefined => {
+  const value = obj[key];
+  if (!Array.isArray(value)) return undefined;
+
+  const sources = value.filter(isRecord).map((item) => item as ChatResultSource);
+  return sources.length ? sources : undefined;
+};
+
+const resolveSources = (...candidates: Array<Record<string, unknown> | undefined>): ChatResultSource[] | undefined => {
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const sources =
+      getSourceArray(candidate, 'sources') ||
+      getSourceArray(candidate, 'citations') ||
+      getSourceArray(candidate, 'knowledge_refs') ||
+      getSourceArray(candidate, 'references');
+    if (sources?.length) return sources;
+  }
+
+  return undefined;
 };
 
 const parseChatMessage = (value: unknown): ChatMessage | undefined => {
@@ -115,6 +137,10 @@ export const normalizeSendMessagePayload = (payload: unknown): {
   model?: string;
   cached?: boolean;
   guarded?: boolean;
+  sources?: ChatResultSource[];
+  citations?: ChatResultSource[];
+  knowledge_refs?: ChatResultSource[];
+  references?: ChatResultSource[];
 } => {
   if (!isRecord(payload)) return {};
 
@@ -144,6 +170,7 @@ export const normalizeSendMessagePayload = (payload: unknown): {
     model,
     cached: typeof data.cached === 'boolean' ? data.cached : undefined,
     guarded: typeof data.guarded === 'boolean' ? data.guarded : undefined,
+    sources: resolveSources(data),
   };
 };
 
@@ -155,6 +182,10 @@ export const normalizeSendMessageDonePayload = (payload: unknown): {
   model?: string;
   cached?: boolean;
   guarded?: boolean;
+  sources?: ChatResultSource[];
+  citations?: ChatResultSource[];
+  knowledge_refs?: ChatResultSource[];
+  references?: ChatResultSource[];
 } => {
   if (!isRecord(payload)) return {};
 
@@ -224,6 +255,7 @@ export const normalizeSendMessageDonePayload = (payload: unknown): {
       (resultData ? getBoolean(resultData, 'guarded') : undefined) ??
       (data ? getBoolean(data, 'guarded') : undefined) ??
       base.guarded,
+    sources: resolveSources(payload, resultData, data) || base.sources,
   };
 };
 

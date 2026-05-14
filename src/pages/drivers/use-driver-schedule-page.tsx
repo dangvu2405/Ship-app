@@ -72,6 +72,8 @@ export function useDriverSchedulePage() {
     if (pick) {
       setSelectedOfficeId(toFiniteNumber(pick.id) ?? null);
       setSelectedCompanyId(toFiniteNumber(pick.company_id) ?? null);
+      // Clear driver selection here too so effect #2 doesn't race
+      setSelectedDriverId(null);
     }
   }, [offices, user?.employee?.office_id, selectedOfficeId]);
 
@@ -161,7 +163,8 @@ export function useDriverSchedulePage() {
   );
 
   useEffect(() => {
-    if (selectedDriverId == null) return;
+    // Only validate after drivers have actually loaded for the selected office
+    if (selectedDriverId == null || drivers.length === 0) return;
     if (!selectedOfficeId) {
       setSelectedDriverId(null);
       return;

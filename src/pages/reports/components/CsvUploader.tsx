@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Upload, message, Progress } from 'antd';
+import { Upload, Progress } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import Papa from 'papaparse';
 import { ReportRow } from '../types';
+import { antdUtils } from '@/utils/antdGlobal';
 
 const { Dragger } = Upload;
 
@@ -20,7 +21,7 @@ const CsvUploader: React.FC<CsvUploaderProps> = ({ onUpload }) => {
     accept: '.csv',
     beforeUpload: (file: File) => {
       if (file.type !== 'text/csv') {
-        message.error(`${file.name} is not a CSV file`);
+        antdUtils.getMessage().error(`${file.name} is not a CSV file`);
         return Upload.LIST_IGNORE;
       }
       return true;
@@ -45,11 +46,11 @@ const CsvUploader: React.FC<CsvUploaderProps> = ({ onUpload }) => {
         complete: (results: any) => {
           setUploading(false);
           onUpload(results.data);
-          message.success(`${file.name} file uploaded successfully.`);
+          antdUtils.getMessage().success(`${file.name} file uploaded successfully.`);
         },
         error: (error: any) => {
           setUploading(false);
-          message.error(`Error parsing CSV file: ${error.message}`);
+          antdUtils.getMessage().error(`Error parsing CSV file: ${error.message}`);
         },
       });
     },

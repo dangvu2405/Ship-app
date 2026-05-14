@@ -1,17 +1,18 @@
 import { STORAGE_KEYS } from '@/utils/constants';
 
-let remember = false;
+// Access token: always sessionStorage (tab-scoped, reduces XSS persistence window).
+// Refresh token: localStorage only when rememberMe=true, otherwise sessionStorage.
+let rememberRefresh = false;
 
-const getStorage = () => {
-  return remember ? localStorage : sessionStorage;
-};
+const refreshStorage = () => (rememberRefresh ? localStorage : sessionStorage);
 
 export const getAuthToken = (): string | null => {
-  return getStorage().getItem(STORAGE_KEYS.AUTH_TOKEN);
+  return sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 };
 
 export const getRefreshToken = (): string | null => {
-  return getStorage().getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
+    ?? sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 };
 
 export const hasAuthToken = (): boolean => {
@@ -19,20 +20,25 @@ export const hasAuthToken = (): boolean => {
 };
 
 export const setAuthToken = (token: string, rememberMe = true): void => {
-  remember = rememberMe;
-  getStorage().setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+  rememberRefresh = rememberMe;
+  sessionStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
 };
 
 export const setRefreshToken = (token: string, rememberMe = true): void => {
-  remember = rememberMe;
-  getStorage().setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+  rememberRefresh = rememberMe;
+  refreshStorage().setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+  // Clear from the other storage to avoid stale tokens
+  if (rememberMe) {
+    sessionStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  }
 };
 
 export const clearAuthToken = (): void => {
-  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+  sessionStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.TENANT_ID);
-  sessionStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
   sessionStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
 };
 

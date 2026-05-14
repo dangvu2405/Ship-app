@@ -38,6 +38,8 @@ export interface DispatchBoardPayload {
   vehicles?: DispatchVehicle[];
   trips?: DispatchTrip[];
   drivers?: DispatchBoardDriver[];
+  on_leave_driver_ids?: number[];
+  blocked_vehicle_ids?: number[];
   meta?: { date?: string };
 }
 

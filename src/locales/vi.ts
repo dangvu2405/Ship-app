@@ -1617,6 +1617,7 @@ export const vi = {
     payrollPeriodMustNotBeFuture: 'Kỳ lương không được lớn hơn kỳ hiện tại',
     passwordMismatch: 'Mật khẩu nhập lại không khớp',
     requiredFieldsMissing: 'Vui lòng điền đầy đủ các trường bắt buộc',
+    endTimeAfterStart: 'Giờ kết thúc phải lớn hơn hoặc bằng giờ bắt đầu',
   },
 
   // Form Guides
@@ -1743,6 +1744,7 @@ export const vi = {
       sourceNoBody: 'Không có nội dung đầy đủ cho mục này.',
       sendSuccess: 'Gửi tin nhắn thành công.',
       sendError: 'Gửi tin nhắn thất bại.',
+      timeout: 'AI không phản hồi sau 90 giây. Vui lòng thử lại.',
       loadSessionsError: 'Tải danh sách phiên chat thất bại.',
       loadMessagesError: 'Tải lịch sử chat thất bại.',
       selectAll: 'Chọn tất cả',

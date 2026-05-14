@@ -35,6 +35,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  role?: string;
   employee_id?: number;
   status: string;
   roles?: Role[];

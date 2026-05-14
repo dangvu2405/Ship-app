@@ -20,6 +20,20 @@ export interface SendChatMessagePayload {
   model?: string;
 }
 
+export interface ChatResultSource {
+  id?: string | number;
+  article_id?: string | number;
+  slug?: string;
+  title?: string;
+  name?: string;
+  category?: string;
+  content?: string;
+  body?: string;
+  content_preview?: string;
+  snippet?: string;
+  score?: number;
+}
+
 // --- Kết quả trả về từ API (non-stream) ---
 export interface SendChatMessageResult {
   session_id?: string;
@@ -29,6 +43,10 @@ export interface SendChatMessageResult {
   model?: string;
   cached?: boolean;
   guarded?: boolean;
+  sources?: ChatResultSource[];
+  citations?: ChatResultSource[];
+  knowledge_refs?: ChatResultSource[];
+  references?: ChatResultSource[];
 }
 
 // --- Handlers cho stream mode ---

@@ -56,7 +56,7 @@ interface DebtAggregate {
 
 interface PaymentFormValues {
   amount: number;
-  payment_method?: 'cash' | 'bank_transfer' | 'credit';
+  payment_method?: 'cash' | 'bank_transfer' | 'check';
   payment_date?: dayjs.Dayjs;
   note?: string;
 }
@@ -392,7 +392,7 @@ export function DebtPage() {
               options={[
                 { value: 'bank_transfer', label: 'Chuyển khoản' },
                 { value: 'cash', label: 'Tiền mặt' },
-                { value: 'credit', label: 'Công nợ' },
+                { value: 'check', label: 'Séc' },
               ]}
             />
           </Form.Item>

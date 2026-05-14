@@ -146,9 +146,8 @@ export const ENDPOINTS = {
     reject: (id: Id) => `/payroll-adjustments/${id}/reject`,
   },
   salaryAdjustments: {
-    base: '/salary-adjustments',
-    byId: (id: Id) => `/salary-adjustments/${id}`,
-    cancel: (id: Id) => `/salary-adjustments/${id}/cancel`,
+    base: '/payroll-adjustments',
+    byId: (id: Id) => `/payroll-adjustments/${id}`,
   },
   reports: {
     dashboard: '/reports/dashboard',
@@ -286,4 +285,3 @@ export const ENDPOINTS = {
   },
   shippingFeeLookup: '/shipping-fees/calculate',
 } as const;
-

@@ -1614,6 +1614,7 @@ export const en = {
     payrollPeriodMustNotBeFuture: 'Payroll period cannot be later than current period',
     passwordMismatch: 'Passwords do not match',
     requiredFieldsMissing: 'Please fill in all required fields',
+    endTimeAfterStart: 'End time must be greater than or equal to start time',
   },
 
   // Form Guides
@@ -1740,6 +1741,7 @@ export const en = {
       sourceNoBody: 'No full content available for this item.',
       sendSuccess: 'Message sent successfully.',
       sendError: 'Failed to send the message.',
+      timeout: 'AI did not respond within 90 seconds. Please try again.',
       loadSessionsError: 'Failed to load chat sessions.',
       loadMessagesError: 'Failed to load chat messages.',
       selectAll: 'Select all',

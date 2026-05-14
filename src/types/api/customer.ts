@@ -11,7 +11,7 @@ export type CustomerListParams = {
   include_deleted?: boolean;
 };
 
-export type CustomerPaymentMethod = 'cash' | 'bank_transfer' | 'credit';
+export type CustomerPaymentMethod = 'cash' | 'bank_transfer' | 'check';
 
 export interface CustomerPayment {
   id: number;

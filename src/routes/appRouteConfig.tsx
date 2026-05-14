@@ -29,11 +29,11 @@ type SingleRouteConfig = {
 };
 
 const ProtectedRoute = ({ children, requiredRole }: { children: ReactNode; requiredRole: string }) => {
-  const { isAuthenticated, isLoading, hasRole } = useAuth();
+  const { isAuthenticated, isLoading, hasRole, hasFullAccess } = useAuth();
   
   if (isLoading) return <AppLoadingSpin variant="page" />;
   if (!isAuthenticated) return <Navigate to={ROUTES.login} replace />;
-  if (requiredRole && !hasRole(requiredRole)) return <Navigate to={ROUTES.dashboard} replace />;
+  if (requiredRole && !hasRole(requiredRole) && !hasFullAccess()) return <Navigate to={ROUTES.dashboard} replace />;
   
   return <>{children}</>;
 };

@@ -205,12 +205,13 @@ export function Reports() {
 
   const {
     data: snapshotResult,
+    isError: isSnapshotError,
   } = useCustom<Record<string, unknown>>({
     url: ENDPOINTS.reports.dashboard,
     method: 'get',
     config: { query: { month, year } },
   });
-  const snapshotRaw = snapshotResult?.data as Record<string, unknown> | null | undefined;
+  const snapshotRaw = isSnapshotError ? null : (snapshotResult?.data as Record<string, unknown> | null | undefined);
   const companiesCount: number | null = snapshotRaw ? Number(snapshotRaw.companies_count ?? 0) : null;
   const payrollsInPeriod: number | null = snapshotRaw ? Number(snapshotRaw.payrolls_count ?? 0) : null;
 
@@ -221,13 +222,14 @@ export function Reports() {
 
   const {
     data: summaryResult,
+    isError: isSummaryError,
   } = useCustom<PayrollSummaryData>({
     url: ENDPOINTS.reports.payrollSummary,
     method: 'get',
     config: { query: { company_id: Number(companyId), month, year } },
     queryOptions: { enabled: !!companyId },
   });
-  const payrollSummary = (summaryResult?.data ?? null) as PayrollSummaryData | null;
+  const payrollSummary = isSummaryError ? null : ((summaryResult?.data ?? null) as PayrollSummaryData | null);
 
   useEffect(() => {
     if (!companies.length) {

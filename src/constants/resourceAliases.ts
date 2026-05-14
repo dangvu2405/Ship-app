@@ -20,11 +20,20 @@ export const RESOURCE_ALIASES = {
 export type ResourceAliasKey = keyof typeof RESOURCE_ALIASES;
 export type ManagedResourceKey = typeof RESOURCE_ALIASES[ResourceAliasKey];
 
-/** 
- * Resources that are known to be missing in backend or 
- * under development to prevent 404 spam. 
+/**
+ * Resources that are known to be missing in backend or under development.
+ * Extendable via VITE_NOT_IMPLEMENTED_RESOURCES env var (comma-separated).
  */
-export const NOT_IMPLEMENTED_RESOURCES = new Set<string>(['audit-logs', 'system-settings']);
+const envExtras = String(import.meta.env.VITE_NOT_IMPLEMENTED_RESOURCES ?? '')
+  .split(',')
+  .map((s: string) => s.trim())
+  .filter(Boolean);
+
+export const NOT_IMPLEMENTED_RESOURCES = new Set<string>([
+  'audit-logs',
+  'system-settings',
+  ...envExtras,
+]);
 
 /**
  * Fallback resource names for environments where the backend 

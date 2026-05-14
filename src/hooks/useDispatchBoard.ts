@@ -1,57 +1,63 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dispatchService from '@/services/dispatch.service';
 import type { Trip } from '@/types';
 import type { DispatchTrip, DispatchVehicle } from '@/types/api/dispatch';
-import { getErrorMessage } from '@/utils/errorHandler';
+
+export const dispatchBoardKeys = {
+  board: (date?: string) => ['dispatch-board', date ?? 'today'] as const,
+  unassigned: (date?: string) => ['dispatch-unassigned', date ?? 'today'] as const,
+};
 
 export function useDispatchBoard(date?: string) {
-  const [vehicles, setVehicles] = useState<DispatchVehicle[]>([]);
-  const [trips, setTrips] = useState<DispatchTrip[]>([]);
-  const [unassigned, setUnassigned] = useState<Trip[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchBoard = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const boardQuery = useQuery({
+    queryKey: dispatchBoardKeys.board(date),
+    queryFn: async ({ signal }) => {
       const body = await dispatchService.getBoard(date);
-      if (body?.success === false) {
-        throw new Error(body.message || 'Failed to load dispatch board');
-      }
-      setVehicles(body?.data?.vehicles ?? []);
-      setTrips(body?.data?.trips ?? []);
-    } catch (e) {
-      setVehicles([]);
-      setTrips([]);
-      setError(getErrorMessage(e) ?? 'Failed to load dispatch board');
-    } finally {
-      setLoading(false);
-    }
-  }, [date]);
+      if (signal?.aborted) return null;
+      if (body?.success === false) throw new Error(body.message || 'Failed to load dispatch board');
+      return {
+        vehicles: (body?.data?.vehicles ?? []) as DispatchVehicle[],
+        trips:    (body?.data?.trips    ?? []) as DispatchTrip[],
+        onLeaveDriverIds:  (body?.data?.on_leave_driver_ids  ?? []) as number[],
+        blockedVehicleIds: (body?.data?.blocked_vehicle_ids  ?? []) as number[],
+      };
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
 
-  const fetchUnassigned = useCallback(async () => {
-    try {
+  const unassignedQuery = useQuery({
+    queryKey: dispatchBoardKeys.unassigned(date),
+    queryFn: async ({ signal }) => {
       const body = await dispatchService.getUnassigned(date);
+      if (signal?.aborted) return [];
       const raw = body?.data;
       const list: Trip[] = Array.isArray(raw)
         ? raw
         : raw && typeof raw === 'object' && 'data' in raw
           ? ((raw as { data: Trip[] }).data ?? [])
           : [];
-      setUnassigned(list);
-    } catch (e) {
-      setUnassigned([]);
-    }
-  }, [date]);
+      return list;
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    void fetchBoard();
-  }, [fetchBoard]);
+  return {
+    vehicles:          boardQuery.data?.vehicles          ?? [],
+    trips:             boardQuery.data?.trips             ?? [],
+    onLeaveDriverIds:  boardQuery.data?.onLeaveDriverIds  ?? [],
+    blockedVehicleIds: boardQuery.data?.blockedVehicleIds ?? [],
+    unassigned:        unassignedQuery.data              ?? [],
+    loading:           boardQuery.isLoading || unassignedQuery.isLoading,
+    error:             boardQuery.error?.message ?? unassignedQuery.error?.message ?? null,
+    refetch: () => Promise.all([boardQuery.refetch(), unassignedQuery.refetch()]),
+  } as const;
+}
 
-  useEffect(() => {
-    void fetchUnassigned();
-  }, [fetchUnassigned]);
-
-  return { vehicles, trips, unassigned, loading, error, refetch: async () => { await fetchBoard(); await fetchUnassigned(); } } as const;
+export function useInvalidateDispatchBoard() {
+  const queryClient = useQueryClient();
+  return (date?: string) => {
+    void queryClient.invalidateQueries({ queryKey: dispatchBoardKeys.board(date) });
+    void queryClient.invalidateQueries({ queryKey: dispatchBoardKeys.unassigned(date) });
+  };
 }

@@ -27,7 +27,11 @@ import {
 } from './routes/appRouteConfig';
 
 function TenantGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, currentTenantId, pendingTenants } = useAuthStore();
+  const { isAuthenticated, currentTenantId, pendingTenants, mustChangePassword } = useAuthStore();
+
+  if (isAuthenticated && mustChangePassword) {
+    return <Navigate to={ROUTES.admin.profile} replace />;
+  }
 
   if (isAuthenticated && currentTenantId == null && pendingTenants.length > 0) {
     return <Navigate to={ROUTES.selectTenant} replace />;

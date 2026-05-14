@@ -12,7 +12,7 @@ export type UpdateCustomerRequest = Partial<StoreCustomerRequest>;
 
 export type StoreCustomerPaymentRequest = {
   amount: number;
-  payment_method?: 'cash' | 'bank_transfer' | 'credit';
+  payment_method?: 'cash' | 'bank_transfer' | 'check';
   payment_date?: string;
   note?: string;
 };

@@ -11,7 +11,7 @@ import {
   shouldHandleGlobalErrorToast,
 } from '@/utils/errorHandler';
 import { antdUtils } from '@/utils/antdGlobal';
-import { clearAuthToken, getAuthToken, getRefreshToken, getTenantId, setAuthToken } from './auth-session';
+import { clearAuthToken, getAuthToken, getRefreshToken, getTenantId, setAuthToken, setRefreshToken } from './auth-session';
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -104,7 +104,7 @@ const attemptRefresh = async (): Promise<boolean> => {
     if (!refreshToken) {
       return false;
     }
-    const response: AxiosResponse<{ success?: boolean; data?: { access_token?: string; token?: string } }> = await axios.post(
+    const response: AxiosResponse<{ success?: boolean; data?: { access_token?: string; token?: string; refresh_token?: string; refreshToken?: string } }> = await axios.post(
       `${ENV.API_BASE_URL}${ENDPOINTS.auth.refresh}`,
       // Support both snake_case and camelCase payloads (backend variants).
       { refresh_token: refreshToken, refreshToken },
@@ -113,9 +113,12 @@ const attemptRefresh = async (): Promise<boolean> => {
         timeout: ENV.AXIOS_TIMEOUT_MS,
       },
     );
-    const nextToken = response.data?.data?.access_token ?? response.data?.data?.token;
+    const data = response.data?.data;
+    const nextToken   = data?.access_token ?? data?.token;
+    const nextRefresh = data?.refresh_token ?? data?.refreshToken;
     if (response.data?.success && nextToken) {
       setAuthToken(nextToken);
+      if (nextRefresh) setRefreshToken(nextRefresh);
       return true;
     }
     return false;
@@ -123,6 +126,8 @@ const attemptRefresh = async (): Promise<boolean> => {
     return false;
   }
 };
+
+export const refreshAuthSession = attemptRefresh;
 
 const api: AxiosInstance = axios.create({
   baseURL: ENV.API_BASE_URL,

@@ -192,6 +192,11 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
       return;
     }
 
+    if (values.start_time && values.end_time && values.end_time < values.start_time) {
+      feedback.error(t('validation.endTimeAfterStart'));
+      return;
+    }
+
     const payloadObject: Record<string, unknown> = { ...values };
     mergeVnAddressIntoPayload(payloadObject, values, 'start_', 'start_point');
     mergeVnAddressIntoPayload(payloadObject, values, 'end_', 'end_point');
@@ -338,7 +343,7 @@ export function TripFormDialog({ open, mode, recordId, onClose, onSuccess }: Tri
             feedback.error(t('validation.requiredFieldsMissing'));
           }}
           layout="vertical"
-          validateTrigger={['onBlur', 'onSubmit']}
+          validateTrigger={['onChange', 'onBlur']}
           disabled={isViewMode}
         >
           <TripForm

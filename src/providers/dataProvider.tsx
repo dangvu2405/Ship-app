@@ -266,9 +266,10 @@ export const dataProvider: DataProvider = {
   },
 
   update: async <TData extends BaseRecord = BaseRecord, TVariables = Record<string, never>>(params: UpdateParams<TVariables>) => {
-    const { resource, id, variables } = params;
+    const { resource, id, variables, meta } = params;
     const apiResource = resolveApiResource(resource);
-    const response = await api.put(`/${apiResource}/${id}`, variables);
+    const method = (meta as { method?: string } | undefined)?.method ?? 'patch';
+    const response = await (method === 'put' ? api.put : api.patch)(`/${apiResource}/${id}`, variables);
     const body = response.data as { success?: boolean; data?: unknown };
     throwIfEnvelopeFailed(body);
     return {

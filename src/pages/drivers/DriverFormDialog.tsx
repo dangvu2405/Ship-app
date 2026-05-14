@@ -195,7 +195,7 @@ export function DriverFormDialog({ open, mode, recordId, onClose, onSuccess }: D
           form={form}
           onFinish={handleSubmit}
           layout="vertical"
-          validateTrigger={['onBlur', 'onSubmit']}
+          validateTrigger={['onChange', 'onBlur']}
           disabled={isViewMode}
         >
           <DriverForm form={form} initialValues={data?.data} isViewMode={isViewMode} />

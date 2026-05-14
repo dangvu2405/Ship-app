@@ -27,7 +27,7 @@ import { useChatAssistant } from '@/hooks/useChatAssistant';
 
 const { Content } = Layout;
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'openai/gpt-oss-20b';
 const MAX_CHAT_INPUT_LENGTH = 2000;
 
 const QUICK_COMMANDS = [

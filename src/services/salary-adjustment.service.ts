@@ -53,7 +53,7 @@ class SalaryAdjustmentService {
   }
 
   async cancel(id: number): Promise<SalaryAdjustment> {
-    const response = await api.patch(ENDPOINTS.salaryAdjustments.cancel(id), {});
+    const response = await api.delete(ENDPOINTS.salaryAdjustments.byId(id));
     throwIfEnvelopeFailed(response.data);
     return unwrapEnvelope<SalaryAdjustment>(response.data);
   }
