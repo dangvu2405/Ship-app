@@ -4,7 +4,8 @@ import authService from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
 import { getErrorStatus } from '@/utils/errorHandler';
-import { clearAuthToken, hasAuthToken } from '@/lib/auth-session';
+import { clearAuthToken, getRefreshToken, hasAuthToken } from '@/lib/auth-session';
+import { refreshAuthSession } from '@/lib/axios';
 
 const getAuthStoreState = () => {
   return useAuthStore.getState();
@@ -88,9 +89,18 @@ export const authProvider: AuthProvider = {
 
   check: async () => {
     const UNAUTHENTICATED = { authenticated: false, redirectTo: ROUTES.login, logout: true };
-    
+
     if (!hasAuthToken()) {
-      return UNAUTHENTICATED;
+      // Access token gone (tab reload) — try refresh before giving up
+      if (getRefreshToken()) {
+        const refreshed = await refreshAuthSession();
+        if (!refreshed) {
+          useAuthStore.getState().clearClientSession();
+          return UNAUTHENTICATED;
+        }
+      } else {
+        return UNAUTHENTICATED;
+      }
     }
 
     try {

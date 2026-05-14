@@ -5,7 +5,6 @@ import type { UploadFile } from 'antd/es/upload/interface';
 import type { UploadProps } from 'antd/es/upload';
 import { InboxOutlined } from '@ant-design/icons';
 import { useAppFeedback } from '@/hooks/useAppFeedback';
-import { useList } from '@refinedev/core';
 import {
   FormAccordionSections,
   FormItemSelect,
@@ -19,7 +18,7 @@ import { getErrorMessage } from '@/utils/errorHandler';
 import { publicFileUploadToUrl } from '@/utils/publicFileUpload';
 import api from '@/services/api';
 import { ENDPOINTS } from '@/services/endpoints';
-import type { Driver, Employee } from '@/types';
+import type { Driver } from '@/types';
 
 /** Vietnam-friendly phone pattern; reused if a phone field is added at form level. */
 export const PHONE_PATTERN = /^[0-9+()\-\s]{8,15}$/;
@@ -76,22 +75,10 @@ export function DriverForm(props: DriverFormProps) {
     },
     [t, feedback],
   );
-  const { data: empData, isLoading } = useList<Employee>({
-    resource: 'employees',
-    pagination: { current: 1, pageSize: 500 },
-    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
-    sorters: [{ field: 'name', order: 'asc' }],
-  });
-
-  const employeeOptions = useMemo(() => (empData?.data ?? []).map((e) => ({
-    label: `${e.code} — ${e.name}`,
-    value: e.id,
-  })), [empData?.data]);
-
   const statusOptions = useMemo(() => [
     { label: t('drivers.statusAvailable'), value: 'available' },
-    { label: t('drivers.statusOnTrip'), value: 'on_trip' },
-    { label: t('drivers.statusOff'), value: 'off' },
+    { label: t('drivers.statusOnTrip'), value: 'busy' },
+    { label: t('drivers.statusOff'), value: 'offline' },
   ], [t]);
 
   const requireUploadUnlessUrl = useCallback((urlField: keyof Driver) => ({
@@ -111,20 +98,22 @@ export function DriverForm(props: DriverFormProps) {
     const statusLabel =
       initialValues?.available_status === 'available'
         ? t('drivers.statusAvailable')
-        : initialValues?.available_status === 'on_trip'
+        : initialValues?.available_status === 'busy'
           ? t('drivers.statusOnTrip')
           : t('drivers.statusOff');
     const statusColor =
       initialValues?.available_status === 'available'
         ? 'success'
-        : initialValues?.available_status === 'on_trip'
+        : initialValues?.available_status === 'busy'
           ? 'processing'
           : 'default';
 
     const items: DescriptionsProps['items'] = [
       { key: 'id', label: 'ID', children: initialValues?.id ?? '-' },
-      { key: 'employee_id', label: 'Employee ID', children: initialValues?.employee_id ?? '-' },
-      { key: 'employee', label: t('drivers.employee'), children: initialValues?.employee?.name ?? '-' },
+      { key: 'code', label: 'Mã TX', children: initialValues?.code ?? '-' },
+      { key: 'name', label: t('drivers.name'), children: initialValues?.name ?? '-' },
+      { key: 'phone', label: 'SĐT', children: initialValues?.phone ?? '-' },
+      { key: 'email', label: 'Email', children: initialValues?.email ?? '-' },
       { key: 'license_no', label: t('drivers.licenseNo'), children: initialValues?.license_no || '-' },
       { key: 'license_class', label: t('drivers.licenseClass'), children: initialValues?.license_class || '-' },
       { key: 'expired_date', label: t('drivers.expiredDate'), children: initialValues?.expired_date?.slice(0, 10) || '-' },
@@ -166,9 +155,10 @@ export function DriverForm(props: DriverFormProps) {
           </a>
         ) : '-',
       },
-      { key: 'insurance_provider', label: t('drivers.insuranceProvider'), children: initialValues?.insurance_provider || '-' },
-      { key: 'insurance_policy_no', label: t('drivers.insurancePolicyNo'), children: initialValues?.insurance_policy_no || '-' },
-      { key: 'insurance_expiry_date', label: t('drivers.insuranceExpiryDate'), children: initialValues?.insurance_expiry_date?.slice(0, 10) || '-' },
+      { key: 'driver_insurance_no', label: t('drivers.insurancePolicyNo'), children: initialValues?.driver_insurance_no || '-' },
+      { key: 'driver_insurance_expired_date', label: t('drivers.insuranceExpiryDate'), children: initialValues?.driver_insurance_expired_date?.slice(0, 10) || '-' },
+      { key: 'health_certificate_no', label: 'Số GCN sức khoẻ', children: initialValues?.health_certificate_no || '-' },
+      { key: 'health_certificate_expired_date', label: 'Hạn GCN sức khoẻ', children: initialValues?.health_certificate_expired_date?.slice(0, 10) || '-' },
       {
         key: 'insurance_doc_url',
         label: t('drivers.insuranceDoc'),
@@ -202,15 +192,23 @@ export function DriverForm(props: DriverFormProps) {
               titleKey: 'assignment',
               children: (
                 <>
-                  <FormItemSelect
-                    name="employee_id"
-                    label={t('drivers.employee')}
+                  <FormItemText
+                    name="name"
+                    label={t('drivers.name')}
                     required
-                    options={employeeOptions}
-                    loading={isLoading}
-                    showSearch
-                    selectProps={{ optionFilterProp: 'label' }}
-                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.employee') }) }]}
+                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.name') }) }]}
+                  />
+                  <FormItemText
+                    name="phone"
+                    label="Số điện thoại"
+                    required
+                    rules={[{ required: true, message: t('validation.required', { field: 'Số điện thoại' }) }]}
+                  />
+                  <FormItemText
+                    name="email"
+                    label="Email"
+                    type="email"
+                    rules={[{ type: 'email', message: t('validation.email', { field: 'Email' }) }]}
                   />
                   <FormItemText
                     name="license_no"
@@ -346,24 +344,15 @@ export function DriverForm(props: DriverFormProps) {
               children: (
                 <>
                   <FormItemText
-                    name="insurance_provider"
-                    label={t('drivers.insuranceProvider')}
-                    required
-                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.insuranceProvider') }) }]}
-                  />
-                  <FormItemText
-                    name="insurance_policy_no"
+                    name="driver_insurance_no"
                     label={t('drivers.insurancePolicyNo')}
-                    required
-                    rules={[{ required: true, message: t('validation.required', { field: t('drivers.insurancePolicyNo') }) }]}
+                    rules={[]}
                   />
                   <FormItemText
-                    name="insurance_expiry_date"
+                    name="driver_insurance_expired_date"
                     label={t('drivers.insuranceExpiryDate')}
                     type="date"
-                    required
                     rules={[
-                      { required: true, message: t('validation.required', { field: t('drivers.insuranceExpiryDate') }) },
                       {
                         validator: async (_rule, value: string | undefined) => {
                           if (!value) return;
@@ -374,6 +363,17 @@ export function DriverForm(props: DriverFormProps) {
                         },
                       },
                     ]}
+                  />
+                  <FormItemText
+                    name="health_certificate_no"
+                    label="Số GCN sức khoẻ"
+                    rules={[]}
+                  />
+                  <FormItemText
+                    name="health_certificate_expired_date"
+                    label="Hạn GCN sức khoẻ"
+                    type="date"
+                    rules={[]}
                   />
 
                   <FormItemUploadDragger

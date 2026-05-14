@@ -42,8 +42,8 @@ interface DriverWithVehicle extends Driver {
 
 const STATUS_TAG_COLOR: Record<string, string> = {
   available: 'success',
-  on_trip: 'processing',
-  off: 'default',
+  busy: 'processing',
+  offline: 'default',
 };
 
 export function DriversList() {
@@ -83,8 +83,8 @@ export function DriversList() {
   const availableStatusOptions = useMemo(
     () => [
       { label: t('drivers.statusAvailable'), value: 'available' },
-      { label: t('drivers.statusOnTrip'), value: 'on_trip' },
-      { label: t('drivers.statusOff'), value: 'off' },
+      { label: t('drivers.statusOnTrip'), value: 'busy' },
+      { label: t('drivers.statusOff'), value: 'offline' },
     ],
     [t],
   );
@@ -93,8 +93,8 @@ export function DriversList() {
     () => [
       { key: 'all', label: t('common.all') },
       { key: 'available', label: t('drivers.statusAvailable') },
-      { key: 'on_trip', label: t('drivers.statusOnTrip') },
-      { key: 'off', label: t('drivers.statusOff') },
+      { key: 'busy', label: t('drivers.statusOnTrip') },
+      { key: 'offline', label: t('drivers.statusOff') },
     ],
     [t],
   );
@@ -238,10 +238,10 @@ export function DriversList() {
           const label =
             s === 'available'
               ? t('drivers.statusAvailable')
-              : s === 'on_trip'
+              : s === 'busy'
                 ? t('drivers.statusOnTrip')
                 : t('drivers.statusOff');
-          return <Tag color={STATUS_TAG_COLOR[s ?? 'off']}>{label}</Tag>;
+          return <Tag color={STATUS_TAG_COLOR[s ?? 'offline']}>{label}</Tag>;
         },
       },
       {

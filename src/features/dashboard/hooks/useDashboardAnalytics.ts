@@ -16,7 +16,7 @@ export function useDashboardAnalytics(initialCompanyId?: number) {
   const query = useQuery({
     queryKey: ['dashboard', 'analytics', filters],
     queryFn: () => dashboardService.getAnalytics(filters),
-    // Refresh every 5 minutes automatically
+    enabled: !!filters.companyId,
     refetchInterval: 300000,
   });
 

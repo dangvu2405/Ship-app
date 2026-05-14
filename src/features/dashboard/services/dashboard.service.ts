@@ -5,77 +5,65 @@ import { DashboardAnalytics, DashboardFilters, DashboardKpi, AnalyticsDataPoint 
 export const dashboardService = {
   getAnalytics: async (filters: DashboardFilters): Promise<DashboardAnalytics> => {
     try {
-      const response = await api.get(ENDPOINTS.reports.dashboard, {
-        params: {
-          company_id: filters.companyId,
-          start_date: filters.dateRange[0],
-          end_date: filters.dateRange[1],
-        },
-      });
+      const params: Record<string, unknown> = {
+        start_date: filters.dateRange[0],
+        end_date: filters.dateRange[1],
+      };
+      if (filters.companyId) params.company_id = filters.companyId;
 
+      const response = await api.get(ENDPOINTS.reports.dashboard, { params });
+
+      // API returns: { success, data: { type, summary: { total_trips, total_vehicles, ... }, generated_at } }
       const raw = response.data?.data || {};
+      const summary = raw.summary || {};
 
-      // Map raw data to our clean DashboardKpi interface
       const kpis: DashboardKpi[] = [
         {
-          title: 'Tổng doanh thu',
-          value: raw.revenue?.total || 0,
-          suffix: '₫',
-          trend: 12.5,
-          trendDirection: 'up',
-          color: '#52c41a',
-        },
-        {
-          title: 'Chuyến đi',
-          value: raw.trips?.total || 0,
-          trend: 8.2,
+          title: 'Tổng chuyến đi',
+          value: summary.total_trips ?? 0,
+          trend: undefined,
           trendDirection: 'up',
           color: '#1890ff',
         },
         {
-          title: 'Xe đang chạy',
-          value: raw.vehicles?.active || 0,
-          suffix: ` / ${raw.vehicles?.total || 0}`,
-          trend: 2.1,
-          trendDirection: 'down',
+          title: 'Đang vận chuyển',
+          value: summary.in_progress_trips ?? 0,
+          trend: undefined,
+          trendDirection: 'up',
+          color: '#52c41a',
+        },
+        {
+          title: 'Tổng xe',
+          value: summary.total_vehicles ?? 0,
+          trend: undefined,
+          trendDirection: 'up',
           color: '#faad14',
         },
         {
-          title: 'Tài xế hoạt động',
-          value: raw.employees?.active || 0,
-          trend: 5.4,
+          title: 'Tổng tài xế',
+          value: summary.total_drivers ?? 0,
+          trend: undefined,
           trendDirection: 'up',
           color: '#722ed1',
         },
       ];
 
-      // Mock chart data if not provided by backend (common in initial versions)
-      const chartData: AnalyticsDataPoint[] = raw.chart_data || [
-        { period: 'Tháng 1', revenue: 450000000, cost: 320000000, profit: 130000000, trips: 120 },
-        { period: 'Tháng 2', revenue: 520000000, cost: 340000000, profit: 180000000, trips: 145 },
-        { period: 'Tháng 3', revenue: 480000000, cost: 310000000, profit: 170000000, trips: 132 },
-        { period: 'Tháng 4', revenue: 610000000, cost: 380000000, profit: 230000000, trips: 168 },
-        { period: 'Tháng 5', revenue: 590000000, cost: 360000000, profit: 230000000, trips: 155 },
-        { period: 'Tháng 6', revenue: 720000000, cost: 420000000, profit: 300000000, trips: 192 },
-      ];
+      const chartData: AnalyticsDataPoint[] = raw.chart_data || [];
 
-      // Fetch recent trips separately if not in dashboard payload
+      // Fetch recent trips
       const tripsResponse = await api.get(ENDPOINTS.trips.base, {
         params: {
           per_page: 8,
           sort_by: 'created_at',
           sort_order: 'desc',
-          company_id: filters.companyId,
+          ...(filters.companyId ? { company_id: filters.companyId } : {}),
         },
       });
 
-      const recentTrips = tripsResponse.data?.data || [];
+      // Trips endpoint returns paginated resource: { data: [...], links, meta }
+      const recentTrips = tripsResponse.data?.data ?? [];
 
-      return {
-        kpis,
-        chartData,
-        recentTrips,
-      };
+      return { kpis, chartData, recentTrips };
     } catch (error) {
       console.error('Failed to fetch dashboard analytics:', error);
       throw error;
