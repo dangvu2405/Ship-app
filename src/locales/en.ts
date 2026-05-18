@@ -59,6 +59,11 @@ export const en = {
     nextPage: 'Go to next page',
     morePages: 'More pages',
     pagination: 'pagination',
+    filter: 'Filter',
+    history: 'History',
+    select: 'Select',
+    upload: 'Upload file',
+    vnd: 'VND',
     formSections: {
       basic: 'Basic information',
       contact: 'Contact & classification',
@@ -322,6 +327,7 @@ export const en = {
     accountNotFound: 'Account does not exist.',
     rateLimited: 'Too many attempts. Please wait a few minutes and try again.',
     badRequest: 'Invalid request. Please check your information.',
+    loginSubtitle: 'Login to continue managing your fleet.',
   },
 
   // Dashboard
@@ -607,6 +613,7 @@ export const en = {
     docTypeLabel: 'Document type',
     alertBeforeDays: 'Alert before (days)',
     scanFile: 'Scan file',
+    file: 'Document file',
     uploadScan: 'Upload file',
     expiresInDays: '{count} days left',
     docType: {
@@ -1450,6 +1457,27 @@ export const en = {
     csvColFuelCost: 'Fuel cost',
     csvColTax: 'Tax',
     csvColNetSalary: 'Net salary',
+    cardOrders: 'Orders',
+    cardOrdersTotal: 'Total orders',
+    cardOrdersCompleted: 'Completed',
+    cardOrdersCancelled: 'Cancelled',
+    cardCompletionRate: 'Completion rate',
+    ordersUnit: 'orders',
+    cardRevenue: 'Revenue',
+    cardRevenueTotal: 'Total revenue',
+    cardRevenuePerTrip: 'Revenue / trip',
+    cardFleetTotal: 'Total vehicles',
+    cardFleetActive: 'Active vehicles',
+    cardFleetUtil: 'Fleet utilization',
+    cardDriversTotal: 'Total drivers',
+    cardDriversAvgTrips: 'Avg trips / driver',
+    peopleUnit: 'people',
+    cardDebt: 'Debt',
+    cardDebtHint: 'Debt overview',
+    exportPdf: 'Export PDF',
+    viewDetail: 'View detail',
+    tripsInPeriod: 'Trips in period',
+    periodPlaceholder: 'Select period',
   },
 
   // Users
@@ -1615,6 +1643,7 @@ export const en = {
     passwordMismatch: 'Passwords do not match',
     requiredFieldsMissing: 'Please fill in all required fields',
     endTimeAfterStart: 'End time must be greater than or equal to start time',
+    invalidDate: 'Invalid date',
   },
 
   // Form Guides

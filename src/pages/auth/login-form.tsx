@@ -37,8 +37,14 @@ export function LoginForm({ className, ...props }: ComponentProps<'div'>) {
   const SUBMIT_COOLDOWN_MS = 1200;
 
   const navigateAfterLogin = () => {
-    const { currentTenantId } = useAuthStore.getState();
-    navigate(currentTenantId ? ROUTES.dashboard : ROUTES.selectTenant);
+    const { currentTenantId, pendingTenants } = useAuthStore.getState();
+    if (currentTenantId) {
+      navigate(ROUTES.dashboard);
+    } else if ((pendingTenants ?? []).length > 0) {
+      navigate(ROUTES.selectTenant);
+    } else {
+      navigate(ROUTES.dashboard);
+    }
   };
 
   googleCbRef.current = (response: any) => {

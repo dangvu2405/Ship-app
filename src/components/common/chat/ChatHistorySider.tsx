@@ -1,7 +1,6 @@
-import { Avatar, Badge, Button, Empty, Flex, Input, Layout, List, Popconfirm, Space, theme, Typography } from 'antd';
-import { DeleteOutlined, MessageOutlined, PlusOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
+import { Button, Empty, Flex, Input, Layout, List, Popconfirm, theme, Typography, Avatar } from 'antd';
+import { DeleteOutlined, MessageOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMemo, useState } from 'react';
-import { useTranslation } from '@/hooks/useTranslation';
 
 const { Sider } = Layout;
 
@@ -22,7 +21,6 @@ export const ChatHistorySider = ({
   activeItem,
   collapsed = false,
 }: ChatHistorySiderProps) => {
-  const { t } = useTranslation();
   const { token } = theme.useToken();
   const [keyword, setKeyword] = useState('');
 
@@ -30,10 +28,8 @@ export const ChatHistorySider = ({
     () =>
       history.map((item, index) => ({
         id: `conversation-${index}`,
-        title: item.length > 42 ? `${item.slice(0, 42)}...` : item,
+        title: item.length > 50 ? `${item.slice(0, 50)}…` : item,
         lastMessage: item,
-        time: index === 0 ? 'Vua xong' : `${index + 1} phut truoc`,
-        unread: index === 0,
       })),
     [history],
   );
@@ -41,13 +37,12 @@ export const ChatHistorySider = ({
   const filteredConversations = useMemo(() => {
     const normalized = keyword.trim().toLowerCase();
     if (!normalized) return conversations;
-
     return conversations.filter((item) => item.lastMessage.toLowerCase().includes(normalized));
   }, [conversations, keyword]);
 
   return (
     <Sider
-      width={collapsed ? 0 : 312}
+      width={collapsed ? 0 : 288}
       collapsedWidth={0}
       collapsible
       collapsed={collapsed}
@@ -59,75 +54,84 @@ export const ChatHistorySider = ({
         overflow: 'hidden',
       }}
     >
-      <Flex vertical style={{ height: '100%', minWidth: 312 }}>
-        <Flex vertical gap="middle" style={{ padding: token.padding }}>
+      <Flex vertical style={{ height: '100%', minWidth: 288 }}>
+        <Flex
+          vertical
+          gap="small"
+          style={{
+            padding: token.padding,
+            borderBlockEnd: `1px solid ${token.colorSplit}`,
+          }}
+        >
           <Flex align="center" justify="space-between">
-            <Space size="small">
-              <Badge status="processing">
-                <Avatar size={36} icon={<TeamOutlined />} style={{ background: token.colorPrimary }} />
-              </Badge>
-              <Flex vertical gap={0}>
-                <Typography.Text strong>{t('notificationCenter.chat.history') || 'Hoi thoai'}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-                  {conversations.length} phong chat
-                </Typography.Text>
-              </Flex>
-            </Space>
-
-            <Button type="primary" shape="circle" size="small" icon={<PlusOutlined />} onClick={onNewChat} />
+            <Typography.Text strong style={{ fontSize: token.fontSize }}>
+              Lịch sử hội thoại
+            </Typography.Text>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={onNewChat}>
+              Mới
+            </Button>
           </Flex>
-
           <Input
             allowClear
-            prefix={<SearchOutlined />}
-            placeholder="Tim hoi thoai..."
+            size="small"
+            prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+            placeholder="Tìm hội thoại..."
             value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
+            onChange={(e) => setKeyword(e.target.value)}
           />
         </Flex>
 
-        <Flex vertical flex={1} style={{ overflowY: 'auto', paddingInline: token.paddingSM, paddingBlockEnd: token.padding }}>
+        <Flex vertical flex={1} style={{ overflowY: 'auto', padding: token.paddingXS }}>
           {filteredConversations.length > 0 ? (
             <List
               split={false}
               dataSource={filteredConversations}
               renderItem={(item) => {
                 const isActive = item.lastMessage === activeItem;
-
                 return (
                   <List.Item
                     onClick={() => onSelect(item.lastMessage)}
                     style={{
                       cursor: 'pointer',
-                      borderRadius: token.borderRadiusLG,
-                      marginBlockEnd: token.marginXS,
-                      padding: token.paddingSM,
-                      background: isActive ? token.colorPrimaryBg : token.colorFillQuaternary,
+                      borderRadius: token.borderRadius,
+                      marginBlockEnd: 2,
+                      padding: `${token.paddingXS}px ${token.paddingSM}px`,
+                      background: isActive ? token.colorPrimaryBg : 'transparent',
                       border: `1px solid ${isActive ? token.colorPrimaryBorder : 'transparent'}`,
+                      transition: 'background 0.15s, border-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive)
+                        (e.currentTarget as HTMLElement).style.background = token.colorFillQuaternary;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent';
                     }}
                   >
-                    <List.Item.Meta
-                      avatar={
-                        <Badge dot={item.unread} offset={[-2, 28]}>
-                          <Avatar icon={<MessageOutlined />} style={{ background: isActive ? token.colorPrimary : token.colorTextTertiary }} />
-                        </Badge>
-                      }
-                      title={
-                        <Flex justify="space-between" gap="small">
-                          <Typography.Text strong ellipsis style={{ maxWidth: 150 }}>
-                            {item.title}
-                          </Typography.Text>
-                          <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM, whiteSpace: 'nowrap' }}>
-                            {item.time}
-                          </Typography.Text>
-                        </Flex>
-                      }
-                      description={
-                        <Typography.Text type="secondary" ellipsis style={{ display: 'block', maxWidth: 210 }}>
-                          {item.lastMessage}
-                        </Typography.Text>
-                      }
-                    />
+                    <Flex align="center" gap="small" style={{ width: '100%', minWidth: 0 }}>
+                      <Avatar
+                        size={26}
+                        icon={<MessageOutlined />}
+                        style={{
+                          flexShrink: 0,
+                          background: isActive ? token.colorPrimary : token.colorFillSecondary,
+                          color: isActive ? '#fff' : token.colorTextTertiary,
+                          fontSize: 11,
+                        }}
+                      />
+                      <Typography.Text
+                        ellipsis
+                        style={{
+                          fontSize: token.fontSizeSM,
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive ? token.colorPrimaryText : token.colorText,
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        {item.title}
+                      </Typography.Text>
+                    </Flex>
                   </List.Item>
                 );
               }}
@@ -136,23 +140,34 @@ export const ChatHistorySider = ({
             <Flex flex={1} align="center" justify="center" style={{ padding: token.paddingLG }}>
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={keyword ? 'Khong tim thay hoi thoai' : (t('common.noData') || 'Chua co hoi thoai')}
+                description={
+                  <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                    {keyword ? 'Không tìm thấy hội thoại' : 'Chưa có lịch sử hội thoại'}
+                  </Typography.Text>
+                }
               />
             </Flex>
           )}
         </Flex>
 
         {history.length > 0 && (
-          <Flex style={{ padding: token.paddingSM, borderBlockStart: `1px solid ${token.colorSplit}` }}>
+          <Flex
+            style={{
+              padding: token.paddingSM,
+              borderBlockStart: `1px solid ${token.colorSplit}`,
+            }}
+          >
             <Popconfirm
-              title={t('common.confirmAction') || 'Ban co chac muon xoa lich su?'}
+              title="Xóa toàn bộ lịch sử hội thoại?"
+              description="Thao tác này không thể hoàn tác."
               onConfirm={onClear}
-              okText={t('common.yes') || 'Co'}
-              cancelText={t('common.no') || 'Khong'}
+              okText="Xóa"
+              okButtonProps={{ danger: true }}
+              cancelText="Hủy"
               placement="top"
             >
               <Button type="text" danger block size="small" icon={<DeleteOutlined />}>
-                {t('common.clearAll') || 'Xoa tat ca'}
+                Xóa lịch sử
               </Button>
             </Popconfirm>
           </Flex>

@@ -12,6 +12,7 @@ import {
   Steps,
   Tag,
   Timeline,
+  Tooltip,
   Typography,
 } from 'antd';
 import {
@@ -67,7 +68,7 @@ export function InvoiceDetailPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
-  const showCqtAction = false;
+  const cqtConfigured = false; // TODO: replace with backend capability check when available
 
   const resolvedId = id ? Number(id) : undefined;
 
@@ -261,14 +262,17 @@ export function InvoiceDetailPage() {
                 {t('invoices.actionIssue')}
               </Button>
             )}
-            {showCqtAction && einvoiceStatus === 'issued' && (
-              <Button
-                icon={<SendOutlined />}
-                loading={busy === 'send_cqt'}
-                onClick={handleSendCqt}
-              >
-                {t('invoices.actionSendCqt')}
-              </Button>
+            {einvoiceStatus === 'issued' && (
+              <Tooltip title={!cqtConfigured ? 'Chưa cấu hình nhà cung cấp hóa đơn điện tử (CQT)' : undefined}>
+                <Button
+                  icon={<SendOutlined />}
+                  loading={cqtConfigured && busy === 'send_cqt'}
+                  disabled={!cqtConfigured}
+                  onClick={cqtConfigured ? handleSendCqt : undefined}
+                >
+                  {t('invoices.actionSendCqt')}
+                </Button>
+              </Tooltip>
             )}
             {(einvoiceStatus === 'sent_cqt' || einvoiceStatus === 'accepted') && (
               <Button

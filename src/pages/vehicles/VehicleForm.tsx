@@ -36,7 +36,7 @@ const usePlateCheckUnique = () => {
           const conflict = Array.isArray(data) && data.some((v) => v.plate_number?.toUpperCase() === plate.toUpperCase() && v.id !== currentId);
           resolve(!conflict);
         } catch {
-          resolve(true);
+          resolve(null as unknown as boolean);
         }
       }, 400);
     });
@@ -144,7 +144,6 @@ export function VehicleForm(props: VehicleFormProps) {
     { label: t('vehicles.status.maintenance'), value: 'maintenance' },
     { label: t('vehicles.status.inactive'), value: 'inactive' },
     { label: t('vehicles.status.broken'), value: 'broken' },
-    { label: t('vehicles.status.out_of_service'), value: 'out_of_service' },
   ];
 
   if (isViewMode) {
@@ -257,6 +256,7 @@ export function VehicleForm(props: VehicleFormProps) {
                       const trimmed = String(value).trim();
                       if (!trimmed) return;
                       const ok = await checkPlateUnique(trimmed, initialValues?.id);
+                      if (ok === null) throw new Error('Không kiểm tra được biển số — vui lòng xác nhận thủ công');
                       if (!ok) throw new Error('Biển số đã tồn tại trong hệ thống');
                     },
                   },

@@ -3,7 +3,7 @@ import { useNavigation } from '@refinedev/core';
 import { useListFilters } from '@/hooks/useListFilters';
 import { useTable } from '@refinedev/antd';
 import type { CrudFilter } from '@refinedev/core';
-import { Button, Card, Dropdown, Flex, Input, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { Button, Card, Dropdown, Flex, Input, Modal, Select, Space, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CarOutlined,
@@ -66,6 +66,12 @@ export function VehiclesList() {
     status: undefined as string | undefined,
   });
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [statusChangeModal, setStatusChangeModal] = useState<{
+    open: boolean;
+    vehicle: Vehicle | null;
+    nextStatus: string;
+    reason: string;
+  }>({ open: false, vehicle: null, nextStatus: '', reason: '' });
 
   const permanentFilters = useMemo<CrudFilter[]>(() => {
     const f: CrudFilter[] = [];
@@ -97,6 +103,20 @@ export function VehiclesList() {
   const clearFilters = () => {
     clearFiltersBase();
     setSelectedRowKeys([]);
+  };
+
+  const handleStatusChangeConfirm = () => {
+    const { vehicle, nextStatus } = statusChangeModal;
+    if (!vehicle || !nextStatus) return;
+    statusMutation.mutate(
+      { id: vehicle.id, payload: { status: nextStatus as UpdateVehicleStatusRequest['status'] } },
+      {
+        onSuccess: () => {
+          void safeRefetch(true);
+          setStatusChangeModal({ open: false, vehicle: null, nextStatus: '', reason: '' });
+        },
+      },
+    );
   };
 
   const handleDelete = (vehicle: Vehicle) => {
@@ -248,16 +268,12 @@ export function VehiclesList() {
             />
             <Dropdown
               menu={{
-                items: VEHICLE_STATUS_OPTIONS.map((status) => ({
+                items: VEHICLE_STATUS_OPTIONS.filter((s) => s !== row.status).map((status) => ({
                   key: status,
                   label: t(`vehicles.status.${status}`),
-                  disabled: row.status === status,
                 })),
                 onClick: ({ key }) => {
-                  statusMutation.mutate(
-                    { id: row.id, payload: { status: key as UpdateVehicleStatusRequest['status'] } },
-                    { onSuccess: () => void safeRefetch(true) },
-                  );
+                  setStatusChangeModal({ open: true, vehicle: row, nextStatus: key, reason: '' });
                 },
               }}
               trigger={['click']}
@@ -270,14 +286,17 @@ export function VehiclesList() {
                 aria-label={t('vehicles.changeStatus')}
               />
             </Dropdown>
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined aria-hidden />}
-              aria-label={t('common.delete')}
-              onClick={() => handleDelete(row)}
-            />
+            <Tooltip title={row.status === 'maintenance' || row.status === 'broken' ? 'Không thể xóa xe đang bảo dưỡng/hỏng' : undefined}>
+              <Button
+                type="text"
+                size="small"
+                danger
+                disabled={row.status === 'maintenance' || row.status === 'broken'}
+                icon={<DeleteOutlined aria-hidden />}
+                aria-label={t('common.delete')}
+                onClick={() => handleDelete(row)}
+              />
+            </Tooltip>
           </Space>
         ),
       },
@@ -342,7 +361,6 @@ export function VehiclesList() {
               { value: 'maintenance', label: t('vehicles.status.maintenance') },
               { value: 'inactive', label: t('vehicles.status.inactive') },
               { value: 'broken', label: t('vehicles.status.broken') },
-              { value: 'out_of_service', label: t('vehicles.status.out_of_service') },
             ]}
           />
           <Select
@@ -391,6 +409,39 @@ export function VehiclesList() {
           void safeRefetch(true);
         }}
       />
+
+      <Modal
+        open={statusChangeModal.open}
+        title={`Thay đổi trạng thái xe: ${statusChangeModal.vehicle?.plate_number ?? ''}`}
+        okText="Xác nhận"
+        cancelText="Hủy"
+        okButtonProps={{ loading: statusMutation.isPending }}
+        onOk={handleStatusChangeConfirm}
+        onCancel={() => setStatusChangeModal({ open: false, vehicle: null, nextStatus: '', reason: '' })}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+          <div>
+            <div style={{ marginBottom: 4 }}>
+              Chuyển sang: <strong>{statusChangeModal.nextStatus ? t(`vehicles.status.${statusChangeModal.nextStatus}`) : ''}</strong>
+            </div>
+          </div>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>Lý do (tùy chọn)</div>
+            <Input.TextArea
+              rows={3}
+              placeholder="Nhập lý do thay đổi trạng thái..."
+              value={statusChangeModal.reason}
+              onChange={(e) => setStatusChangeModal((s) => ({ ...s, reason: e.target.value }))}
+            />
+          </div>
+          {(statusChangeModal.nextStatus === 'maintenance' || statusChangeModal.nextStatus === 'broken') && (
+            <div style={{ color: '#faad14', fontSize: 13 }}>
+              ⚠ Xe ở trạng thái này sẽ không thể phân công cho chuyến mới.
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

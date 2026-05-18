@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, Col, DatePicker, Empty, InputNumber, Row, Select, Space, Statistic, Table, Tag, theme, Typography } from 'antd';
+import { Button, Card, Col, DatePicker, Empty, InputNumber, Row, Select, Space, Statistic, Table, Tag, theme, Tooltip, Typography } from 'antd';
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -42,8 +42,9 @@ export function ReconciliationPage() {
     setSessionCreated(true);
   };
 
-  const totalOriginal = sessionTrips.reduce((s, trip) => s + (trip.price ?? 0), 0);
-  const totalAdjusted = sessionTrips.reduce((s, trip) => s + (adjustments[trip.id] ?? trip.price ?? 0), 0);
+  const tripRevenue = (trip: Trip) => trip.total_revenue ?? ((trip.base_price ?? trip.price ?? 0) + (trip.surcharge_amount ?? 0));
+  const totalOriginal = sessionTrips.reduce((s, trip) => s + tripRevenue(trip), 0);
+  const totalAdjusted = sessionTrips.reduce((s, trip) => s + (adjustments[trip.id] ?? tripRevenue(trip)), 0);
   const totalAdjustment = totalAdjusted - totalOriginal;
 
   return (
@@ -163,10 +164,9 @@ export function ReconciliationPage() {
                 },
                 {
                   title: t('accountingPages.reconciliationStatOriginal'),
-                  dataIndex: 'price',
                   key: 'price',
                   align: 'right',
-                  render: (v: number) => formatMoney(v),
+                  render: (_: unknown, r) => formatMoney(tripRevenue(r)),
                   width: 130,
                 },
                 {
@@ -177,7 +177,7 @@ export function ReconciliationPage() {
                     <InputNumber
                       size="small"
                       style={{ width: '100%' }}
-                      value={adjustments[r.id] ?? r.price}
+                      value={adjustments[r.id] ?? tripRevenue(r)}
                       min={0}
                       formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                       onChange={(v) => {
@@ -204,10 +204,14 @@ export function ReconciliationPage() {
             />
             <div style={{ marginTop: token.marginMD, textAlign: 'right' }}>
               <Space>
-                <Button>{t('accountingPages.reconciliationSaveDraft')}</Button>
-                <Button type="primary" icon={<CheckOutlined />}>
-                  {t('accountingPages.reconciliationConfirm')}
-                </Button>
+                <Tooltip title="Tính năng đang hoàn thiện — backend chưa sẵn sàng">
+                  <Button disabled>{t('accountingPages.reconciliationSaveDraft')}</Button>
+                </Tooltip>
+                <Tooltip title="Tính năng đang hoàn thiện — backend chưa sẵn sàng">
+                  <Button type="primary" icon={<CheckOutlined />} disabled>
+                    {t('accountingPages.reconciliationConfirm')}
+                  </Button>
+                </Tooltip>
               </Space>
             </div>
           </Card>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Alert, Button, Card, Flex, Input, Steps, Typography, theme } from 'antd';
-import { ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, CheckCircleFilled, CloseCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
 import authService from '@/services/auth.service';
 import { ROUTES } from '@/routes';
 import { notifyErrorOnce } from '@/utils/errorToast';
@@ -267,6 +267,23 @@ export function ForgotPasswordVerifyForm() {
                       placeholder={t('auth.registerPasswordPlaceholder')}
                       autoComplete="new-password"
                     />
+                    {password.length > 0 && (
+                      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+                        {([
+                          { label: 'Tối thiểu 8 ký tự', ok: password.length >= 8 },
+                          { label: 'Chữ hoa (A-Z)', ok: /[A-Z]/.test(password) },
+                          { label: 'Chữ thường (a-z)', ok: /[a-z]/.test(password) },
+                          { label: 'Chữ số (0-9)', ok: /[0-9]/.test(password) },
+                        ] as const).map(({ label, ok }) => (
+                          <Typography.Text key={label} style={{ fontSize: 12, color: ok ? token.colorSuccess : token.colorError }}>
+                            {ok
+                              ? <CheckCircleFilled style={{ marginRight: 4 }} />
+                              : <CloseCircleFilled style={{ marginRight: 4 }} />}
+                            {label}
+                          </Typography.Text>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Typography.Text strong>{t('auth.confirmPassword')}</Typography.Text>
@@ -279,11 +296,21 @@ export function ForgotPasswordVerifyForm() {
                       placeholder={t('auth.registerPasswordConfirmPlaceholder')}
                       autoComplete="new-password"
                     />
+                    {passwordConfirmation.length > 0 && password !== passwordConfirmation && (
+                      <Typography.Text type="danger" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                        <CloseCircleFilled style={{ marginRight: 4 }} />
+                        Mật khẩu nhập lại không khớp
+                      </Typography.Text>
+                    )}
                   </div>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {t('auth.forgotPasswordStrongHint')}
-                  </Typography.Text>
-                  <Button type="primary" htmlType="submit" block size="large" loading={isSubmitting} disabled={!resetEnabled}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    size="large"
+                    loading={isSubmitting}
+                    disabled={!resetEnabled}
+                  >
                     {t('auth.forgotPasswordResetSubmit')}
                   </Button>
                   <Button type="link" onClick={() => setPhase('otp')} disabled={isSubmitting} style={{ padding: 0 }}>

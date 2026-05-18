@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigation } from '@refinedev/core';
-import { Button, Card, Dropdown, Form, Modal, Input, Tag } from 'antd';
+import { useNavigation, useList } from '@refinedev/core';
+import { Button, Card, Dropdown, Form, Modal, Input, Select, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   ApartmentOutlined,
@@ -19,7 +19,7 @@ import { DataTable, type DataTableColumn } from '@/components/table';
 import { DeleteConfirmDialog } from '@/components/common/DeleteConfirmDialog';
 import { FormItemSelect } from '@/components/form';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Company, Trip } from '@/types';
+import type { Company, Driver, Trip, Vehicle } from '@/types';
 import toast from 'react-hot-toast';
 import { ROUTES } from '@/routes';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
@@ -51,6 +51,13 @@ interface ReasonModalState {
   reasonKey: string;
 }
 
+interface AssignModalState {
+  open: boolean;
+  trip: Trip | null;
+  driverId?: number;
+  vehicleId?: number;
+}
+
 const REASON_ACTIONS = new Set(['cancel', 'emergency', 'delay']);
 
 export function TripsList() {
@@ -73,6 +80,20 @@ export function TripsList() {
     open: false, trip: null, action: '', titleKey: '', reasonKey: '',
   });
   const [reasonValue, setReasonValue] = useState('');
+  const [assignModal, setAssignModal] = useState<AssignModalState>({ open: false, trip: null });
+
+  const { data: driversData } = useList<Driver>({ resource: 'drivers', pagination: { current: 1, pageSize: 200 } });
+  const { data: vehiclesData } = useList<Vehicle>({ resource: 'vehicles', pagination: { current: 1, pageSize: 200 } });
+  const driverOptions = useMemo(
+    () => (driversData?.data ?? []).map((d) => ({ label: d.name ?? `#${d.id}`, value: d.id })),
+    [driversData?.data],
+  );
+  const vehicleOptions = useMemo(
+    () => (vehiclesData?.data ?? [])
+      .filter((v) => v.status === 'active')
+      .map((v) => ({ label: `${v.plate_number} (${v.type ?? ''})`, value: v.id })),
+    [vehiclesData?.data],
+  );
 
   const companyFilters = useMemo(
     () => [{ field: 'status', operator: 'eq' as const, value: 'active' }],
@@ -85,16 +106,12 @@ export function TripsList() {
     resource: 'companies', filters: companyFilters, sorters: [{ field: 'name', order: 'asc' }], mapOption: mapCompanyOption,
   });
   const statusOptions = useMemo(() => [
-    { label: t('trips.statusPending'),        value: 'pending' },
-    { label: t('trips.statusAssigned'),       value: 'assigned' },
-    { label: t('trips.statusEnRoutePickup'),  value: 'en_route_pickup' },
-    { label: t('trips.statusPickedUp'),       value: 'picked_up' },
-    { label: t('trips.statusInTransit'),      value: 'in_transit' },
-    { label: t('trips.statusArrived'),        value: 'arrived' },
-    { label: t('trips.statusCompleted'),      value: 'completed' },
-    { label: t('trips.statusCancelled'),      value: 'cancelled' },
-    { label: t('trips.statusDelayed'),        value: 'delayed' },
-    { label: t('trips.statusEmergency'),      value: 'emergency' },
+    { label: t('trips.statusPending'),   value: 'pending' },
+    { label: t('trips.statusAssigned'),  value: 'assigned' },
+    { label: t('trips.statusInTransit'), value: 'in_transit' },
+    { label: t('trips.statusDelivered'), value: 'delivered' },
+    { label: t('trips.statusCompleted'), value: 'completed' },
+    { label: t('trips.statusCancelled'), value: 'cancelled' },
   ], [t]);
 
   const { data, isLoading, isFetching, isError, refetch } = useResourceListQuery<Trip>({
@@ -182,7 +199,33 @@ export function TripsList() {
     [t, safeRefetch],
   );
 
+  const handleAssignConfirm = () => {
+    const { trip, driverId, vehicleId } = assignModal;
+    if (!trip || (!driverId && !vehicleId)) return;
+    setAssignModal((s) => ({ ...s, open: false }));
+    setBusyTripId(trip.id);
+    void (async () => {
+      try {
+        await tripService.dispatchAction(trip.id, 'assign', { driver_id: driverId, vehicle_id: vehicleId });
+        toast.success(t('notifications.updateSuccess', { item: t('trips.title') }));
+        await safeRefetch(true);
+      } catch (error) {
+        if (shouldShowLocalErrorToast(error)) {
+          notifyErrorOnce('trips-assign', error, {
+            fallbackMessage: getErrorMessage(error) || t('notifications.updateError', { item: t('trips.title') }),
+          });
+        }
+      } finally {
+        setBusyTripId(null);
+      }
+    })();
+  };
+
   const handleAction = useCallback((trip: Trip, action: string) => {
+    if (action === 'assign') {
+      setAssignModal({ open: true, trip, driverId: undefined, vehicleId: undefined });
+      return;
+    }
     if (REASON_ACTIONS.has(action)) {
       const titleMap: Record<string, string> = {
         cancel:    'trips.confirmCancelTitle',
@@ -249,6 +292,8 @@ export function TripsList() {
         icon: <DeleteOutlined />,
         label: t('common.delete'),
         danger: true,
+        disabled: isTerminal,
+        title: isTerminal ? 'Đơn đã hoàn thành/hủy không thể xóa' : undefined,
         onClick: () => handleDelete(record),
       });
       return { items };
@@ -441,6 +486,46 @@ export function TripsList() {
           onChange={(e) => setReasonValue(e.target.value)}
           style={{ marginTop: 8 }}
         />
+      </Modal>
+
+      <Modal
+        open={assignModal.open}
+        title={`Phân công chuyến: ${assignModal.trip?.code ?? ''}`}
+        okText="Xác nhận phân công"
+        cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: !assignModal.driverId && !assignModal.vehicleId }}
+        onOk={handleAssignConfirm}
+        onCancel={() => setAssignModal((s) => ({ ...s, open: false }))}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>Tài xế</div>
+            <Select
+              style={{ width: '100%' }}
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              placeholder="Chọn tài xế"
+              options={driverOptions}
+              value={assignModal.driverId}
+              onChange={(v) => setAssignModal((s) => ({ ...s, driverId: v }))}
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>Xe (chỉ xe đang hoạt động)</div>
+            <Select
+              style={{ width: '100%' }}
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              placeholder="Chọn xe"
+              options={vehicleOptions}
+              value={assignModal.vehicleId}
+              onChange={(v) => setAssignModal((s) => ({ ...s, vehicleId: v }))}
+            />
+          </div>
+        </div>
       </Modal>
     </>
   );

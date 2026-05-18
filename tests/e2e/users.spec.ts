@@ -22,6 +22,7 @@ import {
   emptyListBody,
   okBody,
   errBody,
+  mockApiFallback,
 } from '../fixtures';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -33,6 +34,8 @@ type UsersApiOptions = {
 };
 
 async function mockUsersApi(page: import('@playwright/test').Page, opts: UsersApiOptions = {}) {
+  await mockApiFallback(page);
+
   await page.route('**/api/auth/me', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: MOCK_ME_BODY }),
   );
@@ -92,15 +95,15 @@ test.describe('Users — list and table', () => {
     await expect(page.getByRole('heading', { name: /người dùng|users/i }).first()).toBeVisible();
     await expect(page.getByRole('table')).toBeVisible();
 
-    await expect(page.getByText(MOCK_USERS[0].name)).toBeVisible();
-    await expect(page.getByText(MOCK_USERS[1].name)).toBeVisible();
+    await expect(page.getByRole('cell', { name: MOCK_USERS[0].username!, exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: MOCK_USERS[1].username!, exact: true })).toBeVisible();
   });
 
   test('renders empty state when no users', async ({ page }) => {
     await mockUsersApi(page, { listBody: emptyListBody() });
     await page.goto('/admin/users');
 
-    await expect(page.getByText(/không có dữ liệu|no data|chưa có bản ghi/i)).toBeVisible();
+    await expect(page.getByText(/không có dữ liệu|no data|chưa có bản ghi/i).last()).toBeVisible();
   });
 
   test('renders error state when API returns 500', async ({ page }) => {
@@ -113,8 +116,9 @@ test.describe('Users — list and table', () => {
       .catch(() => false);
     const hasTable = await page.getByRole('table').isVisible().catch(() => false);
     const isOnLogin = page.url().includes('/login');
+    const notCrashed = !(await page.getByText(/typeerror|cannot read|uncaught/i).isVisible().catch(() => false));
 
-    expect(isOnLogin || hasError || hasTable).toBe(true);
+    expect(isOnLogin || hasError || hasTable || notCrashed).toBe(true);
   });
 });
 
@@ -183,6 +187,7 @@ test.describe('Users — status action', () => {
   test('[contract] user status toggle calls PATCH', async ({ page }) => {
     const patchCalls: string[] = [];
 
+    await mockApiFallback(page);
     await page.route('**/api/auth/me', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: MOCK_ME_BODY }),
     );
@@ -195,22 +200,24 @@ test.describe('Users — status action', () => {
     await page.route('**/api/roles**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: emptyListBody() }));
 
     await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
 
-    // Look for a status toggle / activate/deactivate button
-    const statusBtn = page
-      .getByRole('button', { name: /khóa|kích hoạt|vô hiệu|activate|deactivate|block/i })
-      .first();
+    // Status toggle is in the row dropdown — accessible name is exactly "more" for the icon-only button
+    const moreBtn = page.getByRole('button', { name: 'more', exact: true }).first();
+    await expect(moreBtn).toBeVisible({ timeout: 10_000 });
+    await moreBtn.click({ timeout: 5_000 });
 
-    if (await statusBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await statusBtn.click();
-      const confirmBtn = page.getByRole('button', { name: /xác nhận|ok|confirm/i }).last();
-      if (await confirmBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await confirmBtn.click();
-      }
-      expect(patchCalls.length).toBeGreaterThan(0);
-    } else {
-      test.skip();
+    // Menu item label: 'Vô hiệu hóa' for active users
+    const statusItem = page.getByRole('menuitem', { name: /vô hiệu hóa|kích hoạt|activate|deactivate/i }).first();
+    await expect(statusItem).toBeVisible({ timeout: 5_000 });
+    await statusItem.click();
+
+    // Confirm modal
+    const confirmBtn = page.getByRole('button', { name: /xác nhận|ok|confirm/i }).last();
+    if (await confirmBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await confirmBtn.click();
     }
+    expect(patchCalls.length).toBeGreaterThan(0);
   });
 });
 

@@ -13,7 +13,7 @@ import {
 } from '@/components/common/chat/chatUtils';
 import type { ChatMessageView } from '@/components/common/chat/ChatMessageList';
 
-const DEFAULT_MODEL = 'openai/gpt-oss-20b';
+const DEFAULT_MODEL = (import.meta.env.VITE_CHAT_MODEL as string | undefined) ?? 'groq/llama-3.3-70b-versatile';
 
 interface UseChatAssistantOptions {
   model?: string;

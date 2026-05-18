@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Col, Flex, Row, Tag, Typography, theme, Avatar } from 'antd';
+import { Button, Card, Col, Flex, Result, Row, Tag, Typography, theme, Avatar } from 'antd';
 import { BankOutlined, LogoutOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/routes';
@@ -74,6 +74,19 @@ export function TenantSelector() {
               </Text>
             </div>
           </Flex>
+
+          {tenants.length === 0 && (
+            <Result
+              status="warning"
+              title="Không có tổ chức nào"
+              subTitle="Tài khoản của bạn chưa được gắn với tổ chức nào. Vui lòng liên hệ quản trị viên hệ thống."
+              extra={
+                <Button icon={<LogoutOutlined />} onClick={() => void handleLogout()}>
+                  Đăng xuất và thử lại
+                </Button>
+              }
+            />
+          )}
 
           <Row gutter={[24, 24]} style={{ width: '100%' }}>
             {tenants.map((tenant) => (

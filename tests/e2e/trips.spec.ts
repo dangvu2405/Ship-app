@@ -11,7 +11,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { MOCK_ME_BODY, tripListBody, tripSingleBody, MOCK_TRIPS, emptyListBody, okBody, errBody } from '../fixtures';
+import { MOCK_ME_BODY, tripListBody, tripSingleBody, MOCK_TRIPS, emptyListBody, okBody, errBody, mockApiFallback } from '../fixtures';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,6 +23,8 @@ type TripsApiOptions = {
 };
 
 async function mockTripsApi(page: import('@playwright/test').Page, opts: TripsApiOptions = {}) {
+  await mockApiFallback(page);
+
   await page.route('**/api/auth/me', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: MOCK_ME_BODY }),
   );
@@ -89,8 +91,7 @@ test.describe('Trips — list and table', () => {
     await expect(page.getByRole('table')).toBeVisible();
 
     // Rows from MOCK_TRIPS
-    const rows = page.getByRole('row');
-    await expect(rows).toHaveCount({ minimum: 2 }); // header + at least 1 data row
+    await expect.poll(() => page.getByRole('row').count()).toBeGreaterThan(1); // header + at least 1 data row
   });
 
   test('shows trip code or status in table', async ({ page }) => {
@@ -106,19 +107,24 @@ test.describe('Trips — list and table', () => {
     await mockTripsApi(page, { listBody: emptyListBody() });
     await page.goto('/admin/trips');
 
-    await expect(page.getByText(/không có dữ liệu|no data|chưa có bản ghi/i)).toBeVisible();
+    await expect(page.getByText(/không có dữ liệu|no data|chưa có bản ghi/i).last()).toBeVisible();
   });
 
   test('renders error state when API returns 500', async ({ page }) => {
     await mockTripsApi(page, { listStatus: 500, listBody: errBody('Server error') });
     await page.goto('/admin/trips');
+    await expect(page.getByRole('heading', { name: /đơn hàng/i }).first()).toBeVisible();
 
     const isOnLogin = page.url().includes('/login');
     const hasError = await page
       .getByText(/lỗi|error|something went wrong|không thể tải/i)
       .isVisible()
       .catch(() => false);
-    const hasTable = await page.getByRole('table').isVisible().catch(() => false);
+    const hasTable = await expect
+      .poll(() => page.getByRole('table').count().catch(() => 0))
+      .toBeGreaterThan(0)
+      .then(() => true)
+      .catch(() => false);
 
     expect(isOnLogin || hasError || hasTable).toBe(true);
   });
@@ -165,6 +171,7 @@ test.describe('Trips — action method contract', () => {
   test('[contract] trip action calls PATCH not POST', async ({ page }) => {
     const patchCalls: string[] = [];
 
+    await mockApiFallback(page);
     await page.route('**/api/auth/me', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: MOCK_ME_BODY }),
     );
@@ -180,24 +187,25 @@ test.describe('Trips — action method contract', () => {
 
     // Navigate to trip detail (show page)
     await page.goto(`/admin/trips/show/${MOCK_TRIPS[0].id}`);
+    await page.waitForLoadState('networkidle');
 
-    // Look for status action buttons
+    // 'Hủy chuyến' is a direct confirm PATCH; 'Phân công' opens a driver form that requires filling
     const actionBtn = page
-      .getByRole('button', { name: /phân công|bắt đầu|giao hàng|hoàn thành|hủy|assign|start|deliver|complete|cancel/i })
+      .getByRole('button', { name: /hủy chuyến|hủy|cancel/i })
       .first();
 
-    if (await actionBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await actionBtn.click();
-      // Confirm dialog if present
-      const confirmBtn = page.getByRole('button', { name: /xác nhận|confirm|ok/i }).last();
-      if (await confirmBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await confirmBtn.click();
-      }
-      // A PATCH call must have been made (not POST)
-      expect(patchCalls.length).toBeGreaterThan(0);
-    } else {
-      // Action buttons not visible on this page — test is inconclusive, not a failure
-      test.skip();
+    await expect(actionBtn).toBeVisible({ timeout: 10_000 });
+    await actionBtn.click();
+    // 'Hủy chuyến' dialog requires a reason — fill it in
+    const reasonInput = page.getByRole('textbox').first();
+    if (await reasonInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await reasonInput.fill('Test cancellation reason');
     }
+    const confirmBtn = page.getByRole('button', { name: /xác nhận|confirm|ok/i }).last();
+    if (await confirmBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await confirmBtn.click();
+    }
+    // A PATCH call must have been made (not POST)
+    expect(patchCalls.length).toBeGreaterThan(0);
   });
 });

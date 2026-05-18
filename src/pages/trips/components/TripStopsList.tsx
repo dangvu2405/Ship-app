@@ -1,4 +1,4 @@
-import { Button, Card, Col, Empty, Flex, Form, Input, InputNumber, Row } from 'antd';
+import { Button, Card, Col, Empty, Flex, Form, Input, InputNumber, Row, Select } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -6,11 +6,16 @@ export interface TripStopsListProps {
   isTerminal?: boolean;
 }
 
+const STOP_TYPE_OPTIONS = [
+  { label: 'Điểm lấy hàng (Pickup)', value: 'pickup' },
+  { label: 'Điểm giao hàng (Delivery)', value: 'delivery' },
+];
+
 export function TripStopsList({ isTerminal = false }: TripStopsListProps) {
   const { t } = useTranslation();
 
   return (
-    <Form.List name="trip_stops">
+    <Form.List name="stops">
       {(fields, { add, remove }) => (
         <Flex vertical gap={8}>
           {fields.length === 0 ? (
@@ -39,7 +44,26 @@ export function TripStopsList({ isTerminal = false }: TripStopsListProps) {
                 }
               >
                 <Row gutter={12}>
-                  <Col span={10}>
+                  <Col xs={24} sm={6}>
+                    <Form.Item
+                      label="Loại điểm"
+                      name={[field.name, 'stop_type']}
+                      rules={[{ required: true, message: 'Chọn loại điểm dừng' }]}
+                      initialValue={idx === 0 ? 'pickup' : 'delivery'}
+                    >
+                      <Select disabled={isTerminal} options={STOP_TYPE_OPTIONS} />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={2}>
+                    <Form.Item
+                      label="Thứ tự"
+                      name={[field.name, 'sequence']}
+                      initialValue={idx + 1}
+                    >
+                      <InputNumber min={1} disabled={isTerminal} style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={10}>
                     <Form.Item
                       label={t('trips.stops.address')}
                       name={[field.name, 'address']}
@@ -48,18 +72,9 @@ export function TripStopsList({ isTerminal = false }: TripStopsListProps) {
                       <Input disabled={isTerminal} placeholder={t('trips.stops.addressPlaceholder')} />
                     </Form.Item>
                   </Col>
-                  <Col span={10}>
+                  <Col xs={24} sm={6}>
                     <Form.Item label={t('trips.stops.note')} name={[field.name, 'note']}>
                       <Input disabled={isTerminal} placeholder={t('trips.stops.notePlaceholder')} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={4}>
-                    <Form.Item
-                      label={t('trips.stops.order')}
-                      name={[field.name, 'order']}
-                      initialValue={idx + 1}
-                    >
-                      <InputNumber min={1} disabled={isTerminal} style={{ width: '100%' }} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -67,7 +82,11 @@ export function TripStopsList({ isTerminal = false }: TripStopsListProps) {
             ))
           )}
           {!isTerminal && (
-            <Button icon={<PlusOutlined />} type="dashed" onClick={() => add({ order: fields.length + 1 })}>
+            <Button
+              icon={<PlusOutlined />}
+              type="dashed"
+              onClick={() => add({ stop_type: fields.length === 0 ? 'pickup' : 'delivery', sequence: fields.length + 1 })}
+            >
               {t('trips.stops.addStop')}
             </Button>
           )}

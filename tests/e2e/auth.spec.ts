@@ -71,6 +71,63 @@ test.describe('TC-01 — Login Success', () => {
     await expect(page).toHaveURL(/(\/dashboard|\/select-tenant)/);
   });
 
+  test('renders tenant selector after multi-tenant login', async ({ page }) => {
+    const multiTenantLoginBody = JSON.stringify({
+      success: true,
+      message: 'Login successful',
+      data: {
+        token: 'test-bearer-token',
+        refreshToken: 'test-refresh-token',
+        user: {
+          id: 1,
+          username: 'admin',
+          name: 'Admin Test',
+          email: TEST_USERS.admin.email,
+          role: 'admin',
+          status: 'active',
+        },
+        tenants: [
+          { id: 1, name: 'ABC Transport', code: 'ABC', status: 'active' },
+          { id: 2, name: 'XYZ Logistics', code: 'XYZ', status: 'active' },
+        ],
+      },
+    });
+
+    await page.route('**/api/auth/login', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: multiTenantLoginBody,
+      }),
+    );
+    await page.route('**/api/auth/me', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: MOCK_ME_BODY,
+      }),
+    );
+    await page.route('**/api/**', (route) => {
+      const url = route.request().url();
+      if (url.includes('/auth/login') || url.includes('/auth/me')) return route.fallback();
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, message: 'OK', data: { data: [], meta: { total: 0 } } }),
+      });
+    });
+
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(TEST_USERS.admin.email);
+    await page.getByLabel('Mật khẩu').fill(TEST_USERS.admin.password);
+    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+
+    await expect(page).toHaveURL(/\/select-tenant/);
+    await expect(page.getByText('Vui lòng chọn tổ chức bạn muốn làm việc hôm nay.')).toBeVisible();
+    await expect(page.getByText('ABC Transport')).toBeVisible();
+    await expect(page.getByText('XYZ Logistics')).toBeVisible();
+  });
+
   test('forgot-password link is visible and navigates correctly', async ({ page }) => {
     await page.goto('/login');
     const link = page.getByRole('link', { name: 'Quên mật khẩu?' });

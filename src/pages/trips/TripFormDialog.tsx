@@ -62,7 +62,7 @@ function buildTripPayload(values: Partial<Trip> & Record<string, unknown>, nextS
     return sum + (Number.isFinite(amt) ? amt : 0);
   }, 0);
   const surchargeAmount = surchargeFromList > 0 ? surchargeFromList : Number(values.surcharge_amount ?? 0);
-  const tripStops = Array.isArray(values.trip_stops) ? values.trip_stops : undefined;
+  const tripStops = Array.isArray(values.stops) ? values.stops : Array.isArray(values.trip_stops) ? values.trip_stops : undefined;
 
   const payload: StoreTripRequest = {
     code: String(values.code ?? '').trim() || undefined,
@@ -108,10 +108,10 @@ function buildTripPayload(values: Partial<Trip> & Record<string, unknown>, nextS
   };
 
   if (tripStops && tripStops.length > 0) {
-    (payload as unknown as Record<string, unknown>).trip_stops = tripStops;
+    (payload as unknown as Record<string, unknown>).stops = tripStops;
   }
   if (rawSurcharges.length > 0) {
-    (payload as unknown as Record<string, unknown>).trip_surcharges = rawSurcharges
+    (payload as unknown as Record<string, unknown>).surcharges = rawSurcharges
       .filter((item) => item && (item as { amount?: number }).amount != null && Number((item as { amount?: number }).amount) > 0)
       .map((item) => ({
         label: (item as { label?: string }).label ?? '',

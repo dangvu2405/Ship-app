@@ -109,38 +109,23 @@ interface TripActionConfig {
   requiresReason?: boolean;
 }
 
-/** Workflow PATCH theo API mục 12: assign → start → deliver → complete; hủy có lý do. */
+/** Workflow PATCH backend: assign → start → deliver → complete; hủy có lý do.
+ *  Chỉ expose action có endpoint PATCH thật trên backend. */
 export const TRIP_TRANSITIONS: Partial<Record<TripStatus, TripActionConfig[]>> = {
   pending: [
     { action: 'assign', labelKey: 'trips.actionAssign', nextStatus: 'assigned' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   assigned: [
-    { action: 'start', labelKey: 'trips.actionStart', nextStatus: 'en_route_pickup' },
+    { action: 'start', labelKey: 'trips.actionStart', nextStatus: 'in_transit' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   driver_accepted: [
-    { action: 'start', labelKey: 'trips.actionStart', nextStatus: 'en_route_pickup' },
-    { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
-  ],
-  en_route_pickup: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
-    { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
-  ],
-  picked_up: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
+    { action: 'start', labelKey: 'trips.actionStart', nextStatus: 'in_transit' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   in_transit: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
-    { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
-  ],
-  delayed: [
-    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'arrived' },
-    { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
-  ],
-  arrived: [
-    { action: 'complete', labelKey: 'trips.actionComplete', nextStatus: 'completed' },
+    { action: 'deliver', labelKey: 'trips.actionDeliver', nextStatus: 'delivered' },
     { action: 'cancel', labelKey: 'trips.actionCancel', nextStatus: 'cancelled', danger: true, requiresReason: true },
   ],
   delivered: [

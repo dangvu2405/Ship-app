@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
 import { shipEnterpriseTheme } from '@/providers/theme-provider';
 import { Fragment, Suspense, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { antdUtils } from './utils/antdGlobal';
 import { authProvider } from './providers/authProvider';
@@ -28,12 +29,18 @@ import {
 
 function TenantGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, currentTenantId, pendingTenants, mustChangePassword } = useAuthStore();
+  const location = useLocation();
 
-  if (isAuthenticated && mustChangePassword) {
+  if (isAuthenticated && mustChangePassword && location.pathname !== ROUTES.admin.profile) {
     return <Navigate to={ROUTES.admin.profile} replace />;
   }
 
-  if (isAuthenticated && currentTenantId == null && pendingTenants.length > 0) {
+  if (
+    isAuthenticated
+    && currentTenantId == null
+    && pendingTenants.length > 0
+    && location.pathname !== ROUTES.selectTenant
+  ) {
     return <Navigate to={ROUTES.selectTenant} replace />;
   }
 
@@ -150,6 +157,7 @@ function App() {
           <QueryClientProvider client={queryClient}>
             <AppContent />
           </QueryClientProvider>
+          <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         </AntdApp>
       </ConfigProvider>
     </BrowserRouter>

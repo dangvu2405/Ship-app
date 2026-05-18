@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+
 /**
  * Shared test fixtures for Playwright E2E tests.
  * Credentials are read from environment variables; defaults suit a local dev DB.
@@ -148,6 +150,20 @@ export const emptyListBody = (): string => listBody([]);
 export const singleBody = (data: unknown): string =>
   JSON.stringify({ success: true, message: 'OK', data });
 
+/**
+ * Default fallback for authenticated app-shell requests that are not relevant to a spec.
+ * Register this before resource-specific routes so later mocks keep precedence.
+ */
+export async function mockApiFallback(page: Page) {
+  await page.route('**/api/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: emptyListBody(),
+    }),
+  );
+}
+
 // ─── Mock trips ──────────────────────────────────────────────────────────────
 
 export type MockTrip = {
@@ -281,6 +297,7 @@ export const customerSingleBody = (customer: MockCustomer = MOCK_CUSTOMERS[0]) =
 
 export type MockInvoice = {
   id: number;
+  code?: string;
   invoice_number?: string;
   status: string;
   customer_id?: number;
@@ -295,6 +312,7 @@ export type MockInvoice = {
 export const MOCK_INVOICES: MockInvoice[] = [
   {
     id: 1,
+    code: 'INV-2026-001',
     invoice_number: 'INV-2026-001',
     status: 'draft',
     customer: { id: 1, name: 'Công ty TNHH ABC Logistics' },
@@ -305,6 +323,7 @@ export const MOCK_INVOICES: MockInvoice[] = [
   },
   {
     id: 2,
+    code: 'INV-2026-002',
     invoice_number: 'INV-2026-002',
     status: 'issued',
     customer: { id: 2, name: 'Công ty CP XYZ Vận Tải' },
@@ -323,6 +342,7 @@ export const invoiceSingleBody = (invoice: MockInvoice = MOCK_INVOICES[0]) => si
 
 export type MockUser = {
   id: number;
+  username?: string;
   name: string;
   email: string;
   role: string;
@@ -334,6 +354,7 @@ export type MockUser = {
 export const MOCK_USERS: MockUser[] = [
   {
     id: 1,
+    username: 'admin',
     name: 'Admin Test',
     email: 'admin@abctransport.com',
     role: 'admin',
@@ -343,6 +364,7 @@ export const MOCK_USERS: MockUser[] = [
   },
   {
     id: 2,
+    username: 'dispatcher',
     name: 'Dispatcher Nguyen',
     email: 'dispatcher@abctransport.com',
     role: 'dispatcher',

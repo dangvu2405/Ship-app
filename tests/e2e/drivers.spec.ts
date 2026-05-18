@@ -481,6 +481,7 @@ test.describe('TC-09 — Delete confirmation modal', () => {
 
   test('[TC-09b] cancelling delete keeps row in table', async ({ page }) => {
     await gotoDriversList(page);
+    await expect(driverRows(page)).toHaveCount(MOCK_DRIVERS.length);
 
     const rowsBefore = await driverRows(page).count();
 

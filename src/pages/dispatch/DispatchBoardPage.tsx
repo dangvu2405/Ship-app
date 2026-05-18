@@ -10,6 +10,7 @@ import {
   Divider,
   Empty,
   Flex,
+  Modal,
   Row,
   Select,
   Space,
@@ -19,6 +20,7 @@ import {
   Typography,
   theme,
 } from 'antd';
+import { useList } from '@refinedev/core';
 import type { GlobalToken } from 'antd/es/theme/interface';
 import {
   CarOutlined,
@@ -36,8 +38,9 @@ import 'dayjs/locale/vi';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDispatchBoard } from '@/hooks/useDispatchBoard';
-import type { Trip } from '@/types';
+import type { Driver, Trip, Vehicle } from '@/types';
 import type { DispatchTrip, DispatchVehicle } from '@/types/api/dispatch';
+import tripService from '@/services/trip.service';
 import { getTripStatusConfig, getTripStatusLabel } from '@/utils/tripStatus';
 
 const { Text, Paragraph } = Typography;
@@ -175,6 +178,39 @@ export function DispatchBoardPage() {
   const [selectedVehicleType, setSelectedVehicleType] = useState<string | undefined>();
   const [selectedTeamId, setSelectedTeamId] = useState<number | undefined>();
   const { show } = useNavigation();
+
+  const [assignModal, setAssignModal] = useState<{ open: boolean; trip: DispatchTrip | null; driverId?: number; vehicleId?: number }>({ open: false, trip: null });
+  const [assigning, setAssigning] = useState(false);
+
+  const { data: driversData } = useList<Driver>({ resource: 'drivers', pagination: { current: 1, pageSize: 200 } });
+  const { data: vehiclesData } = useList<Vehicle>({
+    resource: 'vehicles',
+    pagination: { current: 1, pageSize: 200 },
+    filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+  });
+  const driverOptions = useMemo(
+    () => (driversData?.data ?? []).map((d) => ({ label: d.name ?? `#${d.id}`, value: d.id })),
+    [driversData?.data],
+  );
+  const vehicleOptions = useMemo(
+    () => (vehiclesData?.data ?? []).map((v) => ({ label: `${v.plate_number} (${v.type ?? ''})`, value: v.id })),
+    [vehiclesData?.data],
+  );
+
+  const handleAssignConfirm = async () => {
+    const { trip, driverId, vehicleId } = assignModal;
+    if (!trip || (!driverId && !vehicleId)) return;
+    setAssigning(true);
+    try {
+      await tripService.dispatchAction(trip.id, 'assign', { driver_id: driverId, vehicle_id: vehicleId });
+      setAssignModal({ open: false, trip: null });
+      void refetch();
+    } catch {
+      // global toast
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   useEffect(() => {
     dayjs.locale(locale === 'vi' ? 'vi' : 'en');
@@ -515,14 +551,14 @@ export function DispatchBoardPage() {
         <Col xs={24} xl={7}>
           <Card
             className="rounded-3xl border border-slate-200 shadow-sm"
-            title={<Text strong>{'5 ĐƠN CHƯA PHÂN CÔNG'}</Text>}
+            title={<Text strong>{`${unassignedList.length} ĐƠN CHƯA PHÂN CÔNG`}</Text>}
             extra={<Tag color="blue" className="m-0 rounded-full px-3 py-1 text-xs font-medium">{selectedDate.format('DD/MM')}</Tag>}
           >
             {unassignedList.length === 0 ? (
               <Empty description="Không có đơn chờ phân công" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             ) : (
               <Space direction="vertical" style={{ width: '100%' }} size={8}>
-                {unassignedList.slice(0, 5).map((trip) => (
+                {unassignedList.map((trip) => (
                   <Card
                     key={trip.id}
                     size="small"
@@ -556,7 +592,7 @@ export function DispatchBoardPage() {
                         size="small"
                         onClick={(event) => {
                           event.stopPropagation();
-                          show('trips', trip.id);
+                          setAssignModal({ open: true, trip, driverId: undefined, vehicleId: undefined });
                         }}
                       >
                         Gán ngay
@@ -569,6 +605,46 @@ export function DispatchBoardPage() {
           </Card>
         </Col>
       </Row>
+
+      <Modal
+        open={assignModal.open}
+        title={`Phân công chuyến: ${assignModal.trip?.code ?? ''}`}
+        okText="Xác nhận phân công"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: !assignModal.driverId && !assignModal.vehicleId, loading: assigning }}
+        onOk={() => void handleAssignConfirm()}
+        onCancel={() => setAssignModal({ open: false, trip: null })}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>Tài xế</div>
+            <Select
+              style={{ width: '100%' }}
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              placeholder="Chọn tài xế"
+              options={driverOptions}
+              value={assignModal.driverId}
+              onChange={(v) => setAssignModal((s) => ({ ...s, driverId: v }))}
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>Xe (đang hoạt động)</div>
+            <Select
+              style={{ width: '100%' }}
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              placeholder="Chọn xe"
+              options={vehicleOptions}
+              value={assignModal.vehicleId}
+              onChange={(v) => setAssignModal((s) => ({ ...s, vehicleId: v }))}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

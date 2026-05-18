@@ -173,8 +173,8 @@ export const dataProvider: DataProvider = {
     if (DISABLED_LIST_RESOURCES.has(resource)) {
       return { data: [] as unknown as TData[], total: 0 };
     }
-    // Cache unavailable resources at runtime to avoid repeated 404/403 spam on polling/re-render.
-    if (RUNTIME_UNAVAILABLE_LIST_RESOURCES.has(resource)) {
+    // Only use cached unavailable list for explicitly not-implemented resources.
+    if (RUNTIME_UNAVAILABLE_LIST_RESOURCES.has(resource) && NOT_IMPLEMENTED_RESOURCES.has(resource)) {
       return { data: [] as unknown as TData[], total: 0 };
     }
 
@@ -202,10 +202,10 @@ export const dataProvider: DataProvider = {
           }
         }
         if (!body) {
-          RUNTIME_UNAVAILABLE_LIST_RESOURCES.add(resource);
-          if (status === 404 && !NOT_IMPLEMENTED_RESOURCES.has(resource)) {
-            throw new Error(`Missing endpoint for resource "${resource}"`);
+          if (!NOT_IMPLEMENTED_RESOURCES.has(resource)) {
+            throw new Error(`Endpoint not available for resource "${resource}" (HTTP ${status ?? 'unknown'})`);
           }
+          RUNTIME_UNAVAILABLE_LIST_RESOURCES.add(resource);
           return { data: [], total: 0 };
         }
       } else {

@@ -39,8 +39,12 @@ const dispatchService = {
         skipErrorToast: true,
       } as Parameters<typeof api.get>[1]);
       return res.data;
-    } catch {
-      return { success: false, data: [] } as UnassignedTripsResponse;
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 404 || status === 501) {
+        return { success: true, data: [] } as UnassignedTripsResponse;
+      }
+      throw error;
     }
   },
 

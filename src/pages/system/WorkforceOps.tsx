@@ -26,27 +26,27 @@ export function WorkforceOps({ embedded = false }: WorkforceOpsProps = {}) {
   const tabItems = [
     {
       key: 'schedule',
-      label: t('workforce.schedule' as never),
+      label: t('workforce.tabs.schedule' as never),
       children: <WorkforceScheduleTab />,
     },
     {
       key: 'attendance',
-      label: t('workforce.attendance' as never),
+      label: t('workforce.tabs.attendance' as never),
       children: <WorkforceAttendanceTab />,
     },
     {
       key: 'leave',
-      label: t('workforce.leave' as never),
+      label: t('workforce.tabs.leave' as never),
       children: <WorkforceLeaveTab />,
     },
     {
       key: 'overtime',
-      label: t('workforce.overtime' as never),
+      label: t('workforce.tabs.overtime' as never),
       children: <WorkforceOvertimeTab />,
     },
     {
       key: 'violation',
-      label: t('workforce.violation' as never),
+      label: t('workforce.tabs.violations' as never),
       children: <WorkforceViolationTab />,
     },
   ];
