@@ -13,6 +13,7 @@ import { useFormDialogCloseGuard } from '@/hooks/useFormDialogCloseGuard';
 import { UnsavedChangesWarningDialog } from '@/components/common/UnsavedChangesWarningDialog';
 
 import type { User } from '@/types';
+import { USER_PERMISSIONS_ENABLED } from '@/utils/constants';
 import { getErrorMessage, shouldShowLocalErrorToast } from '@/utils/errorHandler';
 
 interface UserFormValues {
@@ -252,21 +253,25 @@ export function UserFormDialog({ open, mode, recordId, onClose, onSuccess }: Use
         defaultActiveKey="info"
         items={[
           { key: 'info', label: 'Thông tin', children: formContent },
-          {
-            key: 'permissions',
-            label: 'Phân quyền',
-            children:
-              isEdit && resolvedId ? (
-                <UserPermissionsTab userId={Number(resolvedId)} isAdmin={isAdminUser} />
-              ) : (
-                <Alert
-                  type="info"
-                  showIcon
-                  message="Lưu người dùng trước"
-                  description="Bạn có thể quản lý quyền sau khi tạo người dùng và lưu lại."
-                />
-              ),
-          },
+          ...(USER_PERMISSIONS_ENABLED
+            ? [
+                {
+                  key: 'permissions',
+                  label: 'Phân quyền',
+                  children:
+                    isEdit && resolvedId ? (
+                      <UserPermissionsTab userId={Number(resolvedId)} isAdmin={isAdminUser} />
+                    ) : (
+                      <Alert
+                        type="info"
+                        showIcon
+                        message="Lưu người dùng trước"
+                        description="Bạn có thể quản lý quyền sau khi tạo người dùng và lưu lại."
+                      />
+                    ),
+                },
+              ]
+            : []),
         ]}
       />
     );

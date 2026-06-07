@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import api from '@/services/api';
 import { ENDPOINTS } from '@/services/endpoints';
+import { USER_PERMISSIONS_ENABLED } from '@/utils/constants';
 import { getErrorMessage } from '@/utils/errorHandler';
 
 interface PermissionMatrix {
@@ -54,7 +55,7 @@ export function UserPermissionsTab({ userId, isAdmin = false }: UserPermissionsT
         return null;
       }
     },
-    enabled: !isAdmin,
+    enabled: USER_PERMISSIONS_ENABLED && !isAdmin,
   });
 
   const modules = data?.modules ?? DEFAULT_MODULES;
@@ -144,6 +145,18 @@ export function UserPermissionsTab({ userId, isAdmin = false }: UserPermissionsT
     return (
       <Card>
         <Spin />
+      </Card>
+    );
+  }
+
+  if (!USER_PERMISSIONS_ENABLED) {
+    return (
+      <Card>
+        <Alert
+          type="info"
+          message="Phân quyền chi tiết đang tắt"
+          description="Bật VITE_USER_PERMISSIONS_ENABLED khi backend /api/users/{id}/permissions sẵn sàng."
+        />
       </Card>
     );
   }

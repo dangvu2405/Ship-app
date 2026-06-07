@@ -12,6 +12,7 @@ import { Avatar, Button, Divider, Dropdown, Flex, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ROUTES } from '@/routes';
+import { BILLING_ENABLED } from '@/utils/constants';
 
 export function NavUser({
   user,
@@ -56,12 +57,14 @@ export function NavUser({
       label: t('header.notifications'),
       onClick: () => navigate(ROUTES.admin.notifications),
     },
-    {
-      key: 'billing',
-      icon: <CreditCardOutlined />,
-      label: t('header.billing'),
-      onClick: () => navigate(ROUTES.admin.billing),
-    },
+    ...(BILLING_ENABLED
+      ? [{
+          key: 'billing',
+          icon: <CreditCardOutlined />,
+          label: t('header.billing'),
+          onClick: () => navigate(ROUTES.admin.billing),
+        }]
+      : []),
     {
       key: 'settings',
       icon: <SettingOutlined />,

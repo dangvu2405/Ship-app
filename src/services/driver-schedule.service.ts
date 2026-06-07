@@ -97,6 +97,9 @@ class DriverScheduleService {
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status !== 404) throw err;
+      if (import.meta.env.DEV) {
+        console.warn('[DriverSchedule] Generate endpoint returned 404; check backend route /driver-work-schedules/generate.');
+      }
       return { success: false, message: 'Endpoint chưa sẵn sàng', data: {} } as ApiResponse<{ created?: number; skipped?: number }>;
     }
   }

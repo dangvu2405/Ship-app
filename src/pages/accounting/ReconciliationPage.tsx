@@ -8,6 +8,7 @@ import type { Trip } from '@/types';
 import { formatDate, formatMoney } from '@/utils/displayFormat';
 import { useCustomerList } from '@/hooks/useCustomers';
 import { useTripReportList } from '@/hooks/useAccounting';
+import { RECONCILIATION_ACTIONS_ENABLED } from '@/utils/constants';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -202,18 +203,20 @@ export function ReconciliationPage() {
                 </Table.Summary.Row>
               )}
             />
-            <div style={{ marginTop: token.marginMD, textAlign: 'right' }}>
-              <Space>
-                <Tooltip title="Tính năng đang hoàn thiện — backend chưa sẵn sàng">
-                  <Button disabled>{t('accountingPages.reconciliationSaveDraft')}</Button>
-                </Tooltip>
-                <Tooltip title="Tính năng đang hoàn thiện — backend chưa sẵn sàng">
-                  <Button type="primary" icon={<CheckOutlined />} disabled>
-                    {t('accountingPages.reconciliationConfirm')}
-                  </Button>
-                </Tooltip>
-              </Space>
-            </div>
+            {RECONCILIATION_ACTIONS_ENABLED ? (
+              <div style={{ marginTop: token.marginMD, textAlign: 'right' }}>
+                <Space>
+                  <Tooltip title="Tính năng đang hoàn thiện — backend chưa sẵn sàng">
+                    <Button disabled>{t('accountingPages.reconciliationSaveDraft')}</Button>
+                  </Tooltip>
+                  <Tooltip title="Tính năng đang hoàn thiện — backend chưa sẵn sàng">
+                    <Button type="primary" icon={<CheckOutlined />} disabled>
+                      {t('accountingPages.reconciliationConfirm')}
+                    </Button>
+                  </Tooltip>
+                </Space>
+              </div>
+            ) : null}
           </Card>
         </>
       )}

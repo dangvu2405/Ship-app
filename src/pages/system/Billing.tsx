@@ -1,9 +1,16 @@
 import { Card, Space, Typography } from 'antd';
 import { CreditCardOutlined } from '@ant-design/icons';
+import { Navigate } from 'react-router-dom';
 import { useTranslation } from '@/hooks/useTranslation';
+import { ROUTES } from '@/routes';
+import { BILLING_ENABLED } from '@/utils/constants';
 
 export const Billing = () => {
   const { t } = useTranslation();
+
+  if (!BILLING_ENABLED) {
+    return <Navigate to={ROUTES.dashboard} replace />;
+  }
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%', maxWidth: 768 }}>

@@ -14,6 +14,10 @@ interface ImportMetaEnv {
   readonly VITE_TEST_ACCOUNTS?: string;
   readonly VITE_GOOGLE_OAUTH_CLIENT_ID?: string;
   readonly VITE_VPIC_BASE_URL?: string;
+  readonly VITE_BILLING_ENABLED?: string;
+  readonly VITE_RECONCILIATION_ACTIONS_ENABLED?: string;
+  readonly VITE_USER_PERMISSIONS_ENABLED?: string;
+  readonly VITE_EINVOICE_CQT_ENABLED?: string;
   [key: string]: string | boolean | undefined;
 }
 

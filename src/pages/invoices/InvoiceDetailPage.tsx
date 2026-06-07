@@ -32,6 +32,7 @@ import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Invoice, EInvoiceStatus, InvoiceStatusHistory } from '@/types';
 import { ROUTES } from '@/routes';
+import { EINVOICE_CQT_ENABLED } from '@/utils/constants';
 import { formatDateTime, formatMoney } from '@/utils/displayFormat';
 import { InvoiceFormDialog } from './InvoiceFormDialog';
 import invoiceService from '@/services/invoice.service';
@@ -68,7 +69,6 @@ export function InvoiceDetailPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
-  const cqtConfigured = false; // TODO: replace with backend capability check when available
 
   const resolvedId = id ? Number(id) : undefined;
 
@@ -82,6 +82,7 @@ export function InvoiceDetailPage() {
   const status = normalizeInvoiceStatus(invoice?.status);
   const einvoiceStatus = (invoice?.einvoice_status ?? 'draft') as EInvoiceStatus;
   const einvoiceCfg = EINVOICE_STATUS_CONFIG[einvoiceStatus];
+  const cqtConfigured = EINVOICE_CQT_ENABLED || Boolean(invoice?.einvoice_provider);
 
   const statusLabel =
     status === 'draft' ? t('invoices.statusDraft')

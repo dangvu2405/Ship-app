@@ -48,6 +48,10 @@ export const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? '';
 export const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? '';
 export const TEST_ACCOUNTS_ENABLED = import.meta.env.VITE_TEST_ACCOUNTS === 'true';
 export const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID?.trim() ?? '';
+export const BILLING_ENABLED = import.meta.env.VITE_BILLING_ENABLED === 'true';
+export const RECONCILIATION_ACTIONS_ENABLED = import.meta.env.VITE_RECONCILIATION_ACTIONS_ENABLED === 'true';
+export const USER_PERMISSIONS_ENABLED = import.meta.env.VITE_USER_PERMISSIONS_ENABLED !== 'false';
+export const EINVOICE_CQT_ENABLED = import.meta.env.VITE_EINVOICE_CQT_ENABLED === 'true';
 
 export const ROUTES = LEGACY_ROUTES;
 
